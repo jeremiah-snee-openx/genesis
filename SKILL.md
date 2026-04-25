@@ -47,6 +47,23 @@ emits the natural-language modules from the artifacts.
 - The handoff packet at step 6 is the only artifact passed forward.
   No tacit context.
 
+## Authority compliance
+
+The canonical specification for the SKILL.md container is
+`agentskills.io` (the same authority cited from
+`assets/primitives.md` for MODULE ENTRYPOINT). Treat its four
+skill-creation pages as load-bearing input, not background reading:
+
+- https://agentskills.io/skill-creation/best-practices
+- https://agentskills.io/skill-creation/optimizing-descriptions
+- https://agentskills.io/skill-creation/evaluating-skills
+- https://agentskills.io/skill-creation/using-scripts
+
+Truth #5 (PRETRAINING IS FROZEN) applies to this spec: do not rely on
+recalled "what skills look like." If a step below references a hard
+limit (length cap, layout rule, eval requirement) and the spec has
+moved since training cutoff, fetch the live page rather than memory.
+
 ## Process
 
 ```
@@ -94,6 +111,19 @@ frontmatter `description`: name the trigger nouns and verbs, the
 boundary, and the intended invocation mode (FORCED | DISCOVERY |
 BOTH). This is the function signature the dispatcher LLM matches
 against; see the persona's "Skill dispatch" section.
+
+The description follows four rules from the agentskills.io
+optimizing-descriptions page (verify against the live URL per
+"Authority compliance"):
+
+- IMPERATIVE phrasing. Frame as an instruction to the agent: "Use
+  this skill when ..." rather than declarative "This skill does ...".
+- USER INTENT over mechanics. Describe what the user is trying to
+  achieve, not the skill's internal procedure.
+- INDIRECT TRIGGERS named. List contexts where the skill applies
+  EVEN IF the user does not name the domain directly. Be pushy.
+- LENGTH CAP <= 1024 characters (agentskills.io spec hard limit;
+  silent rejection above this).
 
 ### Step 2 - component diagram (mermaid)
 
@@ -190,8 +220,20 @@ Apply each row of the persona's classic principles table; flag
 violations with severity (BLOCKER / HIGH / MEDIUM / LOW). Then
 apply the PROSE constraints (Progressive Disclosure, Reduced
 Scope, Orchestrated Composition, Safety Boundaries, Explicit
-Hierarchy) and the five durable LLM truths. Any BLOCKER stops
+Hierarchy) and the seven durable LLM truths. Any BLOCKER stops
 the design; return to step 2.
+
+Also enforce the agentskills.io spec compliance row (BLOCKER on any
+miss; verify against the live spec):
+
+- `name` field is 1-64 characters, lowercase `[a-z0-9-]`, no
+  leading / trailing / consecutive hyphens, AND equals the parent
+  directory name. Mismatch = harness rejects the module.
+- SKILL.md body <= 500 lines AND <= 5000 tokens. Overflow does NOT
+  stay in the body; it moves to `references/<topic>.md` and the
+  body links to it with an explicit LOAD TRIGGER condition (e.g.
+  "Read `references/api-errors.md` if the API returns non-200")
+  rather than a generic "see references/".
 
 ### Step 6 - handoff packet (this IS the plan; persist it)
 
@@ -211,6 +253,16 @@ Produce a single artifact containing:
 - Any compliance findings still open (with severity).
 - A todo list (one entry per module to draft, plus validation),
   with dependencies between entries where they exist.
+- An EVALS PLAN (agentskills.io evaluating-skills + optimizing-
+  descriptions). At minimum:
+  - 2-3 CONTENT EVALS: prompt + expected output, to be exercised
+    twice (with the skill loaded and without it) so the value
+    delta is visible. If `with_skill` and `without_skill` produce
+    indistinguishable outputs, the skill is not adding value;
+    redesign or delete.
+  - ~20 TRIGGER EVALS for the dispatch description: 8-10 queries
+    that should trigger plus 8-10 near-miss queries that should
+    NOT, split 60/40 train/val. Validation split is the ship gate.
 
 PERSIST THE PACKET. Per truth #5 (plan before execution) and
 substrate concept 6 (PLAN PERSISTENCE), the handoff packet MUST
@@ -258,15 +310,56 @@ usage skill (today: APM via the `apm-usage` skill) for manifest /
 CLI / lockfile syntax. The architect persona stays ignorant of
 that syntax; the coder thread learns it on demand.
 
+Use the agentskills.io canonical directory layout for any bundled
+content (verify the spec at the URLs in "Authority compliance"):
+
+- `scripts/` - executable programs invoked by the skill body via
+  RELATIVE path. Must be NON-INTERACTIVE (agents run in shells with
+  no TTY; any prompt blocks indefinitely). Pin tool versions on
+  one-off commands (e.g. `npx eslint@9.0.0`). Document with
+  `--help`. Emit STRUCTURED data (JSON / CSV) on stdout, diagnostics
+  on stderr. List bundled scripts in the SKILL.md body so the agent
+  can find them.
+- `references/` - load-on-demand documentation. Every link from the
+  body MUST state the trigger condition that loads it (see step 5).
+- `assets/` - templates and data the skill emits or composes against.
+
+Calibrate prescriptiveness PER SECTION: prescriptive on fragile or
+sequenced operations; freedom on judgement calls. A uniformly
+prescriptive body over-constrains; a uniformly free body
+under-grounds. Prefer procedures (how to approach a class of
+problems) over declarations (what to produce for one instance).
+For any structured output the skill must produce, INCLUDE A
+TEMPLATE inline -- agents pattern-match against concrete structure
+better than against prose description.
+
 ### Step 8 - validate (caller-side)
 
 - Each emitted module matches its interface sketch in the handoff
   packet.
-- Token / line budget honored where the substrate specifies one.
+- Token / line budget honored where the substrate specifies one
+  (SKILL.md body <= 500 lines AND <= 5000 tokens; overflow moved
+  to `references/`).
+- `name` field passes the regex AND matches parent directory.
+- `description` <= 1024 characters, imperative, intent-first,
+  indirect-triggers named.
 - ASCII only.
 - Coherent unit (single responsibility).
 - Declared targets honored: no per-harness syntax leaked into a
   `common-only` module.
+- Bundled scripts are non-interactive, version-pinned, --help
+  documented, stdout/stderr split.
+- EVALS GATE (from the step 6 evals plan):
+  - `evals/evals.json` (or equivalent) is present and exercised
+    `with_skill` vs `without_skill`. If no measurable delta,
+    redesign or delete -- do not ship.
+  - Trigger-eval validation split passes: rate >= 0.5 on
+    should-trigger queries AND < 0.5 on near-miss should-not-
+    trigger queries.
+- REAL-TASK REFINEMENT: after structural lint passes, run the
+  skill on at least one real task, capture the trace, and revise
+  from what actually happened (not what you expected). One-shot
+  drafts that never met execution are not done.
 
 ## Default pattern selection
 
