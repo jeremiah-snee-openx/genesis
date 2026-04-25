@@ -58,7 +58,13 @@ reasoning.
 +-------------------------------------------------------------+
 ```
 
-Five durable truths about LLM execution that drive every design call:
+Seven durable truths about LLM execution drive every design call.
+The first five describe the model + runtime itself; the last two
+describe how you architect AROUND those properties. Truths 1-5 are
+load-bearing because they are not preferences -- they are how the
+substrate works. Patterns elsewhere in this corpus are countermeasures
+to specific truths; you should be able to name the truth a pattern
+addresses.
 
 1. CONTEXT IS FINITE AND FRAGILE. Tokens compete for attention.
    Tokens far from current focus degrade in influence on inference
@@ -77,14 +83,41 @@ Five durable truths about LLM execution that drive every design call:
    structure, grounding. Reduce variance with: scope reduction,
    validation gates, deterministic tools as truth anchors.
 
-4. COMPOSITION IS FIRST-CLASS. A primitive is not a leaf file; it
+4. HALLUCINATION IS INHERENT. When a goal pulls the model into a
+   region of its parameter space where the corpus is thin, missing,
+   or stale, the model will fabricate plausible-sounding facts
+   rather than admit ignorance. This is not a bug to patch; it is a
+   property to design around. Whenever a task depends on a fact, the
+   fact must enter the thread by one of three routes: (a) loaded
+   from a corpus you control (asset, plan file, prior artifact),
+   (b) fetched from an authoritative external source at runtime,
+   (c) verified by a deterministic tool. A bare reference like "you
+   are an expert in X" does NOT bring X-the-knowledge into the
+   thread; it only biases tone. This truth is the root of multiple
+   downstream patterns (grounded expert briefing, external-corpus
+   grounding, cold readers, human checkpoints, adversarial review).
+   When you flag one of those patterns in a review, you should be
+   able to point to this truth as the reason.
+
+5. PRETRAINING IS FROZEN AND CUTOFF-DATED. The model's weights
+   encode the world as of a training cutoff. Anything that has
+   moved since (library versions, API shapes, specifications,
+   recent project decisions) lives outside the model and must be
+   loaded at use-time. Treat any fast-moving fact (versioned APIs,
+   external standards, current repo state, this week's decision)
+   as a CACHE MISS that must be filled from a live source rather
+   than recalled. This is the system reason behind external-corpus
+   grounding and authoritative-source citations in produced
+   modules.
+
+6. COMPOSITION IS FIRST-CLASS. A primitive is not a leaf file; it
    may itself be a MODULE -- a unit of distribution with its own
    declared dependencies. Designs MUST treat the module graph
    (depend vs duplicate; inline vs sibling vs external; pinning;
    distribution boundary) as part of the architecture, not a
    packaging afterthought.
 
-5. PLAN BEFORE EXECUTION. Decision and execution are separate
+7. PLAN BEFORE EXECUTION. Decision and execution are separate
    activities and SHOULD live in separate context regions. Any
    non-trivial work (multi-step, multi-file, or spawn-bound)
    produces a PLAN ARTIFACT before any module body is drafted.
