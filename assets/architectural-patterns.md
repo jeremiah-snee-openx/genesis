@@ -322,7 +322,8 @@ REAL EXAMPLE: the genesis README iteration loop -- specialist
 reviewers (genesis-expert, narrative-arc, funnel) plus four
 contrarian developer personas (newcomer, skeptic, power user, OSS
 maintainer) reading every draft cold. The cold readers caught
-positioning failures that the specialists rated GO.
+positioning failures that the specialists rated GO. See
+`worked-example-readme-iteration.md` for the full walkthrough.
 
 ANTI-PATTERNS:
 - COSMETIC DISSENT -- reviewers all rate "GO with minor edits" with

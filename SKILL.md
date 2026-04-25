@@ -378,12 +378,20 @@ See `assets/design-patterns.md` for the design-pattern catalogue (GoF
 axes) and `assets/architectural-patterns.md` for the architectural
 patterns (system-topology shapes).
 
-## Worked example
+## Worked examples
 
 See `assets/worked-example-review-panel.md` for a worked
 re-architecture of a real panel from single-loop to fan-out +
 parent synthesizer. Use it as the canonical reference shape when
-designing any multi-lens module.
+designing any multi-lens code-review module.
+
+See `assets/worked-example-readme-iteration.md` for a worked
+A8 ALIGNMENT LOOP (with A1 PANEL, A7 ADVERSARIAL REVIEW + COLD
+READER SIMULATION, B9 GOAL STEWARD, B10 HUMAN CHECKPOINT). Use it
+as the canonical reference shape for any creative, multi-round
+artifact work where cold-traffic conversion matters and goal
+drift is a real risk (READMEs, landing pages, PR descriptions,
+announcement posts).
 
 ## Outputs
 
