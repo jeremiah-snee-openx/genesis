@@ -23,6 +23,8 @@ rediscovering its failure modes the hard way.
 | STAFFED PLAN          | Workflow Engine             | B4 + B7 + B2 per todo + C4                   |
 | WAVE EXECUTION        | Build Pipeline (CI stages)  | PIPELINE + B3 per wave + S4 between waves    |
 | EVENT-DRIVEN          | Event-Driven Architecture   | TRIGGER ORCHESTRATOR + any Tier-2 mix        |
+| ADVERSARIAL REVIEW    | Code Review + Red Team      | B1 + N x C2 + S4 + cold-context spawn        |
+| ALIGNMENT LOOP        | Iteration with stop-condition | A1 (or A2) + B4 + B9 + B10 + bounded loop  |
 
 ---
 
@@ -272,6 +274,126 @@ ANTI-PATTERNS:
 
 ---
 
+## A7. ADVERSARIAL REVIEW (red-team + cold-reader gate)
+
+CLASSICAL ANALOG: Code Review combined with Red Teaming. A produced
+artifact is read by an INDEPENDENT reviewer whose only goal is to
+break it -- find bugs, contradictions, missing cases, drift from goal.
+
+COMPOSES:
+- B1 FAN-OUT + SYNTHESIZER (each reviewer is a parallel thread)
+- N x C2 PERSONA PRELOAD (specialist lenses + contrarian readers)
+- THREAD SPAWN with FRESH CONTEXT (the reviewer must NOT see the
+  producer's reasoning trace; only the artifact)
+- S4 VALIDATION DECORATOR (the review verdict gates the next step)
+- B4 PLAN MEMENTO (the review report becomes a persisted artifact)
+
+WHEN:
+- The producing thread has been working long enough that its own
+  attention is biased toward "the answer I converged on".
+- The artifact is consequential (a plan, a draft, a release call,
+  a design doc). Cosmetic review is not enough.
+- Cold-traffic conversion matters (a README, a PR description, an
+  incident write-up): the producer cannot judge clarity for someone
+  who lacks their context.
+
+```mermaid
+flowchart LR
+  P[producer thread<br/>writes artifact] --> ART[(artifact)]
+  ART --> RV1[reviewer 1<br/>fresh context<br/>persona A]
+  ART --> RV2[reviewer 2<br/>fresh context<br/>persona B]
+  ART --> CR[cold reader<br/>fresh context<br/>no producer trace]
+  RV1 --> S[synthesis +<br/>verdict]
+  RV2 --> S
+  CR --> S
+  S -->|GO| NEXT[next step]
+  S -->|REFINE| P
+```
+
+SUB-PATTERN: COLD READER SIMULATION. At least one reviewer is a
+non-specialist whose job is to read the artifact with NO producer
+context, model the experience of a first-time reader, and report
+where the artifact fails to land. Cold readers catch what specialists
+ignore: vocabulary inflation, missing onboarding, buried payoff,
+self-promotion. For cold-traffic surfaces (README, PR description,
+public docs), this sub-pattern is mandatory, not optional.
+
+REAL EXAMPLE: the genesis README iteration loop -- specialist
+reviewers (genesis-expert, narrative-arc, funnel) plus four
+contrarian developer personas (newcomer, skeptic, power user, OSS
+maintainer) reading every draft cold. The cold readers caught
+positioning failures that the specialists rated GO.
+
+ANTI-PATTERNS:
+- COSMETIC DISSENT -- reviewers all rate "GO with minor edits" with
+  no dissent. The fan-out shape is decorative; the producer's bias
+  passed through unchallenged. A real adversarial review produces
+  at least one substantive challenge per round.
+- RED TEAM WITHOUT TEETH -- a reviewer is briefed to find issues but
+  the synthesis ignores their findings. The role is theatre. A
+  GOAL STEWARD (B9) must arbitrate dissent explicitly.
+- SINGLE READER -- one reviewer with one lens. By definition not
+  adversarial; just a second opinion. Adversarial review needs N
+  independent lenses.
+- WARM-CONTEXT COLD READER -- the cold reviewer was given the
+  producer's reasoning notes "for context". The reviewer is no
+  longer cold; they inherit the producer's bias. Ban handoff of
+  reasoning traces to cold readers; pass the artifact only.
+
+---
+
+## A8. ALIGNMENT LOOP (bounded iteration with goal steward)
+
+CLASSICAL ANALOG: Bounded iteration with a stop condition + a
+goal-validator role. Akin to controller-driven retry loops in
+distributed systems, but the stop condition is "goal alignment"
+rather than "byte-level convergence".
+
+COMPOSES:
+- A1 PANEL or A2 PIPELINE as the round body
+- B4 PLAN MEMENTO (the goal + criteria persisted across rounds)
+- B9 GOAL STEWARD (the steward arbitrates GO vs REFINE)
+- A7 ADVERSARIAL REVIEW inside each round (contrarian readers
+  prevent steward rubber-stamping)
+- B10 HUMAN CHECKPOINT at the loop's bound (escalation when the
+  loop runs out of rounds)
+- A bounded round counter (typically 2-3 max)
+
+WHEN:
+- The first attempt is unlikely to satisfy the goal in one pass
+  (creative work, positioning, complex synthesis).
+- Goal drift is a real risk over several rounds.
+- The producer cannot self-arbitrate convergence (steward needed).
+
+```mermaid
+flowchart LR
+  G[(GOAL +<br/>criteria,<br/>persisted)] --> R[round N body<br/>e.g. PANEL]
+  R --> ART[round N artifact]
+  ART --> AR[A7 adversarial<br/>review +<br/>cold readers]
+  AR --> ST[B9 GOAL STEWARD<br/>arbitrates]
+  ST -->|GO| END[ship]
+  ST -->|REFINE| RC{round < max?}
+  RC -->|yes| R
+  RC -->|no| HC[B10 HUMAN<br/>CHECKPOINT]
+  HC --> END2[human resolves]
+```
+
+ANTI-PATTERNS:
+- UNBOUNDED LOOP -- no max rounds. Burns context and tokens
+  indefinitely; never escalates to human. Always cap.
+- STALE-CONTEXT REFINEMENT -- reusing the same producer thread
+  across rounds, accumulating prior-round noise. Spawn a fresh
+  thread per round; pass the goal artifact + the prior-round
+  review report only.
+- GOAL DRIFT (steward variant) -- the steward edits the goal to
+  match emerging output instead of judging output against the goal.
+  See B9 MOVING-GOALPOST STEWARD anti-pattern.
+- LOOP WITHOUT STEWARD -- iterate without a named goal arbiter.
+  Each round produces a different "improvement" with no stable
+  target. The loop converges on noise, not goal.
+
+---
+
 ## How Tier-3 patterns compose with each other
 
 Tier-3 patterns are not mutually exclusive. The canonical senior-
@@ -319,7 +441,16 @@ task DAG is non-trivial; drift between waves is expensive?
 
 work is reactive to events from outside the agent?
   -> A6 EVENT-DRIVEN
+
+artifact is consequential and producer is biased by long context?
+  -> A7 ADVERSARIAL REVIEW (always layer COLD READER for cold-
+     traffic surfaces)
+
+work is creative, multi-round, with goal-drift risk?
+  -> A8 ALIGNMENT LOOP (bound the rounds; steward + cold readers)
 ```
 
 When two patterns fit, prefer the one that gives each thread a
-narrower context (fewer competing tokens).
+narrower context (fewer competing tokens). When two architectural
+patterns fit equally, consult `pattern-tradeoffs.md` and cite the
+matrix in your handoff packet.

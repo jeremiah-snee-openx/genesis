@@ -151,6 +151,19 @@ the diagram shows a single-thread loop, redo: it is a fan-out
 opportunity. The default for that shape is FAN-OUT + SYNTHESIZER (B1)
 realizing PANEL (A1).
 
+### Step 3.1 - tradeoff check (only if alternatives in tension)
+
+If step 3 surfaced two or more patterns that fit the same slot, load
+`assets/pattern-tradeoffs.md`. Find the matrix that cuts the choice
+(hallucination countermeasures; gate types; grounding doctrine;
+threading topology; synthesis style; persona composition; plan
+persistence; refactor triggers). Pick the cell that matches the
+failure mode you are guarding against, not the first pattern that
+fits. Cite the matrix and the row in the step 6 handoff packet so
+reviewers can reproduce the choice.
+
+Skip this step if step 3 produced an unambiguous pattern selection.
+
 ### Step 3.5 - composition decision
 
 Load `assets/composition-substrate.md`. For EACH box in the

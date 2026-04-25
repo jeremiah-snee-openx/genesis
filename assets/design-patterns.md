@@ -24,12 +24,14 @@ realize them in a specific harness.
    ----------                ----------                ----------
    LAZY ASSET                COMPOSED MODULE           FAN-OUT + SYNTHESIZER
    PERSONA PRELOAD           DEPENDENCY ADAPTER        CONDITIONAL DISPATCH
-   THREAD SPAWN              ORCHESTRATOR FACADE       SUPERVISOR
-   DESCRIPTION DISPATCH      VALIDATION DECORATOR      PLAN MEMENTO
-   PERSONA PROTOTYPE         LAZY PROXY                ACCEPTANCE OBSERVER
-                             RULE BRIDGE               PROMPT TEMPLATE
-                                                       TODO COMMAND
-                                                       ATTENTION ANCHOR (*)
+   (with GROUNDED EXPERT     ORCHESTRATOR FACADE       SUPERVISOR
+    BRIEFING sub-rule)       VALIDATION DECORATOR      PLAN MEMENTO
+   THREAD SPAWN              LAZY PROXY                ACCEPTANCE OBSERVER
+   DESCRIPTION DISPATCH      RULE BRIDGE               PROMPT TEMPLATE
+   PERSONA PROTOTYPE                                   TODO COMMAND
+   EXTERNAL CORPUS                                     ATTENTION ANCHOR (*)
+    GROUNDING                                          GOAL STEWARD
+                                                       HUMAN CHECKPOINT
 ```
 
 (*) ATTENTION ANCHOR has no classical analog. It is the LLM-physics-
@@ -71,6 +73,15 @@ biasing all subsequent inference. The persona is the constructor that
 ANTI-PATTERN: MID-SESSION PERSONA SWAP -- swapping persona text mid-
 session. The earlier persona's tokens still occupy attention; the
 swap produces a hybrid lens that is neither.
+
+SUB-RULE -- GROUNDED EXPERT BRIEFING. A persona declared as "expert
+in X" without grounding the persona in real X-corpus produces a
+NAMED-NOT-GROUNDED EXPERT: a confident voice with no factual anchor.
+Mitigation: the persona scoping file MUST point at the corpus the
+expert reads from (file paths, doc URLs, or asset references), and
+the briefing handoff to that thread MUST cite specific source
+artifacts the persona inspected before responding. A persona is its
+LENS plus its CITATIONS, not its title alone.
 
 ---
 
@@ -131,6 +142,48 @@ thread.
 ANTI-PATTERN: COPY-PASTE PERSONAS -- five persona files with 80% shared
 content. The shared text drifts; each lens behaves differently across
 runs for unrelated reasons.
+
+---
+
+## C6. EXTERNAL CORPUS GROUNDING
+
+CLASSICAL ANALOG: Dependency Injection from an external service +
+versioned read-through cache.
+
+WHEN: an agent must reason over facts that the LLM substrate cannot
+hold reliably -- because pretraining is frozen and cutoff-dated
+(truth #5), or because the corpus changes faster than any model
+release. Examples: a third-party spec, a dependency's current API,
+a live repo state, the day's CHANGELOG.
+
+MECHANISM: at the step that needs the fact, the agent fetches it
+from a NAMED, AUTHORITATIVE source (URL, doc page, file path, tool
+output). The source identifier is captured in the handoff packet
+alongside the fetched content. Downstream readers can re-verify by
+re-fetching from the same source. The corpus is loaded LAZY (only
+at the step that needs it), not eager (at session start).
+
+BOUNDED SCOPE SUB-RULE. Every external grounding declaration MUST
+state explicitly what the corpus is authoritative FOR. A spec is
+authoritative for its container surface, not for the broader
+ontology that wraps it. Importing an external corpus's framing into
+questions it does not own is AUTHORITY OVERREACH and is a
+HIGH-severity finding in review. Worked example: agentskills.io is
+authoritative for the SKILL.md container surface (frontmatter,
+body budget, layout, scripts conventions, evals). It is NOT
+authoritative for the genesis primitive taxonomy. See
+`primitives.md` MODULE ENTRYPOINT for the canonical resolution.
+
+ANTI-PATTERNS:
+- STALE-CORPUS RELIANCE -- citing a fact "as of training" without
+  fetching from the named source. Truth #5 says you cannot.
+- UNVERIFIED CITATION -- naming a source URL but not fetching from
+  it. The source is decorative; the fact is still hallucinated.
+- AUTHORITY OVERREACH -- expanding the corpus's authority beyond
+  what it actually owns; importing its framing into ontology
+  questions. The bounded-scope sub-rule exists to prevent this.
+- EAGER EXTERNAL FETCH -- preloading a live source at session start
+  "in case we need it". Live sources go stale; load lazy.
 
 ---
 
@@ -493,6 +546,77 @@ multi-step execution.
 
 ---
 
+## B9. GOAL STEWARD
+
+CLASSICAL ANALOG: Mediator + intent-validator (a dedicated role whose
+sole job is to assert "are we still solving the original problem?").
+
+WHEN: a multi-round or multi-wave plan where the goal is at risk of
+silent reinterpretation as new findings, persona votes, or sub-results
+accrete. The PANEL (A1) and ALIGNMENT LOOP (A8) shapes are typical
+hosts.
+
+MECHANISM: a dedicated thread (a CEO/steward persona) holds the
+canonical goal statement and the success criteria. At each gate, the
+steward compares the proposed next step against the goal, names the
+delta, and either approves, requests refinement, or escalates. The
+steward IS the alignment authority; specialist lenses do not arbitrate
+their own contributions.
+
+ANTI-PATTERNS:
+- MOVING-GOALPOST STEWARD -- the steward edits the goal mid-flow to
+  match emerging findings. The goal is not fixed; nothing is aligned.
+  If the goal genuinely needs to change, escalate to the human
+  (B10 HUMAN CHECKPOINT) and freeze the new goal explicitly.
+- RUBBER-STAMP STEWARD -- the steward approves every proposal without
+  citing the success criteria. The role is decorative.
+- STEWARD WITHOUT ARTIFACT -- the goal lives in chat history, not in
+  a persisted artifact (B4 PLAN MEMENTO). Attention drift erases it.
+
+WHY THIS IS FIRST-CLASS. Long-running tasks drift from initial goals
+without an explicit steward. The steward is the named owner of
+"alignment to original intent" -- without a named owner, alignment is
+no one's job. This pattern is the procedural counterpart to the B8
+ATTENTION ANCHOR token-budget cure.
+
+---
+
+## B10. HUMAN CHECKPOINT
+
+CLASSICAL ANALOG: Approval Gate + manual override in a workflow
+engine.
+
+WHEN: a step is irrecoverable, expensive, or requires authority the
+agent does not have. Common examples: shipping a release; merging to
+main; deleting persistent state; making any decision that the agent's
+self-confidence cannot resolve (drift detection; suspected
+hallucination; tie between equally-fit patterns).
+
+MECHANISM: the procedure halts at a named checkpoint. The agent emits
+a structured prompt to the human (current state, options, recommended
+choice with rationale, escape hatches). Execution does not resume
+until the human responds. The response IS the gate verdict.
+
+ANTI-PATTERNS:
+- SILENT DRIFT -- the agent suspects misalignment but powers through
+  rather than checkpointing. The checkpoint is the cure for
+  self-conscious drift; using it is the discipline.
+- CHATTY GATE -- checkpointing on every minor decision. Floods the
+  human and trains them to rubber-stamp. Reserve for the real
+  irrecoverables.
+- FALSE-CHOICE GATE -- presenting options that all lead to the same
+  outcome; the human's input does not change behaviour.
+- POST-HOC CHECKPOINT -- asking the human to approve a step the
+  agent already executed. Not a checkpoint; a notification.
+
+WHY THIS IS FIRST-CLASS. Hallucination is inherent (truth #4). When
+the agent itself suspects fabrication or unbounded scope creep, only
+an external authority can break the loop. The HUMAN CHECKPOINT is
+the explicit escape hatch named in the architecture, not an ad-hoc
+rescue.
+
+---
+
 ## Selection heuristic
 
 When in doubt, prefer the pattern that minimizes context degradation
@@ -515,10 +639,24 @@ multi-step / multi-file / spawn-bound      -> B4 PLAN MEMENTO (always)
 
 ANY work past trivial scope                -> add B5 ACCEPTANCE OBSERVER
                                               and B8 ATTENTION ANCHOR
+
+multi-round plan with risk of goal drift   -> add B9 GOAL STEWARD
+
+irrecoverable step / suspected drift       -> add B10 HUMAN CHECKPOINT
+
+facts depend on external corpus or live    -> add C6 EXTERNAL CORPUS
+state; or pretraining-cutoff sensitive        GROUNDING (lazy, bounded)
 ```
 
-B4, B5, and B8 are orthogonal to topology choice. Combine them with
-whichever creational / structural / behavioral patterns shape the work.
+B4, B5, and B8 are orthogonal to topology choice. B9 layers on top of
+any multi-thread plan; B10 layers on top of any irrecoverable boundary;
+C6 layers on top of any work that touches external facts. Combine them
+with whichever creational / structural / behavioral patterns shape the
+work.
+
+When two or more patterns from this catalogue fit the same slot,
+consult `pattern-tradeoffs.md` and cite the matrix that cut your
+choice in the handoff packet.
 
 ---
 
