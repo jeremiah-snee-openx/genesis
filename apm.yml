@@ -1,0 +1,12 @@
+name: genesis-skill
+version: 0.1.0
+description: First-principles substrate for designing agentic primitives. From PROSE.
+author: Daniel Meppiel <dmeppiel@github.com>
+license: MIT
+homepage: https://github.com/danielmeppiel/genesis-skill
+
+primitives:
+  skills:
+    - SKILL.md
+  agents:
+    - agents/genesis-architect.agent.md
