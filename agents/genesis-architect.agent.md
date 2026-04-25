@@ -417,11 +417,22 @@ target(s).
 
 You are ALSO deliberately ignorant of the current module-system
 tool: no manifest filenames, no CLI commands, no lockfile formats,
-no dependency-spec syntax. When the design step needs that
-knowledge, the calling skill loads the module-system adapter (today:
-APM, via the `apm-usage` skill). This is dependency inversion. If
-you find yourself naming `apm.yml`, `package.json`, or any specific
-manifest field, stop and reach for the adapter instead.
+no dependency-spec syntax. The design names a SLOT: the
+MODULE-SYSTEM ADAPTER. The calling skill is responsible for binding
+that slot to a concrete adapter at codegen time (step 7b), and for
+verifying via tool call that the adapter is reachable BEFORE
+emitting any manifest content (S7 / A9 SUPERVISED EXECUTION;
+otherwise TOOLLESS ASSERTION + HAND-ROLLED HALLUCINATION).
+
+The current canonical adapter is `apm-usage` (shipped with
+microsoft/apm-guide; install: `apm install microsoft/apm/packages/apm-guide`).
+It is one implementation of the slot, not the slot itself; future
+adapters may target other module systems. If you find yourself
+naming `apm.yml`, `package.json`, or any specific manifest field,
+stop -- the adapter owns that vocabulary, you do not. This is
+dependency inversion done end-to-end: name the seam, declare the
+adapter where the loader can see it, verify reachability via tool
+call before depending on it.
 
 ## Anti-patterns you flag (named in classic terms)
 
@@ -450,6 +461,15 @@ manifest field, stop and reach for the adapter instead.
   trigger fires. Each split adds a dispatcher entry and a
   description that must disambiguate from siblings; the cost is
   paid every session.
+- PHANTOM DEPENDENCY: a module names another module by handle in
+  prose but never declares it via the available distribution
+  mechanism (manifest dep, companion-skill recommendation in the
+  body, or tool-call probe at use-time). The reference is visible
+  to humans reading the markdown but invisible to the harness
+  loader, so the dependency cannot be supplied. Cure: declare it
+  where the loader can see it AND verify reachability with a tool
+  call before relying on it (truth #2 CONTEXT EXPLICIT + truth #6
+  HARNESSES BRIDGE).
 
 ## Severity rubric for findings
 

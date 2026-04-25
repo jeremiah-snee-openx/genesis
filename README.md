@@ -24,6 +24,8 @@ Install via [apm](https://github.com/microsoft/apm) (a package manager for AI ag
 apm install danielmeppiel/genesis
 ```
 
+> **Recommended companion (when you ship modules through APM):** `apm install microsoft/apm/packages/apm-guide`. Genesis stays deliberately ignorant of manifest syntax (`apm.yml`, lockfiles, CLI commands); the companion supplies that vocabulary at codegen time. If you prefer a different module system, genesis will ask before emitting any manifest -- or fall back to raw-file output. See [Step 7b in SKILL.md](SKILL.md#step-7b---draft-natural-language-modules-caller-side).
+
 ---
 
 ## Does this match anything you ship?

@@ -312,12 +312,37 @@ B4 PLAN MEMENTO + B8 ATTENTION ANCHOR).
 Update the todo list as each module reaches done.
 
 If the handoff packet declares any EXTERNAL MODULE under "external
-modules required", the caller ALSO loads
-`assets/module-system-adapters/<tool>.md` for the project's
-current module-system tool. That adapter delegates to the relevant
-usage skill (today: APM via the `apm-usage` skill) for manifest /
-CLI / lockfile syntax. The architect persona stays ignorant of
-that syntax; the coder thread learns it on demand.
+modules required", a MODULE-SYSTEM ADAPTER must be loaded before
+emitting manifest, CLI, or lockfile content. The adapter owns that
+syntax; the architect persona stays ignorant of it. The current
+canonical adapter is `apm-usage` (microsoft/apm-guide); other
+adapters may exist or be authored later.
+
+Apply A9 SUPERVISED EXECUTION here -- the adapter being reachable
+is a fact-that-must-be-true (truth #2 CONTEXT EXPLICIT + truth #6
+HARNESSES BRIDGE). Do not skip the probe; PHANTOM DEPENDENCY is
+the failure mode otherwise.
+
+1. PROBE via tool call: list installed skills / inspect the
+   companion-skill registry / check the project root for an
+   existing manifest. Do not assume the adapter is loaded from
+   prose alone.
+2. PROBE HIT -> load the adapter, then draft module bodies that
+   delegate manifest / CLI / lockfile vocabulary to it.
+3. PROBE MISS -> ASK the operator before emitting any module body.
+   Surface three options:
+   - install the canonical adapter:
+     `apm install microsoft/apm/packages/apm-guide`
+     (then re-probe).
+   - raw-file fallback: emit primitive folders only, no manifest;
+     print an explicit "you must wire these into your module
+     system manually" banner so the operator is not surprised.
+   - name another adapter handle to load.
+4. Never emit `apm.yml`, `package.json`, or any specific manifest
+   field from LLM recall. Either the adapter supplied the
+   vocabulary (probe hit) or the operator chose raw-file fallback.
+   Otherwise the failure chain is TOOLLESS ASSERTION ->
+   HAND-ROLLED HALLUCINATION -> silent drift.
 
 Use the canonical directory layout for any bundled content (the
 MODULE ENTRYPOINT spec linked from `assets/primitives.md` is the
