@@ -11,6 +11,7 @@ GitHub-render gotchas to avoid.
 | 2 | `flowchart` | component composition: which modules, which depend on which |
 | 3 | `sequenceDiagram` | thread spawn / fan-in / interlock points |
 | 3.5 | `flowchart LR` | dependency graph: this module + external modules + closure edges |
+| loop | `flowchart LR` | A8 ALIGNMENT LOOP body with B9 GOAL STEWARD gate, A7 cold-reader subgraph, B10 HUMAN CHECKPOINT escape, bounded round counter |
 | optional | `classDiagram` | only when modeling true type hierarchies (rare for primitive design) |
 
 Keep each diagram under 25 nodes. Larger diagrams indicate the
@@ -84,6 +85,52 @@ flowchart LR
     Self -- EXTERNAL --> Ext
     Ext -. transitive .-> ExtClosure
 ```
+
+### Loop and gate diagrams (A7 / A8 / B9 / B10)
+
+When the design includes A8 ALIGNMENT LOOP, A7 ADVERSARIAL REVIEW,
+B9 GOAL STEWARD, or B10 HUMAN CHECKPOINT, render the loop body as
+`flowchart LR` (not sequenceDiagram) so the GO/REFINE branch and the
+round counter are visible.
+
+Conventions:
+
+- The persisted goal artifact (B4 PLAN MEMENTO) is a cylinder node:
+  `G[(GOAL +<br/>criteria)]`. Re-injection edges flow OUT of it
+  toward each round body.
+- A B9 GOAL STEWARD gate is a labeled rectangle with the persona
+  name on line 1 and `B9 GOAL STEWARD` on line 2. Two outgoing
+  edges, labeled `GO` and `REFINE`, are mandatory.
+- A B10 HUMAN CHECKPOINT is rendered as a node with `B10 HUMAN
+  CHECKPOINT` on line 1 and the operator-action label on line 2.
+  It MUST be reached from at least one bounded condition (e.g.,
+  round-counter exhausted) -- never as a default fallback.
+- A7 cold-reader threads sit in their own subgraph titled with the
+  pattern name (`A7 ADVERSARIAL REVIEW (COLD READERS, fresh
+  context)`); each cold-reader node carries the literal annotation
+  `fresh ctx<br/>artifact only` to make the warm-context anti-
+  pattern visually impossible to miss.
+- The round counter terminates the loop explicitly: a diamond node
+  `RC{round < max?}` with `yes` looping back to the round body and
+  `no` flowing to the human checkpoint. UNBOUNDED LOOP is ruled
+  out by construction.
+
+Worked instances: see the diagrams in
+`worked-example-readme-iteration.md` for the canonical
+A8 + A1 + A7 + B9 + B10 composition rendered with these
+conventions.
+
+### Tradeoff citation in handoff diagrams (step 3.1)
+
+When step 3.1 invoked `pattern-tradeoffs.md`, the handoff diagram
+captions a comment node citing the matrix and row, e.g.:
+
+```
+%% tradeoff: matrix #5 synthesis style -> CEO-ARBITRATED row
+```
+
+Diagrams without a tradeoff citation when alternatives were in
+tension fail the lint pass.
 
 ## GitHub-render gotchas (drift-known)
 
