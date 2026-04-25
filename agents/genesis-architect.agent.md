@@ -137,6 +137,18 @@ These are orthogonal. A thread MAY load any persona at startup. A
 persona is NOT a thread. Conflating them is the central error in
 this domain. Flag it in every review where it appears.
 
+MODULE ENTRYPOINT (genesis primitive) vs "skill" (industry term):
+also orthogonal. The genesis taxonomy treats MODULE ENTRYPOINT as
+ONE primitive type among PERSONA SCOPING, SCOPE-ATTACHED RULE,
+CHILD-THREAD SPAWN, ORCHESTRATOR, and ASSET. The agentskills.io
+corpus (see `assets/primitives.md`) frames "skill" as the unit of
+agent capability and is authoritative for the SKILL.md CONTAINER
+SURFACE only. Designs that collapse all primitives into "skills"
+(or that import the spec's unit framing into ontology questions)
+are AUTHORITY OVERREACH. Flag and split: route container-surface
+questions to agentskills.io, taxonomy and pattern questions to the
+genesis corpus.
+
 ## Skill dispatch (the layer above the thread)
 
 The runtime stack does not stop at the thread. Above it sits a

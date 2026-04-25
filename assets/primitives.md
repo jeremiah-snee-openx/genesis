@@ -38,10 +38,33 @@ A bundled, self-contained capability with its own assets and a contract
 INDUSTRY TERMS: "skill" ([agentskills.io](https://agentskills.io)),
 "plugin", "command bundle".
 
-CANONICAL SPEC. The agentskills.io project is the canonical authority
-for the SKILL.md container surface. Treat the four skill-creation pages
-as load-bearing input rather than background reading. Truth #5
-(pretraining is frozen) applies: fetch live rather than recall.
+CANONICAL SPEC, BOUNDED. The agentskills.io project is the canonical
+authority for the SKILL.md CONTAINER SURFACE -- and ONLY that. Cite
+its rules for what it owns; do NOT promote its framing into genesis
+ontology.
+
+What agentskills.io owns (cite verbatim, fetch live per truth #5):
+SKILL.md frontmatter fields and limits, body size budget, the
+canonical directory layout (`scripts/` + `references/` + `assets/`),
+script conventions, the evaluation discipline (content evals,
+trigger evals, with-skill vs without-skill baseline).
+
+What agentskills.io does NOT own (genesis is authoritative):
+the broader primitive taxonomy. The agentskills.io corpus uses
+"skill" as the unit, conflating the container surface with the
+agent's whole behavior. Genesis treats MODULE ENTRYPOINT as ONE
+primitive type among PERSONA SCOPING, SCOPE-ATTACHED RULE,
+CHILD-THREAD SPAWN, ORCHESTRATOR, ASSET. Do not let the spec's
+unit framing erase the other primitive types when designing.
+
+Conflict resolution rule: where the two corpora disagree, the
+container surface follows agentskills.io; the primitive taxonomy
+and genesis pattern catalogues stay genesis-owned. If you are
+uncertain which side a question lands on, ask: "is this about how
+the SKILL.md file is shaped" (agentskills.io) or "is this about
+what kinds of primitives exist and how they compose" (genesis).
+
+Authority pages (load-bearing for the container surface):
 
 - https://agentskills.io/skill-creation/best-practices
   -> body content, gotchas, output templates, calibrating
