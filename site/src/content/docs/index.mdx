@@ -1,0 +1,59 @@
+---
+title: Genesis
+description: Markdown that steers an LLM is code. Design it before you write it.
+template: splash
+hero:
+  tagline: Markdown that steers an LLM is code. Design it before you write it.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Quick start
+      link: /genesis/guides/quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: Install
+      link: /genesis/guides/install/
+      icon: external
+      variant: secondary
+    - text: View on GitHub
+      link: https://github.com/danielmeppiel/genesis
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+**Genesis ports the software architect's role to agentic systems** -- decomposition, contracts, and cross-cutting concerns applied to workflows where LLMs are the runtime.
+
+Software engineering needed architecture, not just style guides, the moment systems crossed a complexity threshold. AI-coding-agent systems crossed that threshold a while ago. The downstream cost is paid by the developers using the agents you ship: poor user experience, unreliable behavior, regressions that look like the model failing when in fact the system around the model has no architecture. Genesis is the architectural layer that was missing.
+
+## You've felt this
+
+If you've built anything non-trivial with AI coding agents, one of these has happened to you:
+
+- **Monolithic instruction files.** The forty-line rule file became four hundred. No modules, no boundaries, no separation of concerns.
+- **Copy-paste duplication across primitives.** The same convention lives in three skills and two rule files. The agent contradicts itself depending on which path the harness loads first.
+- **Behavioral drift on long sessions.** Constraints that held at turn one are silently dropped by turn twenty.
+
+Genesis names the primitives, the patterns, and the refactor moves -- so you compose instead of copy, and review instead of guess.
+
+## Where to go next
+
+<CardGrid>
+  <Card title="Install" icon="rocket">
+    Add Genesis to any compatible agent in one command.
+    [Install &rarr;](/genesis/guides/install/)
+  </Card>
+  <Card title="Quick start" icon="open-book">
+    Five-minute walkthrough of the architect's loop on a real prompt.
+    [Quick start &rarr;](/genesis/guides/quick-start/)
+  </Card>
+  <Card title="Primitives" icon="puzzle">
+    The six substrate concepts every agent harness implements.
+    [Reference &rarr;](/genesis/reference/primitives/)
+  </Card>
+  <Card title="Harnesses" icon="setting">
+    Per-harness file paths, gotchas, and how `/genesis` resolves.
+    [Harness setup &rarr;](/genesis/reference/harnesses/)
+  </Card>
+</CardGrid>
