@@ -47,22 +47,22 @@ Genesis names the primitives, the patterns, and the refactor moves -- so you com
 
 ## Quick Start
 
-After install, paste this into your agent (Claude Code, Cursor, GitHub Copilot, OpenCode, Codex):
+After install, summon the skill in your agent (Claude Code, Cursor, GitHub Copilot, OpenCode, Codex) by typing `/genesis` followed by what you want designed:
 
 ```
-Use the genesis-architect to design a skill that reviews my pull requests
-for missing tests, undocumented public API, and unsafe migrations.
+/genesis Design a skill that reviews my pull requests for missing tests,
+undocumented public API, and unsafe migrations.
 ```
 
 You will get a named pattern, an execution diagram, an acceptance test, and a written plan -- before any file is touched.
 
-For harness-specific shortcuts (e.g. `@genesis-architect` in Claude Code), see [Runtimes](#runtimes).
+For how `/genesis` resolves on each harness, see [Runtimes](#runtimes).
 
 ---
 
 ## What it produces
 
-Cold-load the skill on the Quick Start prompt. Before writing a single file, the genesis-architect proposes this layout:
+Cold-load the skill on the Quick Start prompt. Before writing a single file, genesis proposes this layout:
 
 ```
 .github/skills/pr-review/
