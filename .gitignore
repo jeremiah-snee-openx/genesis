@@ -3,3 +3,6 @@ apm_modules/
 *.swp
 .idea/
 .vscode/
+
+# Genesis distillation working notes
+WIP/
