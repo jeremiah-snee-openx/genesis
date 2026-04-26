@@ -25,7 +25,7 @@ try:
 except ImportError as exc:
     sys.stderr.write(
         f"missing dep ({exc}); install: pip install -r "
-        f".apm/skills/genesis-evals/requirements.txt\n"
+        f"dev/skills/genesis-evals/requirements.txt\n"
     )
     sys.exit(2)
 

@@ -6,8 +6,8 @@ Exits non-zero on any failure. Print one line per scenario:
   [FAIL] <id>  <path>  <reason>
 
 Usage:
-  python validate_scenarios.py --scenarios-dir .apm/skills/genesis-evals/scenarios \\
-                               --schema      .apm/skills/genesis-evals/schema/scenario.schema.json
+  python validate_scenarios.py --scenarios-dir dev/skills/genesis-evals/scenarios \\
+                               --schema      dev/skills/genesis-evals/schema/scenario.schema.json
 """
 import argparse
 import json
@@ -20,7 +20,7 @@ try:
 except ImportError as exc:
     sys.stderr.write(
         f"missing dep ({exc}); install: pip install -r "
-        f".apm/skills/genesis-evals/requirements.txt\n"
+        f"dev/skills/genesis-evals/requirements.txt\n"
     )
     sys.exit(2)
 

@@ -9,9 +9,10 @@ description: >-
   or "regenerate the eval matrix". This skill orchestrates parallel cold
   sub-agent spawns via the harness's task tool, scores deterministically,
   and converges P>=0.8 / N>=0.8 / R==1.0 within max 3 iteration loops.
-  This skill is contributor-only -- it lives under .apm/skills/ and is
-  NOT shipped inside the user-facing skills/genesis/ bundle (BUNDLE
-  LEAKAGE discipline).
+  This skill is contributor-only -- it lives under dev/skills/ (OUTSIDE
+  .apm/) and is NOT shipped inside the user-facing skills/genesis/
+  bundle (BUNDLE LEAKAGE discipline). See "Why this lives outside
+  .apm/" below.
 ---
 
 # genesis-evals: maintainer-side eval runner
@@ -20,13 +21,21 @@ Run the genesis self-eval suite. Steers the parent LLM session to
 orchestrate cold sub-agent spawns, capture responses, score
 deterministically, and report convergence.
 
-## Why this lives under .apm/
+## Why this lives outside `.apm/`
 
 Genesis ships to USERS via npx / `apm install`. Eval scenarios LOOK
 LIKE real user requests (that is the point). Colocating them under
 `skills/genesis/evals/` would risk DISPATCH CONTAMINATION (an
 over-eager harness loader pulling scenario prompts into the active
 context) and PAYLOAD BLOAT for users who never run evals.
+
+We also keep this OUTSIDE `.apm/` because APM treats `.apm/` as the
+publishable source root: its local-content scanner picks up anything
+under `.apm/skills/` regardless of dev-marker, so `apm pack
+--format plugin` would leak this maintainer-only skill into the
+shipped artifact. Living under `dev/skills/` keeps it scanner-invisible
+while still letting `apm install --dev` deploy it via the local-path
+devDependency in the root `apm.yml`.
 
 This is the inverse of PHANTOM DEPENDENCY (referenced-but-not-bundled):
 BUNDLE LEAKAGE (bundled-but-not-consumed-at-runtime). See
@@ -88,9 +97,9 @@ flagged at this step".
 ## Step 1 -- validate
 
 ```
-python .apm/skills/genesis-evals/scripts/validate_scenarios.py \
-  --scenarios-dir .apm/skills/genesis-evals/scenarios \
-  --schema        .apm/skills/genesis-evals/schema/scenario.schema.json
+python dev/skills/genesis-evals/scripts/validate_scenarios.py \
+  --scenarios-dir dev/skills/genesis-evals/scenarios \
+  --schema        dev/skills/genesis-evals/schema/scenario.schema.json
 ```
 
 If exit non-zero, STOP. Fix the schema/yaml violations before any
@@ -100,7 +109,7 @@ spawn. No partial runs.
 
 ```
 RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)
-RUNS_DIR=.apm/skills/genesis-evals/runs
+RUNS_DIR=dev/skills/genesis-evals/runs
 mkdir -p "$RUNS_DIR/$RUN_ID"
 ```
 
@@ -118,8 +127,8 @@ For EACH scenario YAML in `scenarios/`:
 
 1. **Record the spawn intent** (deterministic, pre-spawn):
    ```
-   python .apm/skills/genesis-evals/scripts/spawn_record.py \
-     --scenario .apm/skills/genesis-evals/scenarios/<id>.yml \
+   python dev/skills/genesis-evals/scripts/spawn_record.py \
+     --scenario dev/skills/genesis-evals/scenarios/<id>.yml \
      --half     <with|without|single> \
      --run-id   "$RUN_ID" \
      --runs-dir "$RUNS_DIR"
@@ -156,10 +165,10 @@ parallel as the harness permits. Do NOT serialize unless forced.
 ## Step 4 -- score
 
 ```
-python .apm/skills/genesis-evals/scripts/score_run.py \
+python dev/skills/genesis-evals/scripts/score_run.py \
   --run-id        "$RUN_ID" \
   --runs-dir      "$RUNS_DIR" \
-  --scenarios-dir .apm/skills/genesis-evals/scenarios
+  --scenarios-dir dev/skills/genesis-evals/scenarios
 ```
 
 Writes `<runs-dir>/<run-id>/summary.md`. Exit code: 0 if converged,
@@ -242,7 +251,7 @@ the file (provenance / audit trail).
 ## Setup (one-time)
 
 ```
-pip install -r .apm/skills/genesis-evals/requirements.txt
+pip install -r dev/skills/genesis-evals/requirements.txt
 ```
 
 (deps: pyyaml, jsonschema. Maintainer-side only. Users never see

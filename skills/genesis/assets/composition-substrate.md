@@ -141,9 +141,13 @@ no transitive surface, no governance overhead.
     This is a REAL hallucination amplifier, not just an aesthetic
     issue.
   Cure: ship-time scope vs run-time scope. Maintainer-only assets
-  live OUTSIDE the user-facing module entrypoint -- in a
-  contributor-only directory (e.g. `.apm/skills/<module>-<role>/`)
-  whose distribution boundary excludes them.
+  live OUTSIDE the user-facing module entrypoint AND outside any
+  directory the package manager auto-publishes -- in a contributor-only
+  directory (e.g. `dev/skills/<module>-<role>/`) whose distribution
+  boundary excludes them. NOTE: APM's local-content scanner treats
+  `.apm/skills/` as a publishable source root regardless of devDep
+  marker, so dev-only primitives must live OUTSIDE `.apm/` to avoid
+  pack-time leakage.
 
 ---
 
