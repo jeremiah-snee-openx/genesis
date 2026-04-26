@@ -13,27 +13,23 @@
   <a href="https://github.com/danielmeppiel/genesis/commits/main"><img src="https://img.shields.io/github/last-commit/danielmeppiel/genesis?style=flat" alt="Last Commit"></a>
 </p>
 
-**Genesis is a design discipline for AI coding agents.** It names their primitives (personas, skills, rules, triggers), their patterns (multi-agent orchestration, attention anchoring), and the refactor moves when they drift.
+**Genesis ports the software architect's role to agentic systems -- decomposition, contracts, and cross-cutting concerns applied to workflows where LLMs are the runtime.**
+
+Software engineering needed architecture, not just style guides, the moment systems crossed a complexity threshold. AI-coding-agent systems crossed that threshold a while ago. The downstream cost is paid by the developers using the agents you ship: poor user experience, unreliable behavior, regressions that look like the model failing when in fact the system around the model has no architecture. Genesis is the architectural layer that was missing.
 
 ## Install
-
-For most setups -- a single npx call, no global tooling required:
 
 ```bash
 npx skills add danielmeppiel/genesis
 ```
 
-Works with Claude Code, Cursor, Codex, OpenCode, GitHub Copilot, and 41+ more agents (see [skills.sh](https://skills.sh)). `skills` is an open, harness-agnostic CLI for installing agent skills.
+Zero global install. Works with Claude Code, Cursor, Codex, OpenCode, GitHub Copilot, and 41+ more agents -- see [skills.sh](https://skills.sh).
 
-For teams already using [apm](https://github.com/microsoft/apm) (manifest + lockfile package manager for agent primitives):
+Already using [apm](https://github.com/microsoft/apm) (manifest + lockfile)?
 
 ```bash
 apm install danielmeppiel/genesis
 ```
-
-Add `apm install microsoft/apm/packages/apm-guide` if you want genesis to emit `apm.yml` / lockfile vocabulary at codegen time.
-
-Both paths install the same SKILL.md plus its asset bundle. Pick one.
 
 ---
 
@@ -41,59 +37,98 @@ Both paths install the same SKILL.md plus its asset bundle. Pick one.
 
 If you've built anything non-trivial with AI coding agents, one of these has happened to you:
 
-- **Monolithic instruction files.** The forty-line rule file became four hundred. There are no modules, no boundaries, no separation of concerns. Every change requires reading the whole thing, and the agent silently ignores the half it cannot fit in attention.
+- **Monolithic instruction files.** The forty-line rule file became four hundred. No modules, no boundaries, no separation of concerns. Every change requires reading the whole thing, and the agent silently ignores the half it cannot fit in attention.
 - **Copy-paste duplication across primitives.** The same convention lives in three skills and two rule files. One was edited last week; the agent now contradicts itself depending on which path the harness loads first.
-- **Behavioral drift on long sessions.** Constraints that held at turn one are silently dropped by turn twenty. There is no contract, no acceptance check, no test at the boundary -- so the regression ships and you find out from the user.
+- **Behavioral drift on long sessions.** Constraints that held at turn one are silently dropped by turn twenty. There is no contract, no acceptance check, no test at the boundary -- the regression ships and you find out from the user.
 
-The industry sells "best practices" for AI coding agents -- prompt tips, rule-file templates, instruction snippets. What is missing is **architecture**: the named components, the seams between them, the patterns that govern their dynamics, the contracts at their boundaries, the refactor moves when they drift. Software engineering needed architecture, not just style guides, the moment systems crossed a complexity threshold. AI-coding-agent systems crossed that threshold a while ago. The downstream cost is paid by the developers using the agents you ship: poor UX, unreliable behavior, regressions that look like the model failing when in fact the system around the model has no architecture. Genesis is the architectural layer that was missing.
+Genesis names the primitives, the patterns, and the refactor moves -- so you compose instead of copy, and review instead of guess.
 
 ---
 
 ## Quick Start
 
-After install, open the AI tool you use (Claude Code, Cursor, GitHub Copilot, etc.) and paste this prompt verbatim:
+After install, paste this into your agent (Claude Code, Cursor, GitHub Copilot, OpenCode, Codex):
 
 ```
-Use the genesis-architect persona to design a skill that reviews my pull requests for missing
-tests, undocumented public API, and unsafe migrations. Apply the full architect's loop: goal,
-primitives, pattern, UML, acceptance, plan.
+Use the genesis-architect to design a skill that reviews my pull requests
+for missing tests, undocumented public API, and unsafe migrations.
 ```
 
-You will get a named pattern, an execution-shape diagram, an acceptance test, and a written plan -- before any skill file is touched. That design output is what genesis produces.
+You will get a named pattern, an execution diagram, an acceptance test, and a written plan -- before any file is touched.
 
-For harness-specific invocation shortcuts (e.g. `@genesis-architect` in Claude Code), see [Runtimes](#runtimes).
-
-<details>
-<summary>What does the genesis-architect persona look like?</summary>
-
-[Read the source: genesis-architect.agent.md](agents/genesis-architect.agent.md). A role declaration, the eight loop steps as standing instructions, and a severity rubric per step -- not a vague "you are an expert" prompt.
-
-</details>
+For harness-specific shortcuts (e.g. `@genesis-architect` in Claude Code), see [Runtimes](#runtimes).
 
 ---
 
 ## What it produces
 
-A common ask:
+Cold-load the skill on the Quick Start prompt. Before writing a single file, the genesis-architect proposes this layout:
 
-> *"Use the genesis-architect persona to design a skill that reviews my PRs -- checking for missing tests, undocumented public API, and unsafe migrations."*
+```
+.github/skills/pr-review/
+|-- SKILL.md                       # entrypoint, 8-step contract
+|-- agents/
+|   |-- pr-tests-lens.agent.md     # missing-tests reviewer (fresh context)
+|   |-- pr-docs-lens.agent.md      # public-API doc reviewer
+|   |-- pr-migration-lens.agent.md # unsafe-migration reviewer
+|   `-- pr-synthesizer.agent.md    # arbiter, dissent-weighted
+|-- rules/
+|   `-- review-output.md           # auto-attached output schema
+|-- assets/
+|   |-- severity-rubric.md         # acceptance gate
+|   `-- findings.template.md       # plan persistence shape
+`-- triggers/
+    `-- on-pull-request.yml        # event binding
+```
 
-Genesis produces this **before** writing any file.
+Then it justifies each piece against the genesis catalogue:
 
-**GOAL.** One reviewer that flags missing tests, undocumented public API, and unsafe migrations on a PR diff.
+| Component | Pattern | Why this, not that |
+|---|---|---|
+| Three lens agents in fresh contexts | [Fan-Out + Synthesizer](assets/architectural-patterns.md) | Independent lenses must not share a context; later lenses inherit attention drift from earlier ones. |
+| Dissent-weighted synthesizer | [Panel arbiter](assets/architectural-patterns.md) | A single vote is not consensus when reviewers disagree on the same hunk. |
+| Output schema as auto-attached rule | [Scope-Attached Rule File](assets/design-patterns.md) | Every lens emits the same shape; downstream parsing and assertions stay mechanical. |
+| Trigger as a separate file | [Event-Driven Orchestration](assets/architectural-patterns.md) | Decouples *when* from *what*; the same skill works in any harness. |
+| `findings.template.md` | [Plan Memento](assets/design-patterns.md) | State outside the context window; a re-run on the same PR is comparable. |
 
-**PRIMITIVES.**
-- `Module Entrypoint` -- the `pr-review` skill itself.
-- `Child-Thread Spawn` x 3 -- one per lens (tests, docs, migrations), each in a fresh context window.
-- `Plan Persistence` -- findings written to `pr-review.md` so a re-run on the same PR is comparable.
+Object diagram of the runtime shape:
 
-**PATTERN.** Master-Worker (genesis name: Fan-Out + Synthesizer). The parent spawns one worker per lens, each in a fresh context window. Independent inquiries with no shared state should never compete in the same window -- later lenses inherit attention drift from earlier ones.
+```mermaid
+classDiagram
+    class PrReviewSkill {
+        +SKILL.md
+        +invoke(pr_diff)
+    }
+    class TestsLens {
+        +context: fresh
+    }
+    class DocsLens {
+        +context: fresh
+    }
+    class MigrationLens {
+        +context: fresh
+    }
+    class Synthesizer {
+        +arbitrate(findings) verdict
+    }
+    class OutputSchemaRule {
+        <<auto-attached rule>>
+    }
+    class FindingsMemento {
+        <<plan persistence>>
+    }
+    PrReviewSkill o-- TestsLens : spawns
+    PrReviewSkill o-- DocsLens : spawns
+    PrReviewSkill o-- MigrationLens : spawns
+    PrReviewSkill o-- Synthesizer : spawns
+    TestsLens ..> OutputSchemaRule : enforces
+    DocsLens ..> OutputSchemaRule : enforces
+    MigrationLens ..> OutputSchemaRule : enforces
+    Synthesizer ..> OutputSchemaRule : enforces
+    Synthesizer ..> FindingsMemento : writes
+```
 
-**ACCEPTANCE.** On a PR with one missing test, one undocumented export, and a benign migration: the output names exactly two findings (no false positive on the migration), each citing the file path.
-
-**PLAN.** `pr-review.md` written first. Only then does the agent author the skill, the persona, and the rule files.
-
-The file you eventually author is the easy part.
+The file you eventually author is the easy part. The composition above is what was missing.
 
 ---
 
@@ -163,16 +198,16 @@ Full catalogue (19 design patterns + 6 architectural patterns + 4 refactor patte
 ## The architect's loop
 
 ```
-1.  STATE GOAL          --> one sentence, observable outcome
-2.  NAME PRIMITIVES     --> which substrate concepts will you use?
-3.  PICK PATTERN        --> architectural shape, then design patterns; justify in one line
-3.5 COMPOSE OR BUILD?   --> can an existing module satisfy this?
-4.  DRAW UML            --> mermaid, validate it renders
-5.  ACCEPTANCE          --> what proves it works?
-6.  PERSIST PLAN        --> write plan.md (or equivalent) BEFORE coding
-7.  IMPLEMENT           --> author files; commit
-7b. RELOAD PLAN         --> on every meaningful turn, re-read the plan
-8.  STOP CONDITION      --> ship, or stop the design
+1.  state goal          --> one sentence, observable outcome
+2.  name primitives     --> which substrate concepts will you use?
+3.  pick pattern        --> architectural shape, then design patterns; justify in one line
+3.5 compose or build?   --> can an existing module satisfy this?
+4.  draw uml            --> mermaid, validate it renders
+5.  acceptance          --> what proves it works?
+6.  persist plan        --> write plan.md (or equivalent) before coding
+7.  implement           --> author files; commit
+7b. reload plan         --> on every meaningful turn, re-read the plan
+8.  stop condition      --> ship, or stop the design
 ```
 
 Steps 6 and 7b are non-negotiable. They realize **Plan Memento** (state outside the context window) and **Attention Anchor** (re-inject goal + constraints on every meaningful turn). Together they defeat the silent drift that ends most long agent sessions.
