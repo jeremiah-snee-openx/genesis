@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 628" width="1200" height="628"
+     role="img"
+     aria-label="genesis -- a design discipline for agentic primitives. Install with: npx skills add danielmeppiel/genesis. 6 primitives, 9 architectural patterns, 23 design patterns, 4 refactor patterns.">
+  <title>genesis launch hero</title>
+
+  <rect width="1200" height="628" fill="#fcfcf6"/>
+
+  <!-- TOP : identity + tagline -->
+
+  <g transform="translate(80, 56)">
+    <rect width="72" height="72" rx="14" fill="#000000"/>
+    <text x="36" y="56"
+          text-anchor="middle"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-weight="700"
+          font-size="58"
+          fill="#daf172">G</text>
+  </g>
+
+  <text x="172" y="106"
+        font-family="Menlo, 'SF Mono', Consolas, monospace"
+        font-weight="700"
+        font-size="34"
+        fill="#0d1117">genesis-skill</text>
+
+  <text x="80" y="194"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-weight="700"
+        font-size="38"
+        fill="#0d1117">Markdown that steers an LLM is code.</text>
+  <text x="80" y="240"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-weight="400"
+        font-size="36"
+        fill="#0d1117" opacity="0.62">Design it before you write it.</text>
+
+  <!-- CENTER : install panel -->
+
+  <rect x="80" y="280" width="1040" height="84" rx="10" fill="#0d1117"/>
+  <text x="112" y="333"
+        font-family="Menlo, 'SF Mono', Consolas, monospace"
+        font-weight="700"
+        font-size="30"
+        fill="#daf172">$</text>
+  <text x="142" y="333"
+        font-family="Menlo, 'SF Mono', Consolas, monospace"
+        font-weight="700"
+        font-size="30"
+        fill="#fcfcf6">npx skills add danielmeppiel/genesis</text>
+
+  <!-- BOTTOM : toolbelt -->
+
+  <text x="80" y="408"
+        font-family="Menlo, 'SF Mono', Consolas, monospace"
+        font-weight="600"
+        font-size="13"
+        letter-spacing="2.5"
+        fill="#0d1117" opacity="0.55">WHAT SHIPS IN THE TOOLBELT</text>
+  <line x1="80" y1="420" x2="1120" y2="420" stroke="#0d1117" stroke-width="1" opacity="0.12"/>
+
+  <!-- row 1 : 6 primitives -->
+  <text x="158" y="464" text-anchor="end"
+        font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="40"
+        fill="#0d1117">6</text>
+  <text x="200" y="464"
+        font-family="Menlo, 'SF Mono', Consolas, monospace" font-weight="700" font-size="20"
+        fill="#0d1117">primitives</text>
+  <text x="430" y="464"
+        font-family="Menlo, 'SF Mono', Consolas, monospace" font-weight="400" font-size="16"
+        fill="#0d1117" opacity="0.62">the substrate every harness uses</text>
+
+  <!-- row 2 : 9 architectural -->
+  <text x="158" y="504" text-anchor="end"
+        font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="40"
+        fill="#0d1117">9</text>
+  <text x="200" y="504"
+        font-family="Menlo, 'SF Mono', Consolas, monospace" font-weight="700" font-size="20"
+        fill="#0d1117">architectural</text>
+  <text x="430" y="504"
+        font-family="Menlo, 'SF Mono', Consolas, monospace" font-weight="400" font-size="16"
+        fill="#0d1117" opacity="0.62">system-shape patterns</text>
+
+  <!-- row 3 : 23 design -->
+  <text x="158" y="544" text-anchor="end"
+        font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="40"
+        fill="#0d1117">23</text>
+  <text x="200" y="544"
+        font-family="Menlo, 'SF Mono', Consolas, monospace" font-weight="700" font-size="20"
+        fill="#0d1117">design</text>
+  <text x="430" y="544"
+        font-family="Menlo, 'SF Mono', Consolas, monospace" font-weight="400" font-size="16"
+        fill="#0d1117" opacity="0.62">6 creational + 7 structural + 10 behavioral</text>
+
+  <!-- row 4 : 4 refactor -->
+  <text x="158" y="584" text-anchor="end"
+        font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="40"
+        fill="#0d1117">4</text>
+  <text x="200" y="584"
+        font-family="Menlo, 'SF Mono', Consolas, monospace" font-weight="700" font-size="20"
+        fill="#0d1117">refactor</text>
+  <text x="430" y="584"
+        font-family="Menlo, 'SF Mono', Consolas, monospace" font-weight="400" font-size="16"
+        fill="#0d1117" opacity="0.62">Fowler-style moves for skill drift</text>
+
+  <!-- chartreuse brand whisper : a hairline accent under the install panel, right-aligned -->
+  <rect x="1080" y="370" width="40" height="3" fill="#daf172"/>
+
+</svg>
