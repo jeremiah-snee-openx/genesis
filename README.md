@@ -50,8 +50,9 @@ Genesis names the primitives, the patterns, and the refactor moves -- so you com
 After install, summon the skill in your agent (Claude Code, Cursor, GitHub Copilot, OpenCode, Codex) by typing `/genesis` followed by what you want designed:
 
 ```
-/genesis Design a skill that reviews my pull requests for missing tests,
-undocumented public API, and unsafe migrations.
+/genesis I want every PR on my repo reviewed for missing tests, undocumented
+public API, and unsafe migrations -- aggregated into one comment. Never
+approve, never auto-merge.
 ```
 
 You will get a named pattern, an execution diagram, an acceptance test, and a written plan -- before any file is touched.
