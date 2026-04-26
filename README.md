@@ -13,93 +13,151 @@
   <a href="https://github.com/danielmeppiel/genesis/commits/main"><img src="https://img.shields.io/github/last-commit/danielmeppiel/genesis?style=flat" alt="Last Commit"></a>
 </p>
 
-Genesis ports the software architect's role to agentic systems -- decomposition, contracts, and
-cross-cutting concerns applied to workflows where LLMs are the runtime -- plus two patterns
-classical architecture never needed, because attention degrades over distance and context windows
-are not memory.
+**Genesis ports the software architect's role to agentic systems -- decomposition, contracts, and cross-cutting concerns applied to workflows where LLMs are the runtime.**
 
-Install via [apm](https://github.com/microsoft/apm) (a package manager for AI agent primitives):
+Software engineering needed architecture, not just style guides, the moment systems crossed a complexity threshold. AI-coding-agent systems crossed that threshold a while ago. The downstream cost is paid by the developers using the agents you ship: poor user experience, unreliable behavior, regressions that look like the model failing when in fact the system around the model has no architecture. Genesis is the architectural layer that was missing.
+
+## Install
+
+```bash
+npx skills add danielmeppiel/genesis
+```
+
+Zero global install. Works with Claude Code, Cursor, Codex, OpenCode, GitHub Copilot, and 41+ more agents -- see [skills.sh](https://skills.sh).
+
+Already using [apm](https://github.com/microsoft/apm) (manifest + lockfile)?
 
 ```bash
 apm install danielmeppiel/genesis
 ```
 
-> **Recommended companion (when you ship modules through APM):** `apm install microsoft/apm/packages/apm-guide`. Genesis stays deliberately ignorant of manifest syntax (`apm.yml`, lockfiles, CLI commands); the companion supplies that vocabulary at codegen time. If you prefer a different module system, genesis will ask before emitting any manifest -- or fall back to raw-file output. See [Step 7b in SKILL.md](SKILL.md#step-7b---draft-natural-language-modules-caller-side).
-
 ---
 
-## Does this match anything you ship?
+## You've felt this
 
-- **The agent file that grew teeth.** Your `CLAUDE.md` (or `.cursor/rules`, or `.github/copilot-instructions.md`) was forty lines. It is now four hundred. The agent ignores half of it and you cannot tell which half. *(God Module: Single Responsibility violated from the first commit. No seam was named before writing began.)*
-- **Great at turn one, confidently wrong by turn twenty.** The early constraints slid out of attention as the later notes piled up. Re-pasting holds for two turns, then drifts again. *(Attention decay: the failure mode with no classical analog. Tokens far from focus lose influence on inference; the constraint is in the file but no longer steers the output.)*
-- **The same paragraph in four places.** A convention copy-pasted across a skill, an instruction file, and a slash command. You edited one of them last week. The agent now contradicts itself depending on which one fires. *(Shotgun Surgery from hidden coupling. R3 EXTRACT -- promotes shared text to a module; dependents link to it. See [refactor-patterns.md](assets/refactor-patterns.md).)*
+If you've built anything non-trivial with AI coding agents, one of these has happened to you:
 
-If two of these landed, keep reading.
+- **Monolithic instruction files.** The forty-line rule file became four hundred. No modules, no boundaries, no separation of concerns. Every change requires reading the whole thing, and the agent silently ignores the half it cannot fit in attention.
+- **Copy-paste duplication across primitives.** The same convention lives in three skills and two rule files. One was edited last week; the agent now contradicts itself depending on which path the harness loads first.
+- **Behavioral drift on long sessions.** Constraints that held at turn one are silently dropped by turn twenty. There is no contract, no acceptance check, no test at the boundary -- the regression ships and you find out from the user.
+
+Genesis names the primitives, the patterns, and the refactor moves -- so you compose instead of copy, and review instead of guess.
 
 ---
 
 ## Quick Start
 
-After install, open the AI tool you use (Claude Code, Cursor, GitHub Copilot, etc.) and paste this prompt verbatim:
+After install, summon the skill in your agent (Claude Code, Cursor, GitHub Copilot, OpenCode, Codex) by typing `/genesis` followed by what you want designed:
 
 ```
-Use the genesis-architect persona to design a skill that reviews my pull requests for missing
-tests, undocumented public API, and unsafe migrations. Apply the full architect's loop: goal,
-primitives, pattern, UML, acceptance, plan.
+/genesis Design a skill that reviews my pull requests for missing tests,
+undocumented public API, and unsafe migrations.
 ```
 
-You will get a structured design output: a named pattern, a description of the execution shape, and an acceptance criterion. That output is what genesis produces. The skill file comes after.
+You will get a named pattern, an execution diagram, an acceptance test, and a written plan -- before any file is touched.
 
-> **Claude Code shortcut:** `@genesis-architect Use genesis to design...`  For other harnesses, see [Runtimes](#runtimes).
-
-<details>
-<summary>What does the genesis-architect persona look like?</summary>
-
-[Read the source: genesis-architect.agent.md](agents/genesis-architect.agent.md). A role declaration, the six loop steps as standing instructions, and a severity rubric per step -- not a vague "you are an expert" prompt.
-
-</details>
-
----
-
-## The architect's role, ported
-
-The six decisions a software architect makes map to agentic systems row for row. The code is Markdown; the runtime is an LLM; the structural failure modes are the same.
-
-| Classical concern | Agent-architect equivalent | Genesis deliverable |
-|---|---|---|
-| Greenfield design | Partition a goal into agents, skills, and instruction scopes; define execution boundaries | Skill dependency graph + handoff packet + plan.md |
-| Service decomposition | Identify where one agent ends and another begins; prevent skill coupling | Primitive dependency graph + R1 SPLIT (decompose oversized skill) when seams drift |
-| Integration and contracts | Design skill inputs, outputs, and agent-to-agent handoffs | Interface sketch (trigger, inputs, outputs) + sequence diagram |
-| Cross-cutting concerns | Auth context, safety rails, encoding rules that apply across all agents | Shared SCOPE-ATTACHED RULE FILEs + RULE BRIDGE pattern |
-| Refactoring strategy | Identify drifted skills and conflicting instruction files; pay prompt debt | Skill refactor plan using R1-R4 patterns (see [refactor-patterns.md](assets/refactor-patterns.md)) |
-| Architecture review | Evaluate proposed designs for consistency; prevent prompt sprawl | PANEL pattern (multi-lens review) + severity-rubric compliance check |
+For how `/genesis` resolves on each harness, see [Runtimes](#runtimes).
 
 ---
 
 ## What it produces
 
-A common ask:
+Cold-load the skill on the Quick Start prompt. Before writing a single file, genesis proposes this layout:
 
-> *"Use the genesis-architect persona to design a skill that reviews my PRs -- checking for missing tests, undocumented public API, and unsafe migrations."*
+```
+.github/skills/pr-review/
+├── SKILL.md                       # entrypoint, 8-step contract
+├── agents/
+│   ├── pr-tests-lens.agent.md     # missing-tests reviewer (fresh context)
+│   ├── pr-docs-lens.agent.md      # public-API doc reviewer
+│   ├── pr-migration-lens.agent.md # unsafe-migration reviewer
+│   └── pr-synthesizer.agent.md    # arbiter, dissent-weighted
+├── rules/
+│   └── review-output.md           # auto-attached output schema
+├── assets/
+│   ├── severity-rubric.md         # acceptance gate
+│   └── findings.template.md       # plan persistence shape
+└── triggers/
+    └── on-pull-request.yml        # event binding
+```
 
-Genesis produces this **before** writing any file.
+Then it justifies each piece against the genesis catalogue:
 
-**GOAL.** One reviewer that flags missing tests, undocumented public API, and unsafe migrations on a PR diff.
+| Component | Pattern | Why this, not that |
+|---|---|---|
+| Three lens agents in fresh contexts | [A1 Panel](assets/architectural-patterns.md#a1-panel-multi-lens-deliberation) + [B1 Fan-Out + Synthesizer](assets/design-patterns.md#b1-fan-out--synthesizer) | Independent lenses must not share a context; later lenses inherit attention drift from earlier ones. |
+| Dissent-weighted synthesizer | [A1 Panel arbiter](assets/architectural-patterns.md#a1-panel-multi-lens-deliberation) | A single vote is not consensus when reviewers disagree on the same hunk. |
+| Output schema as auto-attached rule | [Scope-Attached Rule File](assets/primitives.md#3-scope-attached-rule-file) + [S4 Validation Decorator](assets/design-patterns.md#s4-validation-decorator) | Every lens emits the same shape; downstream parsing and assertions stay mechanical. |
+| Trigger as a separate file | [A6 Event-Driven](assets/architectural-patterns.md#a6-event-driven) | Decouples *when* from *what*; the same skill works in any harness. |
+| `findings.template.md` | [B4 Plan Memento](assets/design-patterns.md#b4-plan-memento) | State outside the context window; a re-run on the same PR is comparable. |
 
-**PRIMITIVES.**
-- `MODULE ENTRYPOINT` -- the `pr-review` skill itself.
-- `CHILD-THREAD SPAWN` x 3 -- one per lens (tests, docs, migrations), each in a fresh context window.
-- `PLAN PERSISTENCE` -- findings written to `pr-review.md` so a re-run on the same PR is comparable.
+Object diagram of the runtime shape:
 
-**PATTERN.** **Master-Worker** (genesis name: FAN-OUT + SYNTHESIZER). The parent spawns one worker per lens, each in a fresh context window. Independent inquiries with no shared state should never compete in the same window -- later lenses inherit attention drift from earlier ones.
+```mermaid
+classDiagram
+    class PrReviewSkill {
+        +SKILL.md
+        +invoke(pr_diff)
+    }
+    class TestsLens {
+        +context: fresh
+    }
+    class DocsLens {
+        +context: fresh
+    }
+    class MigrationLens {
+        +context: fresh
+    }
+    class Synthesizer {
+        +arbitrate(findings) verdict
+    }
+    class OutputSchemaRule {
+        <<auto-attached rule>>
+    }
+    class FindingsMemento {
+        <<plan persistence>>
+    }
+    PrReviewSkill o-- TestsLens : spawns
+    PrReviewSkill o-- DocsLens : spawns
+    PrReviewSkill o-- MigrationLens : spawns
+    PrReviewSkill o-- Synthesizer : spawns
+    TestsLens ..> OutputSchemaRule : enforces
+    DocsLens ..> OutputSchemaRule : enforces
+    MigrationLens ..> OutputSchemaRule : enforces
+    Synthesizer ..> OutputSchemaRule : enforces
+    Synthesizer ..> FindingsMemento : writes
+```
 
-The PR diff fans out to three threads (tests, docs, migrations), each in its own context window, then synthesizes back into `pr-review.md`.
+The file you eventually author is the easy part. The composition above is what was missing.
 
-**ACCEPTANCE.** On a PR with one missing test, one undocumented export, and a benign migration: the output names exactly two findings (no false positive on the migration), each citing the file path.
+---
 
-**PLAN.** `pr-review.md` written first. Only then does the agent author the skill, the persona, and the rule files.
+## Same skill, three prompts, three architectures (and why)
 
-This output is what the architecture buys you. The file you eventually write is the easy part.
+Three cold-load runs of the genesis skill -- same skill, fresh context each time, three different operator prompts -- yielded three materially different (and each justified) output architectures:
+
+| Operator prompt (excerpt) | Output shape | Patterns selected (and rejected) | Worked example |
+|---|---|---|---|
+| "Draft release notes from CHANGELOG entries" | 6 files: 1 skill + 2 assets + 3 scripts; single thread | [A9 Supervised Execution](assets/architectural-patterns.md#a9-supervised-execution-plan-deterministic-execute-verify) + [S7 Deterministic Tool Bridge](assets/design-patterns.md#s7-deterministic-tool-bridge) + [S4 Validation Decorator](assets/design-patterns.md#s4-validation-decorator). [A1 Panel](assets/architectural-patterns.md#a1-panel-multi-lens-deliberation) **rejected** (lens-count gate did not fire). | [examples/03](examples/03-release-notes-single-skill.md) |
+| "Review every PR: gather findings and present them" | 17 primitives: 6 personas + 4 assets + 3 scripts + trigger + entrypoint + rule + evals | [A6 Event-Driven](assets/architectural-patterns.md#a6-event-driven) + [A1 Panel](assets/architectural-patterns.md#a1-panel-multi-lens-deliberation) + Dissent-Weighted arbiter. [R1 Split](assets/refactor-patterns.md#r1-split-decomposition) considered, applied at lens content as [R3 Extract](assets/refactor-patterns.md#r3-extract-promote-to-module). | [examples/04](examples/04-pr-review-advisory.md) |
+| "Review every PR: emit APPROVE or REJECT verdict" | 9 primitives + S7 deterministic bridges + S4 schema gate + post-emit verifier loop + graceful tool probes | Regime change: [A9](assets/architectural-patterns.md#a9-supervised-execution-plan-deterministic-execute-verify) + [S7](assets/design-patterns.md#s7-deterministic-tool-bridge) + [S4](assets/design-patterns.md#s4-validation-decorator) hardened. [A8 Alignment Loop](assets/architectural-patterns.md#a8-alignment-loop-bounded-iteration-with-goal-steward), [B5 Acceptance Observer](assets/design-patterns.md#b5-acceptance-observer), [R1 Split](assets/refactor-patterns.md#r1-split-decomposition) all **considered and rejected with WHEN-clause grounding**. | [examples/05](examples/05-pr-review-verdict.md) |
+
+Notice row 3: removing the operator's "gather and present, never decide" constraint flipped the system from advisory to consequential. Genesis hardened the existing pipeline with deterministic bridges and a verifier loop -- it did **not** reach for new orchestration patterns. That restraint, with its rejection logic shown, is the discipline being demonstrated. Each example is the verbatim output of a fresh agent session that loaded only `SKILL.md` and the operator prompt.
+
+---
+
+## The architect's role, ported
+
+The six decisions a software architect makes map to AI-coding-agent systems row for row. The code is Markdown; the runtime is an LLM; the structural failure modes are the same.
+
+| Classical concern | Agent-architect equivalent | Genesis deliverable |
+|---|---|---|
+| Greenfield design | Partition a goal into agents, skills, and instruction scopes; define execution boundaries | Skill dependency graph + handoff packet + `plan.md` |
+| Service decomposition | Identify where one agent ends and another begins; prevent skill coupling | Primitive dependency graph + [R1 Split](assets/refactor-patterns.md#r1-split-decomposition) when seams drift |
+| Integration and contracts | Design skill inputs, outputs, and agent-to-agent handoffs | Interface sketch (trigger, inputs, outputs) + sequence diagram |
+| Cross-cutting concerns | Auth context, safety rails, encoding rules that apply across all agents | Shared [Scope-Attached Rule Files](assets/primitives.md#3-scope-attached-rule-file) + [S6 Rule Bridge](assets/design-patterns.md#s6-rule-bridge) pattern |
+| Refactoring strategy | Identify drifted skills and conflicting instruction files; pay prompt debt | Skill refactor plan using [R1-R4 patterns](assets/refactor-patterns.md) |
+| Architecture review | Evaluate proposed designs for consistency; prevent prompt sprawl | [A1 Panel pattern](assets/architectural-patterns.md#a1-panel-multi-lens-deliberation) (multi-lens review) + severity-rubric compliance check |
 
 ---
 
@@ -109,12 +167,12 @@ Every harness implements the same six concepts under different folder names. Gen
 
 | Concept | What it is | Common terms |
 |---|---|---|
-| **PERSONA SCOPING FILE** | A document loaded at session start to scope who the agent is. | "agent file", "subagent", "mode" |
-| **MODULE ENTRYPOINT** | A bundled, self-contained capability with assets and a contract. | "skill", "module" |
-| **SCOPE-ATTACHED RULE FILE** | A constraint that auto-applies to a path or context. | "instruction", "rule", "memory" |
-| **CHILD-THREAD SPAWN** | A primitive that creates a new context window running in parallel. | "subagent thread", "Task tool" |
-| **TRIGGER ORCHESTRATOR** | A declarative pipeline that runs primitives on events. | "workflow", "hook", "automation" |
-| **PLAN PERSISTENCE** | A stable artifact (file or DB) holding the active plan across turns. | "plan.md", "TODO state", "checkpoints" |
+| [Persona Scoping File](assets/primitives.md#1-persona-scoping-file) | A document loaded at session start to scope who the agent is. | "agent file", "subagent", "mode" |
+| [Module Entrypoint](assets/primitives.md#2-module-entrypoint) | A bundled, self-contained capability with assets and a contract. | "skill", "module" |
+| [Scope-Attached Rule File](assets/primitives.md#3-scope-attached-rule-file) | A constraint that auto-applies to a path or context. | "instruction", "rule", "memory" |
+| [Child-Thread Spawn](assets/primitives.md#4-child-thread-spawn) | A primitive that creates a new context window running in parallel. | "subagent thread", "Task tool" |
+| [Trigger Orchestrator](assets/primitives.md#5-trigger-orchestrator) | A declarative pipeline that runs primitives on events. | "workflow", "hook", "automation" |
+| [Plan Persistence](assets/primitives.md#6-plan-persistence) | A stable artifact (file or DB) holding the active plan across turns. | "plan.md", "TODO state", "checkpoints" |
 
 These names are deliberately generic. The architecture must outlive any one tool.
 
@@ -126,12 +184,12 @@ Genesis maps the Gang-of-Four onto agent design. The classical name is your Rose
 
 | GoF axis | Classical | AI-native | When |
 |---|---|---|---|
-| Creational | Factory Method | THREAD SPAWN | Work benefits from a fresh context window |
-| Structural | Facade | ORCHESTRATOR FACADE | A multi-step capability needs to look like one signature |
-| Behavioral | Master-Worker | FAN-OUT + SYNTHESIZER | >=3 independent lenses, no shared state |
-| Behavioral | *(no analog)* | **ATTENTION ANCHOR** | Re-inject goal + constraints at every re-grounding boundary |
+| Creational | Factory Method | [Thread Spawn](assets/design-patterns.md#c3-thread-spawn) | Work benefits from a fresh context window |
+| Structural | Facade | [Orchestrator Facade](assets/design-patterns.md#s3-orchestrator-facade) | A multi-step capability needs to look like one signature |
+| Behavioral | Master-Worker | [Fan-Out + Synthesizer](assets/design-patterns.md#b1-fan-out--synthesizer) | >=3 independent lenses, no shared state |
+| Behavioral | *(no analog)* | **[Attention Anchor](assets/design-patterns.md#b8-attention-anchor)** | Re-inject goal + constraints at every re-grounding boundary |
 
-**ATTENTION ANCHOR is the LLM-physics-native pattern with no classical counterpart**: without periodic re-injection of goal and hard constraints, long sessions silently drift from the original intent. It is the highest-leverage behavioral pattern for any non-trivial agent task.
+**[Attention Anchor](assets/design-patterns.md#b8-attention-anchor) has no classical counterpart -- it exists because LLM attention degrades over distance.** Without periodic re-injection of goal and hard constraints, long sessions silently drift from the original intent. It is the highest-leverage behavioral pattern for any non-trivial agent task.
 
 Full catalogue (19 design patterns + 6 architectural patterns + 4 refactor patterns): [`assets/design-patterns.md`](assets/design-patterns.md), [`assets/architectural-patterns.md`](assets/architectural-patterns.md), [`assets/refactor-patterns.md`](assets/refactor-patterns.md).
 
@@ -140,19 +198,19 @@ Full catalogue (19 design patterns + 6 architectural patterns + 4 refactor patte
 ## The architect's loop
 
 ```
-1.  STATE GOAL          --> one sentence, observable outcome
-2.  NAME PRIMITIVES     --> which substrate concepts will you use?
-3.  PICK PATTERN        --> architectural shape, then design patterns; justify in one line
-3.5 COMPOSE OR BUILD?   --> can an existing module satisfy this?
-4.  DRAW UML            --> mermaid, validate it renders
-5.  ACCEPTANCE          --> what proves it works?
-6.  PERSIST PLAN        --> write plan.md (or equivalent) BEFORE coding
-7.  IMPLEMENT           --> author files; commit
-7b. RELOAD PLAN         --> on every meaningful turn, re-read the plan
-8.  STOP CONDITION      --> ship, or stop the design
+1.  state goal          --> one sentence, observable outcome
+2.  name primitives     --> which substrate concepts will you use?
+3.  pick pattern        --> architectural shape, then design patterns; justify in one line
+3.5 compose or build?   --> can an existing module satisfy this?
+4.  draw uml            --> mermaid, validate it renders
+5.  acceptance          --> what proves it works?
+6.  persist plan        --> write plan.md (or equivalent) before coding
+7.  implement           --> author files; commit
+7b. reload plan         --> on every meaningful turn, re-read the plan
+8.  stop condition      --> ship, or stop the design
 ```
 
-Steps 6 and 7b are non-negotiable. They realize **PLAN MEMENTO** (state outside the context window) and **ATTENTION ANCHOR** (re-inject goal + constraints on every meaningful turn). Together they defeat the silent drift that ends most long agent sessions.
+Steps 6 and 7b are non-negotiable. They realize **[B4 Plan Memento](assets/design-patterns.md#b4-plan-memento)** (state outside the context window) and **[B8 Attention Anchor](assets/design-patterns.md#b8-attention-anchor)** (re-inject goal + constraints on every meaningful turn). Together they defeat the silent drift that ends most long agent sessions.
 
 ---
 
@@ -160,14 +218,23 @@ Steps 6 and 7b are non-negotiable. They realize **PLAN MEMENTO** (state outside 
 
 | Harness | Persona file format | Skill folder | Adapter |
 |---|---|---|---|
-| **Claude Code** | `.claude/agents/*.md` | `.claude/skills/` | [adapter](assets/runtime-affordances/per-harness/claude-code.md) |
-| **GitHub Copilot CLI** | `.github/agents/*.agent.md` | `.github/skills/` | [adapter](assets/runtime-affordances/per-harness/copilot.md) |
-| **Cursor** | `.cursor/rules/*.mdc` | `.cursor/skills/` | [adapter](assets/runtime-affordances/per-harness/cursor.md) |
-| **OpenCode** | `.opencode/agent/*.md` | `.opencode/skills/` | [adapter](assets/runtime-affordances/per-harness/opencode.md) |
-| **Codex** | `AGENTS.md` files | `~/.codex/skills/` | [adapter](assets/runtime-affordances/per-harness/codex.md) |
+| Claude Code        | `.claude/agents/*.md`        | `.claude/skills/`   | [adapter](assets/runtime-affordances/per-harness/claude-code.md) |
+| GitHub Copilot CLI | `.github/agents/*.agent.md`  | `.github/skills/`   | [adapter](assets/runtime-affordances/per-harness/copilot.md)     |
+| Cursor             | `.cursor/rules/*.mdc`        | `.cursor/skills/`   | [adapter](assets/runtime-affordances/per-harness/cursor.md)      |
+| OpenCode           | `.opencode/agent/*.md`       | `.opencode/skills/` | [adapter](assets/runtime-affordances/per-harness/opencode.md)    |
+| Codex              | `AGENTS.md` files            | `~/.codex/skills/`  | [adapter](assets/runtime-affordances/per-harness/codex.md)       |
 
 The primitives are the same. Only the file names change.
 
 ---
 
-**MIT licensed.** If two failure modes above matched something you ship, [open an issue](https://github.com/danielmeppiel/genesis/issues/new) with which one -- that is the data that shapes the next pattern.
+## Read more
+
+- [`examples/`](examples/) -- five worked designs with operator prompts, pattern reasoning, and considered-and-rejected alternatives.
+- [`SKILL.md`](SKILL.md) -- the skill itself; the eight-step process and progressive-disclosure protocol.
+- [`agents/genesis-architect.agent.md`](agents/genesis-architect.agent.md) -- the persona file.
+- [`assets/`](assets/) -- the loadable knowledge base (primitives, patterns, anti-patterns, refactor moves, runtime affordances).
+
+---
+
+**Apache 2.0 licensed.** Companion long-form book is CC BY-NC 4.0; this skill is permissive on purpose so it can load into any agent harness. If two failure modes above matched something you ship, [open an issue](https://github.com/danielmeppiel/genesis/issues/new) with which one -- that is the data that shapes the next pattern.
