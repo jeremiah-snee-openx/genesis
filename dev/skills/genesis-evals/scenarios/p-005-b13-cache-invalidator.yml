@@ -1,0 +1,32 @@
+id: p-005-b13-cache-invalidator
+category: P
+description: >-
+  With-genesis names B13 CACHE-AWARE PREFIX and identifies cache
+  invalidators (timestamps, mid-session tool changes). Without-genesis
+  suggests vague caching without naming the substrate failure.
+prompt: |
+  My agent loads a long persona file, then a per-turn timestamp marker
+  ("current time: 2025-11-14T12:34:56Z"), then the user query. It runs
+  hundreds of turns per session. The provider charges per input token
+  on every turn. Why is this expensive and what should I change in the
+  prompt structure?
+model: claude-opus-4.7
+loaded_skills:
+  - genesis
+pass_gate:
+  type: substring_all
+  with_skill_must_contain:
+    - B13
+    - CACHE-AWARE PREFIX
+  with_skill_must_not_contain: []
+  without_skill_must_contain: []
+  without_skill_must_not_contain:
+    - B13
+    - CACHE-AWARE PREFIX
+frozen_since: "0.2.0"
+retired_in: null
+notes: >-
+  Tests recognition of substrate cost vocabulary (cacheable prefix, cache
+  invalidator). The timestamp at the wrong position is the canonical
+  invalidator; without genesis, the LLM is expected to say "use prompt
+  caching" without naming the invalidator failure mode.

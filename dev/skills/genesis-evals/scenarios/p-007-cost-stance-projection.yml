@@ -1,0 +1,29 @@
+id: p-007-cost-stance-projection
+category: P
+description: >-
+  With-genesis emits a cost projection (qualitative bands + quantitative
+  range) and honours the declared `frugal` cost stance by naming B12 /
+  B15 / B16 patterns. Without-genesis ignores stance.
+prompt: |
+  Design an agent that triages incoming GitHub issues into three buckets
+  and posts a comment summarising why. Cost stance: frugal. Cost cap: $50
+  per month assuming 200 issues / month. Hand me the design.
+model: claude-opus-4.7
+loaded_skills:
+  - genesis
+pass_gate:
+  type: substring_all
+  with_skill_must_contain:
+    - cost projection
+    - stance
+  with_skill_must_not_contain: []
+  without_skill_must_contain: []
+  without_skill_must_not_contain:
+    - cost projection
+frozen_since: "0.2.0"
+retired_in: null
+notes: >-
+  Tests step 1 cost-stance reading and step 6 cost-projection emission.
+  The dollar cap is an enforcement gate; without genesis, the LLM should
+  produce a design but not the explicit projection-with-stance-band
+  artifact.

@@ -119,15 +119,12 @@ authority; verify against the live URL):
   `assets/primitives.md` MODULE ENTRYPOINT; silent rejection above
   this).
 
-Also read the operator's COST STANCE for this invocation. Stance
-shapes the SHAPE of the design (which patterns get selected); it
-does NOT cap the size of the design. Values: `frugal` / `balanced`
-(default) / `quality` / `unbounded`. Also read the optional COST
-BUDGET CAP -- a hard ceiling expressed in dollars, total tokens, or
-premium-request count for the workflow's typical run, enforced at
-step 6. The cap is the ONLY place genesis refuses to proceed on
-cost grounds. Read `references/cost-economics-process.md` for
-stance mandates, cap mechanics, and how the operator declares each.
+Also read the operator's COST STANCE (`frugal` / `balanced` default
+/ `quality` / `unbounded`) and optional COST BUDGET CAP (dollars,
+tokens, or premium-requests for a typical run). Stance shapes which
+patterns get picked; cap is the only place genesis refuses on cost
+grounds (enforced at step 6). See `references/cost-economics-
+process.md` for declaration mechanics.
 
 ### Step 2 - component diagram (mermaid)
 
@@ -193,23 +190,17 @@ Skip this step if step 3 produced an unambiguous pattern selection.
 ### Step 3.2 - cost check (mandatory, mirrors 3.1)
 
 Load `assets/token-economics.md` and
-`assets/runtime-affordances/model-catalog.md`. For each module in
-the component diagram, pick:
-- ROLE CLASS (cheapest that meets the capability profile).
-- PREFIX SHAPE (audit for cache invalidators; apply B13 if any).
-- OUTPUT VOLUME band (L in a loop/fan-out = R5 trigger).
-- TOOL SURFACE (apply B15 or S7 if catalog >20 tools).
-- WORKFLOW SHAPE (heterogeneous-cost stages = name A12).
+`assets/runtime-affordances/model-catalog.md`. For each module,
+pick: ROLE CLASS (cheapest meeting capability); PREFIX SHAPE
+(audit for cache invalidators, apply B13); OUTPUT VOLUME band
+(L in fan-out = R5 trigger); TOOL SURFACE (B15 or S7 if
+catalog > 20); WORKFLOW SHAPE (heterogeneous stages = A12).
 
-Apply the stance read at step 1 (`frugal`/`balanced`/`quality`/
-`unbounded`). If two cost patterns fit the same slot, cite the
-cost-shape matrix row in `assets/pattern-tradeoffs.md` section
-"10. Cost-shape".
-
-For the full procedure (stance mandates, projection contract,
-gating), load `references/cost-economics-process.md`. Skip step
-3.2 ONLY when stance is `unbounded` AND the operator has
-explicitly declined cost recording.
+Apply the stance read at step 1. If two cost patterns fit the
+same slot, cite the cost-shape matrix row in
+`assets/pattern-tradeoffs.md` section 10. Full procedure in
+`references/cost-economics-process.md`. Skip step 3.2 ONLY when
+stance is `unbounded` AND operator declined cost recording.
 
 ### Step 3.5 - composition decision
 
@@ -343,18 +334,16 @@ Produce a single artifact containing:
   - ~20 TRIGGER EVALS for the dispatch description: 8-10 queries
     that should trigger plus 8-10 near-miss queries that should
     NOT, split 60/40 train/val. Validation split is the ship gate.
-- A COST PROJECTION (mandatory unless stance is `unbounded` with
-  explicit opt-out). Contains: per-module qualitative bands (role
-  class, prefix/output bands, turn/cache ratio bands); workflow-
-  level quantitative range (input/output tokens, dollar range
-  per representative run) sourced from the per-harness adapter's
-  date-stamped pricing footnote; three workload scenarios (S =
-  trivial / M = known module / L = repo-wide); cited cost
-  patterns with cost-shape matrix rows; declared stance; cap
-  check (halt if L scenario exceeds declared cap). Bands are the
-  CONTRACT (step 8 validates); ranges are the PREDICTION (operator
-  reads for predictability). Full template in
-  `references/cost-economics-process.md`.
+- A COST PROJECTION (mandatory unless `unbounded` + opt-out).
+  Contains: per-module qualitative bands (role class, prefix /
+  output bands, turn / cache ratio); workflow-level quantitative
+  range (input / output tokens, dollar range per representative
+  run) sourced from the per-harness adapter pricing footnote;
+  three workload scenarios (S trivial / M known module / L
+  repo-wide); cited cost-shape matrix rows; declared stance; cap
+  check (halt if L scenario exceeds cap). Bands are the CONTRACT
+  (step 8 validates); ranges are the PREDICTION (operator reads).
+  Full template in `references/cost-economics-process.md`.
 
 PERSIST THE PACKET. Per truth #5 (plan before execution) and
 substrate concept 6 (PLAN PERSISTENCE), the handoff packet MUST
@@ -481,15 +470,14 @@ better than against prose description.
   - Trigger-eval validation split passes: rate >= 0.5 on
     should-trigger queries AND < 0.5 on near-miss should-not-
     trigger queries.
-- COST CONTRACT GATE (from the step 6 cost projection): each
-  emitted module's role-class binding matches the projection's
-  per-module bands; no emitted module introduces a cache
-  invalidator the projection assumed absent; every pattern cited
-  in the projection's COST PATTERNS list is materialized in at
-  least one emitted module's body; stance-mandated patterns
-  visible (`frugal` -> B12 / B15 / B16 present; `quality` ->
-  planner-class promotions visible); cap still holds. Full gate
-  procedure in `references/cost-economics-process.md`.
+- COST CHECKLIST (from step 6; human-applied, not a lint script):
+  each emitted module's role class matches projection bands; no
+  introduced cache invalidators; every cited cost pattern
+  materialized in some module; stance-mandated patterns present
+  (`frugal` -> B12 / B15 / B16; `quality` -> planner-class
+  promotions); cap still holds. Failures are HIGH severity but do
+  not block ship -- they surface so the operator can accept or
+  redesign. Full procedure in `references/cost-economics-process.md`.
 - REAL-TASK REFINEMENT: after structural lint passes, run the
   skill on at least one real task, capture the trace, and revise
   from what actually happened (not what you expected). One-shot
@@ -540,12 +528,10 @@ apply to examples; do not load them eagerly.
   S7 + S4 + A9 verifier hardening, and explicitly rejects A8 /
   B5 / R1 with WHEN-clause grounding -- read this when stake
   pressure tempts you to add new orchestration layers.
-- `examples/06-cost-aware-panel.md` -- cost-shape reference: takes
-  the panel from example 02 and adds an A12 GRADIENT WORKFLOW
-  overlay with B12 MODEL ROUTER, B13 CACHE-AWARE PREFIX, and an
-  R5 COST PRUNE pass. Read this when the operator declares
-  `frugal` stance or when the same panel runs at scale (fan-out
-  width >= 4, daily-or-more cadence).
+- `examples/06-cost-aware-panel.md` -- cost-shape reference: the
+  example 02 panel with A12 GRADIENT WORKFLOW + B12 MODEL ROUTER
+  + B13 CACHE-AWARE PREFIX + R5 COST PRUNE pass. Read when stance
+  is `frugal` or when fan-out width >= 4 at daily cadence.
 
 ## Outputs
 

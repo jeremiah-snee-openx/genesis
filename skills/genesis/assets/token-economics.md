@@ -145,8 +145,9 @@ chasing volatile numbers:
   / XL (over 100K).
 - **Output volume**: S (under 500) / M (500-3K) / L (over 3K).
 - **Turn count**: low (1-3) / medium (4-10) / high (10+).
-- **Cache hit ratio**: high (>0.8) / medium (0.4-0.8) / low
-  (<0.4).
+- **Cache hit ratio (runtime-observed, NOT a design-time contract)**:
+  high (>0.8) / medium (0.4-0.8) / low (<0.4). Observed at runtime
+  and feeds R5 COST PRUNE evidence; never enters the step-6 contract.
 - **Model class**: trivial / implementer / planner / reviewer /
   long-context-retriever (see `model-catalog.md`).
 

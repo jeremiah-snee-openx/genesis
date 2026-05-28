@@ -141,8 +141,21 @@ claude-code.md` model catalog):
 
 | Version         | Calls           | Approx input tokens | Approx output tokens | Approx $/run |
 |------------------|------------------|---------------------|----------------------|--------------|
-| Cost-unconscious | 6 x planner      | ~6 x 5K = 30K       | ~6 x 1K = 6K         | ~$0.54       |
-| Cost-aware       | 1 trivial + 5 reviewer + 1 trivial + 1 (light or heavy) | ~7 x 4K + ~1K = 29K | ~5 x 600 + 200 + ~700 = ~3900 | ~$0.12-0.18 |
+| Cost-unconscious | 6 x planner (Opus) | ~6 x 5K = 30K     | ~6 x 1K = 6K         | ~$0.90       |
+| Cost-aware (agree path, ~80%) | 1 trivial router + 5 reviewer (Sonnet) + 1 trivial detector + 1 reviewer synth | ~7 x 4K + ~1K = 29K | ~5 x 600 + 200 + ~700 = ~3900 | ~$0.10-0.15 |
+| Cost-aware (disagree path, ~20%) | adds 1 planner arbiter on top | +~5K | +~1K | ~$0.20-0.30 |
+
+Arithmetic (per `claude-code.md` Section 9, verified 2025-11-14): Opus
+$15/Mtok input, $75/Mtok output. Cost-unconscious row = 30K x $15/M +
+6K x $75/M = $0.45 + $0.45 = ~$0.90. Sonnet $3/Mtok input, $15/Mtok
+output. Cost-aware agree row = 28K x $3/M + ~3.5K x $15/M + 1K x
+$0.25/M (trivial input) ~ $0.08 + $0.05 + tiny = ~$0.13.
+
+Blended across an 80/20 agree/disagree mix: ~$0.12-0.18 per run.
+Expected reduction vs cost-unconscious: ~5-7x on blended workload,
+~6-9x on the agree path that dominates traffic. Round dollar figures
+are intentionally coarse: bands are the contract; ranges are the
+prediction.
 
 The reduction is dominated by the role-class shift on the bulk
 lenses (planner -> reviewer on 5 calls). The synthesis-class

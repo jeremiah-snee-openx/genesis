@@ -7,7 +7,7 @@ The SKILL.md body names the shape; this file holds the procedure.
 Trigger for loading:
 - Operator declared a cost stance in step 1.
 - Step 3.2 cost check is in scope (default for any non-trivial work).
-- Step 6 cost projection or step 8 cost contract gate is being run.
+- Step 6 cost projection or step 8 cost checklist is being run.
 
 ---
 
@@ -209,10 +209,14 @@ Vocabulary per `assets/token-economics.md`:
 - Prefix size: S (<5K) / M (5-20K) / L (20-100K) / XL (>100K).
 - Output volume: S (<500) / M (500-3K) / L (>3K).
 - Expected turn count: low (1-3) / medium (4-10) / high (10+).
-- Expected cache hit ratio: high (>0.8) / medium (0.4-0.8) /
-  low (<0.4).
 
 These bands are the CONTRACT. Step 8 validates them.
+
+NOTE: cache hit ratio is intentionally NOT in the contract. Cache
+hit ratio is a runtime telemetry number; most harnesses do not
+surface it per-request to the agent, and step 8 cannot statically
+verify it. Cache hit ratio is observed at runtime and feeds R5
+COST PRUNE evidence, not the design-time contract.
 
 ### 2. Workflow-level quantitative range
 
@@ -258,7 +262,13 @@ three options (widen cap / change stance / coarser pattern).
 
 ---
 
-## Step 8 - cost contract gate in full
+## Step 8 - cost checklist (not a gate)
+
+This step is a CHECKLIST the architect runs against emitted modules,
+not a programmatic gate. There is no lint script today; honest naming.
+A future `scripts/cost-lint.sh` can grep for the named invalidators
+(timestamps in stable prefix, hardcoded model names) but until that
+exists, the checklist is human-applied.
 
 After the emitted modules pass structural lint, verify:
 

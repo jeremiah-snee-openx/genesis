@@ -1,0 +1,29 @@
+id: p-006-r5-cost-prune
+category: P
+description: >-
+  With-genesis triggers R5 COST PRUNE on a class-uniform graph or
+  invalidator leak. Without-genesis suggests generic refactors.
+prompt: |
+  Here is my existing 6-module agent workflow. Every module is bound to
+  the most capable available model. The orchestrator stitches them
+  sequentially. Token use is dominated by re-reading the orchestrator
+  brief on every turn. Do a structural refactor pass focused on cost
+  without rewriting the modules' core responsibilities.
+model: claude-opus-4.7
+loaded_skills:
+  - genesis
+pass_gate:
+  type: substring_all
+  with_skill_must_contain:
+    - R5
+    - COST PRUNE
+  with_skill_must_not_contain: []
+  without_skill_must_contain: []
+  without_skill_must_not_contain:
+    - R5 COST PRUNE
+frozen_since: "0.2.0"
+retired_in: null
+notes: >-
+  Tests refactor-pattern recognition for cost-driven graph reshaping.
+  The "every module on most capable model" symptom IS the CLASS-UNIFORM
+  GRAPH trigger.
