@@ -109,6 +109,27 @@ export default defineConfig({
               ],
             },
             {
+              label: 'Token Economics',
+              items: [
+                {
+                  label: 'Overview',
+                  link: '/reference/token-economics/',
+                },
+                {
+                  label: 'Operator stance & cap',
+                  link: '/reference/token-economics/stance-and-cap/',
+                },
+                {
+                  label: 'Cost projection artifact',
+                  link: '/reference/token-economics/cost-projection/',
+                },
+                {
+                  label: 'Cost patterns',
+                  link: '/reference/token-economics/patterns/',
+                },
+              ],
+            },
+            {
               label: 'Harnesses',
               items: [
                 { label: 'Overview', link: '/reference/harnesses/' },
@@ -158,6 +179,10 @@ export default defineConfig({
                 {
                   label: '05. PR review (verdict)',
                   link: '/resources/examples/05-pr-review-verdict/',
+                },
+                {
+                  label: '06. Cost-aware panel',
+                  link: '/resources/examples/06-cost-aware-panel/',
                 },
               ],
             },
