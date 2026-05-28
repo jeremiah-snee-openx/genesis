@@ -1,0 +1,33 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag matches apm.yml version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          file=$(grep -E '^version:' apm.yml | head -1 | awk '{print $2}' | tr -d '"')
+          [ "$tag" = "$file" ] || { echo "::error::tag $tag != apm.yml $file"; exit 1; }
+
+      - name: Validate skill against agentskills.io spec
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh skill publish --dry-run skills/genesis
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
