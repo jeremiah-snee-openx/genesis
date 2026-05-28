@@ -721,21 +721,21 @@ WHEN:
 
 ```mermaid
 flowchart LR
-  Q[(QUEUE +<br/>state table<br/>B4 memento)] --> R[runner]
-  R -->|spawn per item| W1[item 1<br/>sub-agent<br/>C2 + C4]
-  R -->|spawn per item| W2[item 2<br/>sub-agent<br/>C2 + C4]
-  R -->|spawn per item| WN[item N<br/>sub-agent<br/>C2 + C4]
-  W1 --> SP1[stop-predicate<br/>S4 gate]
-  W2 --> SP2[stop-predicate<br/>S4 gate]
-  WN --> SPN[stop-predicate<br/>S4 gate]
+  Q[QUEUE plus state table B4 memento] --> R[runner]
+  R -->|spawn per item| W1[item 1 sub-agent C2 plus C4]
+  R -->|spawn per item| W2[item 2 sub-agent C2 plus C4]
+  R -->|spawn per item| WN[item N sub-agent C2 plus C4]
+  W1 --> SP1[stop predicate S4 gate]
+  W2 --> SP2[stop predicate S4 gate]
+  WN --> SPN[stop predicate S4 gate]
   SP1 -->|terminal| UPD[update state table]
-  SP1 -->|non-terminal<br/>within budget| W1
-  SP1 -->|non-terminal<br/>budget exhausted| HC[B10 human<br/>checkpoint]
+  SP1 -->|non terminal within budget| W1
+  SP1 -->|non terminal budget exhausted| HC[B10 human checkpoint]
   SP2 --> UPD
   SPN --> UPD
-  UPD --> POL{fold or defer?<br/>B11 policy}
-  POL -->|fold: re-enter| Q
-  POL -->|defer: file| OUT[(external queue)]
+  UPD --> POL{fold or defer B11 policy}
+  POL -->|fold re-enter| Q
+  POL -->|defer file| OUT[external queue]
   POL -->|all terminal| END[ship]
 ```
 
@@ -746,15 +746,18 @@ field on spawn and releases it on terminal or escalation. Single-
 writer is per ITEM, not per queue -- per-queue serialization is
 the wrong grain and collapses the fan-out.)
 
-REAL EXAMPLE: the `batch-bug-shepherd` skill in `microsoft/apm`
-(`.apm/skills/batch-bug-shepherd/SKILL.md`). Drives a batch of
-suspected bugs from raw issue list to mergeable PR queue: per-item
-triage sub-agent, in-flight PR sub-agent (which itself drives a
-review-address + CI-green sub-loop), no-PR sub-agent (TDD fix
-session), per-verdict completion sub-agent. A `plan.md` state
-table is the canonical ground truth; every re-entry reloads it.
-Runs today in GitHub Copilot CLI -- a substrate that exposes
-neither `/goal` nor `/loop`. Substrate-portable by construction.
+WORKED EXAMPLE: the `batch-bug-shepherd` skill in `microsoft/apm`
+(`.apm/skills/batch-bug-shepherd/SKILL.md`) -- the first concrete
+realization we built while developing this pattern, not external
+industry validation. It drives a batch of suspected bugs from raw
+issue list to mergeable PR queue: per-item triage sub-agent, in-
+flight PR sub-agent (which itself drives a review-address + CI-
+green sub-loop), no-PR sub-agent (TDD fix session), per-verdict
+completion sub-agent. A `plan.md` state table is the canonical
+ground truth; every re-entry reloads it. Runs in GitHub Copilot
+CLI -- a substrate that exposes neither `/goal` nor `/loop` --
+which is what makes the substrate-portability claim testable
+rather than aspirational.
 
 SUBSTRATE NOTE: A11 requires three baseline primitives from the
 harness, and nothing else:
@@ -768,11 +771,11 @@ harness, and nothing else:
 Vendor sugar (Codex `/goal`, Claude Code `/loop` + `/goal`,
 Copilot CLI open issues #2129 and #3364) packages the re-entry
 contract as a slash command; the discipline does not depend on
-the sugar. Existence proof: batch-bug-shepherd running in Copilot
-CLI today. A substrate gap -- e.g. a streaming-only harness with
-no completion signal -- degrades the pattern but does not
-invalidate it; document the gap in the design's portability
-declaration.
+the sugar. We tested this by building the worked example above
+in Copilot CLI, which has neither. A substrate gap -- e.g. a
+streaming-only harness with no completion signal -- degrades the
+pattern but does not invalidate it; document the gap in the
+design's portability declaration.
 
 ANTI-PATTERNS:
 - LOOP WITHOUT STOP-PREDICATE -- the per-item loop terminates on
@@ -841,6 +844,53 @@ in the tasks stage. A5 WAVE EXECUTION runs the implement stage when
 the DAG warrants it. B5 ACCEPTANCE OBSERVER (a Tier-2 behavioral
 pattern) closes the work. A1 PANEL plugs into any stage that needs
 deliberation rather than single-lens judgement.
+
+A second common composition combines a reconciliation loop with
+governance and per-item upgrades:
+
+```mermaid
+flowchart TB
+  EV[event trigger] --> GATE
+  GATE[A10 capability and sandbox gate] --> RUN
+  RUN[A11 runner reads state table B4] --> SPAWN
+  SPAWN[spawn per item sub-agent C2 plus C4] --> WORK
+  WORK[item work]
+  WORK --> A8[per item A8 ALIGNMENT LOOP if item is a draft]
+  WORK --> A1[per item A1 PANEL if multi lens decision]
+  A8 --> SP
+  A1 --> SP
+  WORK --> SP[S4 stop predicate from system of record]
+  SP -->|terminal| UPD[update state table]
+  SP -->|non terminal within budget| SPAWN
+  SP -->|budget exhausted| HC[B10 human checkpoint]
+  UPD --> POL{B11 fold or defer}
+  POL -->|fold| RUN
+  POL -->|defer| OUT[external queue]
+  POL -->|all terminal| DONE[queue closed]
+  DONE --> AUDIT[A10 audit surface]
+  HC --> AUDIT
+  OUT --> AUDIT
+```
+
+Three independent composition axes are visible here:
+
+- OUTER WRAP (A10): when the queue runner must be event-triggered
+  with audit + capability-gated execution, A10 GOVERNED OUTER LOOP
+  is the wrapping pattern. A11 lives inside the gated session as
+  the in-loop discipline. The production-deployment shape.
+- PER-ITEM DROP-IN (A8 or A1): when each queue item is itself a
+  creative draft, the per-item sub-agent runs A8 ALIGNMENT LOOP
+  rather than ad-hoc iteration. When a per-item decision needs
+  multi-lens judgement (architecture call, security trade-off),
+  the per-item sub-agent calls A1 PANEL. Per-item upgrades.
+- QUEUE POLICY (B11): the fold-vs-defer call lives at the queue
+  level, not per item. B11 FOLD-BY-DEFAULT is the policy primitive
+  that inverts the recommendation-as-backlog failure mode.
+
+These three axes compose independently. You can have A11 alone
+(interactive runner, manual re-entry, no per-item drafts), A10
+wrapping A11 alone (governed unattended queue, simple terminal
+state per item), or the full nesting above.
 
 ---
 
