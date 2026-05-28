@@ -5,9 +5,12 @@ description: >-
   persona scoping file, scope-attached rule file, orchestrator workflow)
   or when refactoring an existing one. Activate whenever the task asks
   to design, restructure, or critique an agentic module across any
-  agent harness (Claude Code, Copilot, Cursor, OpenCode, Codex). This
-  skill drives an 8-step disciplined design process whose output is
-  mermaid diagrams + an interface sketch + a persisted plan that the
+  agent harness (Claude Code, Copilot, Cursor, OpenCode, Codex), or
+  when the task asks to make a workflow cost-effective, route model
+  calls by capability, design for cache discipline, prune token spend,
+  or pick a model class. This skill drives an 8-step disciplined
+  design process whose output is mermaid diagrams + an interface
+  sketch + a persisted plan (including a cost projection) that the
   calling thread (or a coder persona it loads) then turns into
   natural-language modules. Do not skip to natural-language drafting
   before the design artifacts exist.
@@ -50,7 +53,7 @@ emits the natural-language modules from the artifacts.
 ## Process
 
 ```
-   1 intent + scope
+   1 intent + scope (+ cost stance, optional cap)
         v
    2 component diagram   <-- load assets/mermaid-conventions.md
         v                    load assets/primitives.md
@@ -59,6 +62,11 @@ emits the natural-language modules from the artifacts.
         v                    load assets/refactor-patterns.md
    3 thread / sequence diagram
         v
+ 3.1 tradeoff check       <-- load assets/pattern-tradeoffs.md
+        v                    (only if two patterns fit one slot)
+ 3.2 cost check           <-- load assets/token-economics.md
+        v                    load assets/runtime-affordances/model-catalog.md
+        v                    (mandatory; mirrors 3.1)
  3.5 composition decision  <-- load assets/composition-substrate.md
         v                    (per-box: inline | sibling | external module)
    4 SoC pass against existing modules
@@ -66,7 +74,8 @@ emits the natural-language modules from the artifacts.
    5 classic + PROSE + LLM-physics compliance check
         v
    6 handoff packet (diagrams + interface sketch + declared targets
-                     + module composition table + todos)
+                     + module composition table + cost projection
+                     + todos)
         v             [PERSIST PACKET to plan store; truth #5]
         v                                      [DESIGN ENDS HERE]
    ----- caller / coder thread takes over -----
@@ -79,7 +88,7 @@ emits the natural-language modules from the artifacts.
         v                  RELOAD plan before each module / spawn
    8 validate against diagrams + lint (PROSE 5-axis, size budget,
      ASCII, coherent unit, portability honored, declared external
-     modules wired correctly)
+     modules wired correctly, cost projection honored)
 ```
 
 ### Step 1 - intent + scope
@@ -109,6 +118,16 @@ authority; verify against the live URL):
 - LENGTH CAP <= 1024 characters (canonical spec hard limit per
   `assets/primitives.md` MODULE ENTRYPOINT; silent rejection above
   this).
+
+Also read the operator's COST STANCE for this invocation. Stance
+shapes the SHAPE of the design (which patterns get selected); it
+does NOT cap the size of the design. Values: `frugal` / `balanced`
+(default) / `quality` / `unbounded`. Also read the optional COST
+BUDGET CAP -- a hard ceiling expressed in dollars, total tokens, or
+premium-request count for the workflow's typical run, enforced at
+step 6. The cap is the ONLY place genesis refuses to proceed on
+cost grounds. Read `references/cost-economics-process.md` for
+stance mandates, cap mechanics, and how the operator declares each.
 
 ### Step 2 - component diagram (mermaid)
 
@@ -170,6 +189,27 @@ fits. Cite the matrix and the row in the step 6 handoff packet so
 reviewers can reproduce the choice.
 
 Skip this step if step 3 produced an unambiguous pattern selection.
+
+### Step 3.2 - cost check (mandatory, mirrors 3.1)
+
+Load `assets/token-economics.md` and
+`assets/runtime-affordances/model-catalog.md`. For each module in
+the component diagram, pick:
+- ROLE CLASS (cheapest that meets the capability profile).
+- PREFIX SHAPE (audit for cache invalidators; apply B13 if any).
+- OUTPUT VOLUME band (L in a loop/fan-out = R5 trigger).
+- TOOL SURFACE (apply B15 or S7 if catalog >20 tools).
+- WORKFLOW SHAPE (heterogeneous-cost stages = name A12).
+
+Apply the stance read at step 1 (`frugal`/`balanced`/`quality`/
+`unbounded`). If two cost patterns fit the same slot, cite the
+cost-shape matrix row in `assets/pattern-tradeoffs.md` section
+"10. Cost-shape".
+
+For the full procedure (stance mandates, projection contract,
+gating), load `references/cost-economics-process.md`. Skip step
+3.2 ONLY when stance is `unbounded` AND the operator has
+explicitly declined cost recording.
 
 ### Step 3.5 - composition decision
 
@@ -303,6 +343,18 @@ Produce a single artifact containing:
   - ~20 TRIGGER EVALS for the dispatch description: 8-10 queries
     that should trigger plus 8-10 near-miss queries that should
     NOT, split 60/40 train/val. Validation split is the ship gate.
+- A COST PROJECTION (mandatory unless stance is `unbounded` with
+  explicit opt-out). Contains: per-module qualitative bands (role
+  class, prefix/output bands, turn/cache ratio bands); workflow-
+  level quantitative range (input/output tokens, dollar range
+  per representative run) sourced from the per-harness adapter's
+  date-stamped pricing footnote; three workload scenarios (S =
+  trivial / M = known module / L = repo-wide); cited cost
+  patterns with cost-shape matrix rows; declared stance; cap
+  check (halt if L scenario exceeds declared cap). Bands are the
+  CONTRACT (step 8 validates); ranges are the PREDICTION (operator
+  reads for predictability). Full template in
+  `references/cost-economics-process.md`.
 
 PERSIST THE PACKET. Per truth #5 (plan before execution) and
 substrate concept 6 (PLAN PERSISTENCE), the handoff packet MUST
@@ -429,6 +481,15 @@ better than against prose description.
   - Trigger-eval validation split passes: rate >= 0.5 on
     should-trigger queries AND < 0.5 on near-miss should-not-
     trigger queries.
+- COST CONTRACT GATE (from the step 6 cost projection): each
+  emitted module's role-class binding matches the projection's
+  per-module bands; no emitted module introduces a cache
+  invalidator the projection assumed absent; every pattern cited
+  in the projection's COST PATTERNS list is materialized in at
+  least one emitted module's body; stance-mandated patterns
+  visible (`frugal` -> B12 / B15 / B16 present; `quality` ->
+  planner-class promotions visible); cap still holds. Full gate
+  procedure in `references/cost-economics-process.md`.
 - REAL-TASK REFINEMENT: after structural lint passes, run the
   skill on at least one real task, capture the trace, and revise
   from what actually happened (not what you expected). One-shot
@@ -479,6 +540,12 @@ apply to examples; do not load them eagerly.
   S7 + S4 + A9 verifier hardening, and explicitly rejects A8 /
   B5 / R1 with WHEN-clause grounding -- read this when stake
   pressure tempts you to add new orchestration layers.
+- `examples/06-cost-aware-panel.md` -- cost-shape reference: takes
+  the panel from example 02 and adds an A12 GRADIENT WORKFLOW
+  overlay with B12 MODEL ROUTER, B13 CACHE-AWARE PREFIX, and an
+  R5 COST PRUNE pass. Read this when the operator declares
+  `frugal` stance or when the same panel runs at scale (fan-out
+  width >= 4, daily-or-more cadence).
 
 ## Outputs
 

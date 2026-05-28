@@ -470,6 +470,22 @@ call before depending on it.
   where the loader can see it AND verify reachability with a tool
   call before relying on it (truth #2 CONTEXT EXPLICIT + truth #6
   HARNESSES BRIDGE).
+- CLASS-UNIFORM GRAPH: every module in the design binds the same
+  role class (typically planner). At least one is doing routine
+  implementer or reviewer work. R5 COST PRUNE trigger; apply A12
+  GRADIENT WORKFLOW.
+- INVALIDATOR LEAK: the design's prefix contains at least one
+  cache invalidator (timestamp, mid-session tool catalogue
+  change, mid-session model switch, mid-session effort change).
+  Forces fresh-input billing on every turn; eats the largest cost
+  lever. Apply B13 CACHE-AWARE PREFIX.
+- COST-OPTIMIZED-BY-VIBES: cost projection in the handoff packet
+  names patterns but cites no row from the cost-shape matrix in
+  `pattern-tradeoffs.md`. Reviewers cannot reproduce the choice.
+- HARDCODED MODEL NAMES: design refers to concrete model SKUs
+  ("use Sonnet 4.6") rather than role classes ("use the
+  implementer class"). Models age out within months; per-harness
+  adapters bind at codegen time.
 
 ## Severity rubric for findings
 

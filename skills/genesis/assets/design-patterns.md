@@ -33,6 +33,11 @@ realize them in a specific harness.
     GROUNDING                                          GOAL STEWARD
                                                        HUMAN CHECKPOINT
                                                        FOLD-BY-DEFAULT
+                                                       MODEL ROUTER
+                                                       CACHE-AWARE PREFIX
+                                                       PROMPT THRIFT
+                                                       TOOL SUBSET
+                                                       EFFORT GOVERNOR
 ```
 
 (*) ATTENTION ANCHOR has no classical analog. It is the LLM-physics-
@@ -805,6 +810,211 @@ PLAN MEMENTO: the state table records each follow-up's disposition
 (folded / deferred / where). Pair with A11 RECONCILIATION LOOP:
 B11 is the queue-level policy that makes A11's queue drain rather
 than grow.
+
+---
+
+## B12. MODEL ROUTER
+
+CLASSICAL ANALOG: Strategy pattern (GoF) -- select algorithm at
+runtime; Content-Based Router (Hohpe & Woolf, _Enterprise
+Integration Patterns_, Addison-Wesley 2003).
+
+WHEN: a workflow has heterogeneous sub-tasks where one role class
+(see `runtime-affordances/model-catalog.md`) clearly fits some
+sub-tasks and a different role class clearly fits others. Default
+case: a cheap trivial-class classifier in front of a planner/
+implementer/reviewer fan-out so the expensive class only runs on
+work that actually needs it.
+
+MECHANISM: declare role class per module (not per concrete model)
+at design time. Place a router step (typically trivial-class) that
+inspects each incoming item and decides which downstream role
+class handles it. The router's output is a routing decision, not
+the answer. The per-harness adapter binds role class to concrete
+model name at codegen time.
+
+The router itself MUST be lightweight: planner-class routers eat
+the savings. The typical break-even is a router that costs less
+than 5% of the most expensive downstream call.
+
+ANTI-PATTERNS:
+- HARDCODED MODEL NAMES in the design. Models age out; the
+  catalogue should reference role classes only. (Concrete names
+  live in per-harness adapters with date stamps.)
+- ROUTER-AS-PLANNER. The router started as a classifier and grew
+  into a small planner; it now eats the savings of routing. Split
+  back into a classifier (trivial) and a downstream planner if
+  planning is genuinely needed.
+- ROUTING ON DATA SIZE ONLY. Token count is a weak proxy for
+  capability need. Route on the work's CAPABILITY PROFILE (does
+  this need a planner? a long-context retriever? a trivial
+  classifier?), not just length.
+- MID-SESSION MODEL SWITCH inside the SAME thread without naming
+  it as a cache invalidator. Provider caches partition by model;
+  switching mid-session bills the next turn at fresh-input rates.
+
+---
+
+## B13. CACHE-AWARE PREFIX
+
+CLASSICAL ANALOG: Cache-Aside / Read-Through cache; Append-Only
+Log (write-once history that downstream readers cache).
+
+WHEN: any workflow that runs more than two turns OR loads a
+sizeable persona / skill body / rule file / project corpus into
+its prefix. Cache-aware prefix design IS the single largest cost
+lever on modern providers (provider-cached read tokens are
+typically billed at 10% of fresh-input rate).
+
+MECHANISM: structure the prompt so the STABLE bytes precede the
+VARIABLE bytes. Place provider cache breakpoints (see
+`assets/token-economics.md` concepts 4-5) so the largest stable
+region sits below the lowest breakpoint and is reused across the
+entire session.
+
+Audit, at design time, for cache invalidators:
+- TIMESTAMPS in the system prompt or persona body.
+- TOOL CATALOGUE that grows mid-session (MCP server additions).
+- MODEL SWITCH within a session (B12 + B13 interact: route at
+  the START of the work, not mid-flight).
+- EFFORT/THINKING-BUDGET change mid-session.
+- EDITS to project rule files mid-session.
+- COMPACTION (the harness rewrites the prefix; cache misses).
+
+ANTI-PATTERNS:
+- TIMESTAMPED PERSONA -- the persona body includes "current
+  date: ..." and invalidates on every new day's first turn.
+  Move dynamic facts to the variable suffix or a tool call.
+- TOOL CATALOGUE BLOAT then prune mid-session -- adds tools to
+  the prefix on every turn or removes them at turn N. Either
+  decide the tool set up front, or use B14 TOOL SUBSET.
+- IGNORED COMPACTION SIGNAL -- the design assumes the prefix
+  is stable but the harness compacts on its own schedule. Honor
+  ATTENTION ANCHOR (B8) and PLAN MEMENTO (B4) so the next turn
+  can re-derive state cheaply if compaction breaks the cache.
+
+---
+
+## B14. PROMPT THRIFT
+
+CLASSICAL ANALOG: Strunk & White "omit needless words"; Code
+minification with semantic preservation.
+
+WHEN: a primitive's body has been drafted to be PROSE-COMPLETE
+and now needs to be shipped at scale. Or a long-running session
+shows a clear pattern of recurring prefix bloat (verbose persona,
+redundant examples, multi-paragraph rationale where two lines
+suffice).
+
+MECHANISM: at the validation step (step 8), apply a pass that
+preserves SEMANTIC payload while reducing TOKEN payload:
+- Replace prose enumerations with tables where structure permits.
+- Replace "if/then/else" prose with rule lists.
+- Cut polite scaffolding ("In this section we will explore...")
+  with no semantic content.
+- Inline rare conditionals; load-trigger them only if they grow.
+- Where an example is one of many similar shapes, keep the
+  shortest and link to a `references/<topic>.md` for the rest.
+
+The pass MUST preserve test outcomes: re-run the content evals
+after thrift. If the value delta from step 6 narrows, revert.
+
+ANTI-PATTERNS:
+- AGGRESSIVE THRIFT -- compression past the point where the
+  prose still teaches; the persona becomes pattern-match-only
+  instructions that fail under task drift.
+- THRIFT WITHOUT EVALS -- compression that visibly preserves
+  semantics under reading but breaks the model's behavior; the
+  model's reading was thinner than the human's reading. Always
+  re-run the content evals.
+- THRIFT IN PLACE OF DESIGN -- shrinking a primitive that should
+  have been R1 SPLIT. The body shrinks but its single
+  responsibility is still violated; the thrift just hides it.
+
+---
+
+## B15. TOOL SUBSET
+
+CLASSICAL ANALOG: Interface Segregation Principle (Robert C.
+Martin, _Agile Software Development_, Prentice Hall 2002);
+Facade pattern (GoF) over a wide API surface.
+
+WHEN: the primitive runs against a tool surface with more tools
+than this primitive actually uses (typical of harnesses with
+many MCP servers loaded). Every tool definition consumes prefix
+tokens AND distracts the model on tool-choice turns (longer
+tool list -> more wrong tool calls -> more turns).
+
+MECHANISM: declare, at the primitive's distribution surface,
+the SUBSET of available tools this primitive expects. The
+runtime is responsible for presenting only that subset to the
+model during this primitive's invocation. Two general approaches
+(both substrate-level, both portable):
+
+- ALLOWLIST: name the tools this primitive may call.
+- CAPABILITY GROUP: name a labeled capability (e.g. "git",
+  "github-api"); the runtime expands to the tools in that
+  group.
+
+When the underlying primitive operation is a sequence of
+deterministic steps that could ALL run in one tool call, prefer
+S7 DETERMINISTIC TOOL BRIDGE: ship a single CLI / script / API
+endpoint that does the work, and present ONE tool instead of
+many. This is the strongest form of tool subset and the largest
+cost saver (the model emits one tool-call turn, not N).
+
+ANTI-PATTERNS:
+- IMPLICIT FULL SURFACE -- the primitive does not declare a
+  subset and inherits the harness's full tool catalogue every
+  turn. Cost grows with every new MCP server the operator
+  installs.
+- LEAKY SUBSET -- the primitive declares a subset but its body
+  prose names other tools, leading the model to try to call
+  unavailable tools and retry. Subset + body must match.
+- SUBSET CHURN MID-SESSION -- adding or removing tools across
+  turns. Each change is a CACHE INVALIDATOR (B13). Decide the
+  subset at primitive entry and hold it.
+
+---
+
+## B16. EFFORT GOVERNOR
+
+CLASSICAL ANALOG: Quality-of-Service throttle; thread priority
+class; budget annealing in optimization.
+
+WHEN: the harness exposes a reasoning-effort or thinking-budget
+knob (Anthropic extended thinking; OpenAI reasoning effort;
+similar on other providers). Without a governor, the model
+defaults to the harness's default effort regardless of the
+task's actual difficulty -- often paying for thinking on
+trivial classification, or starving long-horizon planning of
+budget.
+
+MECHANISM: at the primitive's design surface, declare the
+expected effort level per role class:
+- trivial role class -> minimum or none.
+- implementer role class -> low to medium.
+- planner role class -> medium to maximum, depending on the
+  decision's blast radius.
+- reviewer role class -> low (the rubric does the heavy lifting).
+
+The per-harness adapter binds the abstract level to the
+provider's concrete knob (e.g. `reasoning_effort=low`,
+`thinking_budget_tokens=4096`). The architect declares INTENT,
+not knob values.
+
+ANTI-PATTERNS:
+- MAX-EFFORT EVERYWHERE -- the design declares maximum effort
+  for every step because "more thinking is better". Thinking
+  tokens bill at output rates and dominate spend. Reserve max
+  effort for the steps whose failure mode is "wrong plan", not
+  for the steps whose failure mode is "minor edit miss".
+- EFFORT-AS-QUALITY-PROXY -- raising effort to mask a missing
+  C6 EXTERNAL CORPUS GROUNDING or a missing S4 VALIDATION
+  DECORATOR. Effort buys thinking, not facts and not gates.
+- MID-SESSION EFFORT CHANGE -- some providers partition cache
+  by effort level. Changing mid-session is a CACHE INVALIDATOR
+  (see B13).
 
 ---
 

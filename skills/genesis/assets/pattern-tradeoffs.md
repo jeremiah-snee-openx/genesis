@@ -267,3 +267,46 @@ Cite this matrix in the handoff packet's per-step annotation. Each
 step labelled "tool" must name the substrate (CLI / script / MCP /
 API). Each step labelled "LLM" must name what kind of judgement it
 performs.
+
+---
+
+## 10. Cost-shape (workflow shape -> dominant cost bucket -> cost patterns)
+
+Cuts the choice between cost-shaping patterns. Load this when step
+3.2 (cost check) flags one of the cost-shape symptoms named in R5
+COST PRUNE, or when two cost patterns plausibly fit and you need to
+pick the one that targets the dominant bucket.
+
+The matrix decomposes total spend into the bucket that drives it,
+then names the smallest pattern that targets that bucket. Avoids
+the common failure mode of stacking three cost patterns when one
+targeted pattern would do.
+
+| Workflow shape                                    | Dominant cost bucket              | Cost amplifier              | Smallest applicable cost pattern   |
+|---------------------------------------------------|------------------------------------|------------------------------|-------------------------------------|
+| Single-turn classification or extraction          | Per-call rate                      | Wrong role class            | B12 MODEL ROUTER (route to trivial) |
+| Long-running session, mostly read-only            | Input prefix re-billed each turn   | Cache invalidator           | B13 CACHE-AWARE PREFIX              |
+| Fan-out across N similar items                    | Output bytes x N                   | Heavy role class on workers | A12 GRADIENT WORKFLOW (mid = impl.) |
+| Multi-step plan against large corpus              | Input prefix size                  | Full corpus per turn        | C6 EXTERNAL CORPUS GROUNDING + B13  |
+| Heterogeneous tool surface (>20 tools)            | Tool catalogue in prefix           | All tools every turn        | B15 TOOL SUBSET (or S7 bridge)      |
+| Long synthesis output (>3K output tokens)         | Output tokens                      | Output tax                  | R1 SPLIT producer step; or S7       |
+| Recurring "thinking" turns on routine work        | Reasoning tokens at output rate    | Effort-everywhere default   | B16 EFFORT GOVERNOR                 |
+| Verbose persona / asset body                      | Prefix bytes                       | Prose bloat                 | B14 PROMPT THRIFT                   |
+| Quality-uniform graph, mostly routine modules     | Per-call rate x graph size         | Uniform planner class       | A12 GRADIENT WORKFLOW + R5 prune    |
+
+Selection rule (read top-down; first match wins):
+
+1. The trace shows ONE dominant bucket above 60% of total spend
+   -> apply the row's pattern; do not stack.
+2. The trace shows TWO buckets roughly equal -> apply the row of
+   the input-side bucket first (prefix / catalogue / role class),
+   re-measure, then decide on the output-side bucket. Input-side
+   patterns often shrink the output-side bucket too (smaller
+   prefix -> better attention -> shorter outputs).
+3. No trace yet -> design step is BEFORE first run; pick the
+   pattern matching the shape's PREDICTED dominant bucket (use
+   the qualitative bands in `assets/token-economics.md`).
+
+Cite this matrix in the handoff packet's COST PROJECTION section.
+A cost projection that names no matrix row is anti-pattern
+COST-OPTIMIZED-BY-VIBES.

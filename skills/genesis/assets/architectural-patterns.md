@@ -28,6 +28,7 @@ rediscovering its failure modes the hard way.
 | SUPERVISED EXECUTION  | Plan-Execute-Verify (controller) | B4 + S7 + S4 + (optional) B10            |
 | GOVERNED OUTER LOOP   | CI/CD + capability-bounded service account | A6 + strong-form A9 + sandbox + audit |
 | RECONCILIATION LOOP   | k8s Operator + SRE control loop | B1 per item + B4 state table + B11 + S4 stop-predicate + C2 + C4 + bounded retry |
+| GRADIENT WORKFLOW     | Tiered Architecture; workshop model | B12 + B16 + B13 + (A2 or A3 or A1) + B4   |
 
 ---
 
@@ -817,6 +818,111 @@ ordering, that is A11. When the work is also event-triggered
 with audit + capability-gating requirements, A10 GOVERNED OUTER
 LOOP is the wrapping pattern and A11 may live inside the gated
 session as the in-loop discipline.
+
+---
+
+## A12. GRADIENT WORKFLOW (cost-shape topology)
+
+CLASSICAL ANALOG: Tiered Architecture (Fowler, _Patterns of
+Enterprise Application Architecture_, Addison-Wesley 2002 --
+expensive computation at the top, cheaper presentation at the
+edges); the workshop model in industrial production (one master
+craftsman, several journeymen, many apprentices).
+
+A12 is the architectural shape that makes B12 MODEL ROUTER and
+B16 EFFORT GOVERNOR pay off at scale. Instead of running every
+stage of a workflow on the same role class, gradient workflow
+declares an explicit COST GRADIENT across stages: heavy at the
+front (planning, scoping), middle on the bulk (per-item
+execution), light at the back (verification, triage,
+reconciliation).
+
+COMPOSES:
+- B12 MODEL ROUTER for the per-stage role-class binding.
+- B16 EFFORT GOVERNOR for the per-stage effort declaration.
+- B13 CACHE-AWARE PREFIX so each stage's prefix is stable across
+  its repeated calls (especially the middle and back, which run
+  many times).
+- One Tier-3 backbone (typically A2 STAFFED PLAN, A3 PIPELINE,
+  or A1 PANEL). Gradient workflow is a COST OVERLAY on these,
+  not a replacement.
+- B4 PLAN MEMENTO between stages (state persists; each stage
+  reads from the table, does not assume context from the
+  previous stage).
+
+WHEN:
+- The work decomposes into stages with clearly different
+  capability requirements.
+- One or more stages will run MANY times (per-item fan-out,
+  per-stage loop). The cost-per-call delta between role classes
+  compounds.
+- The expensive role class is genuinely needed for ONE stage
+  (typically planning or final synthesis) but not the rest.
+
+CANONICAL SHAPE:
+
+```mermaid
+flowchart TB
+    Front[FRONT planner role<br/>plan or scope]
+    Mid1[MID implementer role<br/>per-item]
+    Mid2[MID implementer role<br/>per-item]
+    MidN[MID implementer role<br/>per-item]
+    Back[BACK reviewer role<br/>verify or triage]
+    Plan[(B4 PLAN MEMENTO<br/>state table)]
+
+    Front --> Plan
+    Plan --> Mid1
+    Plan --> Mid2
+    Plan --> MidN
+    Mid1 --> Plan
+    Mid2 --> Plan
+    MidN --> Plan
+    Plan --> Back
+
+    classDef heavy fill:#ffd6d6,stroke:#a02828
+    classDef mid fill:#fff4d6,stroke:#a07b00
+    classDef light fill:#d6f4dd,stroke:#2a8842
+    class Front heavy
+    class Mid1,Mid2,MidN mid
+    class Back light
+```
+
+The fan width (number of MID workers) determines the savings
+ratio. With 1 planner-call + N implementer-calls + 1 reviewer-
+call, switching the N from planner-class to implementer-class
+saves roughly (planner_rate - implementer_rate) * N output
+budget. Past N=4 the savings dominate the planner cost; below
+N=2 the saving is marginal and gradient workflow is overkill.
+
+DISCRIMINATOR vs A2 STAFFED PLAN: STAFFED PLAN names HOW THE
+WORK IS STAFFED (one planner thread, N worker threads with
+persistent plan). GRADIENT WORKFLOW names WHAT EACH STAFFED
+SLOT COSTS. They compose: a STAFFED PLAN that places a planner-
+class model on the planning thread and implementer-class on the
+worker threads IS a gradient workflow.
+
+DISCRIMINATOR vs A1 PANEL: PANEL names a multi-LENS structure
+(different personas). GRADIENT names a multi-COST structure
+(different role classes). A panel where every lens is implementer-
+class is not a gradient workflow. A panel where one synthesizer
+is planner-class and the lenses are implementer-class IS a
+gradient workflow.
+
+ANTI-PATTERNS:
+- FLAT WORKFLOW with a heavy class on every stage. Common when
+  the architect designs "for quality" and never re-examines
+  per-stage capability need. Apply R5 COST PRUNE.
+- INVERTED GRADIENT -- cheap class up front (planning), heavy
+  class on the bulk (execution). The plan misjudges effort and
+  the heavy class re-does the planner's work mid-execution.
+- BUDGET-DRIVEN PROMOTION -- promoting a back-stage role class
+  to implementer-class because "the cheap class missed an edge
+  case once". Add S4 VALIDATION DECORATOR instead; do not
+  flatten the gradient to mask a missing gate.
+- GRADIENT WITHOUT CACHE DISCIPLINE -- the MID stage runs N
+  times but its prefix changes per item (no B13). Every call
+  pays full input rate; the gradient savings on output are
+  partly eaten by uncached input.
 
 ---
 
