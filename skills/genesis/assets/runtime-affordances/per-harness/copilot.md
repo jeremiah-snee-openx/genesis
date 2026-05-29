@@ -256,11 +256,17 @@ binding.
     'explore')` subagent runs it at TRIVIAL class instead. The
     architect's lever is BOTH the primitive type choice AND the
     `model:` field.
-  - Explicit `model:` matching the harness default is CEREMONY,
-    not B12 firing. See B12 ANTI-PATTERN: CEREMONIAL BINDING.
-    Reserve explicit binding for cases where it changes the
-    bound role class (bind-up for stakes, bind-down for economy,
-    portability across adapters, or operator economic bias).
+  - Explicit `model:` matching the harness default is
+    PREDICTABILITY DISCIPLINE, NOT ceremony. See the §B12
+    SELECTION RULE rule 3 (DEFAULT == REQUIRED case). Reasons to
+    bind explicitly even when it matches the default:
+    PORTABILITY (the same `.agent.md` may run on a harness with
+    a different default), PREDICTABILITY (the operator can see
+    the bound class without consulting the adapter table), AUDIT
+    TRAIL (the design's cost shape is readable end-to-end without
+    cross-references). The actual anti-pattern is BIND-UP-WITHOUT-
+    JUSTIFICATION -- binding to a HIGHER role class than the
+    work requires without citing the STAKES.
   - Session-level fallback: configure model preference per CLI
     session or per workflow if NO per-agent override is set. Mid-
     session switch is supported but partitions the Copilot cache

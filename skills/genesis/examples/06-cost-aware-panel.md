@@ -148,20 +148,24 @@ claude-code.md` model catalog):
 PROVENANCE WARNING. The numbers above are arithmetic projections
 against the Anthropic API direct-billing model (the reference shape
 this example was derived from). They are NOT measured. PR #12's
-empirical A/B on Copilot CLI (Cell D v0.1 baseline vs Cell E
-v0.3.1) measured the OPPOSITE direction for the same review-panel
-shape: v0.3.1 cost +25% vs v0.1 because the architect bound the
-5-lens fan-out at IMPLEMENTER class explicitly when the Copilot
-CLI default for `task(agent_type='explore')` subagents is already
-TRIVIAL class (Haiku). On Copilot CLI, the cheapest correct
-implementation of this PANEL is `task(agent_type='explore')` per
-lens with NO `model:` declared anywhere -- the harness default IS
-the trivial-class binding. Re-read `per-harness/copilot.md`
-section "Default role class per primitive type" before applying
-this example on Copilot CLI; the dollar figures shown here apply
-ONLY when the bound architecture is a `.agent.md` fan-out (where
-the default would otherwise be the session model, typically
-implementer or higher).
+empirical A/B on Copilot CLI (Cell D v0.1 baseline through Cell G
+v0.3.2.1) measured the cost-shape WIN to materialize when the
+architect picks the cheapest role class per element AND BINDS IT
+EXPLICITLY (per the §B12 SELECTION RULE rule 3 in
+`assets/design-patterns.md`). The earlier Cell E v0.3.1 +25% cost
+delta vs v0.1 came from BIND-UP-WITHOUT-JUSTIFICATION (binding the
+5-lens fan-out at IMPLEMENTER class when REVIEWER or TRIVIAL would
+meet the role-class need), NOT from "binding model: at all". Cells F
+and G recovered the win by binding DOWN to the right class
+explicitly. On Copilot CLI specifically, `task(agent_type='explore')`
+happens to default to claude-haiku-4.5 today; relying on that
+default is fragile (changes per harness version, not portable to
+other harnesses), so the architect SHOULD declare
+`model: claude-haiku-4.5` on every trivial-class lens even on
+Copilot CLI -- predictability across runs, portability across
+harnesses, audit-trail readable end-to-end. Re-read
+`per-harness/copilot.md` section "Default role class per primitive
+type" to right-size the explicit binding, not to justify omission.
 
 Arithmetic (per `claude-code.md` Section 9, verified 2025-11-14): Opus
 $15/Mtok input, $75/Mtok output. Cost-unconscious row = 30K x $15/M +

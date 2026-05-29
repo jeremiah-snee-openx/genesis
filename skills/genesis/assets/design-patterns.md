@@ -854,35 +854,59 @@ this rule decides whether to bind at all):
    implementer / reviewer / trivial / safety) per the rubric in
    `model-catalog.md`.
 
-3. Decide binding action:
-   - DEFAULT == REQUIRED  -> OMIT `model:`. Trust the harness
-     default. This is the correct, cheap answer. Adding an
-     explicit `model:` that matches the default is CEREMONY,
-     not B12 firing -- it produces no cost or quality delta
-     and inflates the design surface.
+3. Decide binding action. The default is BIND EXPLICITLY -- it
+   gives PREDICTABILITY, PORTABILITY, and AUDIT TRAIL. OMIT is
+   the exception, not the rule.
+
    - DEFAULT < REQUIRED   -> BIND UP for STAKES. Declare the
      higher role class explicitly. Cost increase is justified
-     by the quality requirement.
+     by the quality requirement. Cite the stakes in the handoff.
+   - DEFAULT == REQUIRED  -> BIND EXPLICITLY at the matching
+     role class. Two reasons this is the right move even though
+     the cost is identical to OMIT:
+       (a) PORTABILITY -- the same design will route differently
+       on harnesses where defaults diverge; explicit binding
+       insulates the design from default drift.
+       (b) PREDICTABILITY -- the operator can read off "this lens
+       will run at trivial class" from the design alone, without
+       cross-referencing the harness adapter's default table.
+       Profiling and capacity planning become possible at design
+       time, not after the first run.
+     OMIT is only acceptable when (i) the primitive type CANNOT
+     carry `model:` on the target harness (e.g. SKILL.md on
+     Copilot CLI inherits session default by spec; see WRONG-
+     PRIMITIVE BINDING anti-pattern), or (ii) the skill is
+     declared single-harness AND has no audit / portability
+     requirements AND the operator accepts default drift as a
+     known risk.
    - DEFAULT > REQUIRED   -> BIND DOWN for ECONOMY. Declare the
      cheaper role class explicitly. Cost reduction IS the
-     benefit. This is the second core B12 use case (the first
-     being binding-up classifiers in front of expensive workers).
+     benefit. This is the most common B12 use case in practice
+     (because reviewer/planner-class session defaults are
+     common while most fan-out work is trivial-class).
    - PORTABILITY required across harnesses with different
      defaults -> BIND explicitly so the choice survives
      adapter swap.
    - OPERATOR ECONOMIC BIAS = MAX_QUALITY -> tolerate more
-     binding-up; MAX_ECONOMY -> prefer binding-down and accept
-     quality risk on non-critical elements; BALANCED (default)
-     -> apply rule 3 as stated.
+     binding-up where role-class need is uncertain; MAX_ECONOMY
+     -> bind down aggressively where the failure mode is
+     tolerable; BALANCED (default) -> bind to the CHEAPEST role
+     class that meets the cited requirement.
 
-CONSEQUENCE: a B12 design that touches N agentic elements may
-legitimately produce explicit `model:` on ZERO of them (every
-element fits the harness default for its primitive type), on a
-SUBSET (only the elements whose required class differs from the
-default), or on ALL (rare; usually a portability or maximum-
-economy stance). All three are valid B12 firings. The metric is
-"did we pick the cheapest role class that meets each element's
-required class," NOT "did we populate `model:` everywhere."
+CONSEQUENCE: in a well-designed B12 application, MOST agentic
+elements carry an explicit `model:` (because PREDICTABILITY and
+PORTABILITY are default goals). The proportion of OMIT vs BIND
+is NOT the metric. The metric is "did we pick the cheapest role
+class that meets each element's required class, AND did we cite
+the rationale so a reviewer can audit it?" Two pathological
+shapes to avoid: (a) ZERO explicit bindings (the design depends
+on harness defaults; if defaults change the cost shifts silently
+and the operator has no contract); (b) ALL bindings AT or ABOVE
+session default (binding up everywhere, which is just
+BIND-UP-WITHOUT-JUSTIFICATION dressed as discipline; see anti-
+pattern below). Healthy shape: most elements bound DOWN from
+session default to the cheapest role class that meets need, a
+few bound UP only where cited STAKES require it.
 
 ANTI-PATTERNS:
 - HARDCODED MODEL NAMES in the design. Models age out; the
@@ -912,21 +936,36 @@ ANTI-PATTERNS:
   confirm WHICH primitive type carries the `model:` field on the
   target harness; restructure the unit of work to use that
   primitive type if it is currently held by another.
-- CEREMONIAL BINDING -- declaring `model:` on every agentic
-  element when most of them already match the harness default
-  for their primitive type. The architect believes "explicit
-  bindings make B12 firing intentional and future-proof"; in
-  practice they only enlarge the design surface and PREVENT the
-  reader from spotting the genuine cross-class bindings. PR #12's
-  empirical A/B (Cell E v0.3.1, 7 of 8 elements bound explicitly,
-  6 to session default) measured zero cost benefit from the 6
-  ceremonial bindings and a +25% TOTAL run cost vs the v0.1
-  baseline (Cell D) because the architect also bound the lens
-  fan-out off the harness's cheap subagent default. Cure: apply
-  the SELECTION RULE above; bind explicitly only when default !=
-  required, or portability requires it, or economic bias declares
-  it. Default-by-omission for matching classes is correct, not
-  a regression.
+- BIND-UP-WITHOUT-JUSTIFICATION -- declaring `model:` at a HIGHER
+  role class than the work requires, without citing a STAKES
+  reason. The architect believes "more capable model = safer
+  design"; in practice this is just paying more for capability
+  that the work cannot use. PR #12's empirical A/B (Cell E v0.3.1)
+  measured this directly: 4 lens agents bound to reviewer-class
+  (claude-sonnet-4.6) when the lens work was trivial-class
+  (single-pass checklist grading over a finite diff window with
+  no cross-file reasoning). Result: +25% TOTAL run cost vs the
+  v0.1 baseline with ZERO quality delta on the bound lenses (the
+  two extra CRITICALs Cell E caught came from a Sonnet binding on
+  the security lens, which IS reviewer-class work where bind-up
+  IS justified). Cure: cite the role-class requirement explicitly
+  in the handoff packet. Every BIND-UP must name the STAKES
+  (security-critical, irreversible side effect, cross-file
+  reasoning required, multi-step planning required). If the
+  cite is "to be safe" or "in case it's hard," it's bind-up
+  without justification and should be demoted.
+- CEREMONIAL BINDING (NARROWER definition) -- declaring `model:`
+  in a way that documents intent THOUGH it matches the harness
+  default IS NOT this anti-pattern; that is PREDICTABILITY
+  DISCIPLINE (see SELECTION RULE rule 3, DEFAULT == REQUIRED
+  case). The actual ceremony to avoid is COPY-PASTING a model
+  binding across many primitives WITHOUT picking it per role
+  class -- e.g. setting the same `model: claude-sonnet-4.6` on
+  every `.agent.md` in a design as a template default. Each
+  binding must be PER-ELEMENT and PER-ROLE-CLASS, with the
+  cite for that element specifically. Bulk identical bindings
+  are a smell that the architect did not actually distinguish
+  the role classes.
 
 ---
 
