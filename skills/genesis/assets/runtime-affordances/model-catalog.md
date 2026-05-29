@@ -11,6 +11,9 @@ Load this file when:
   (B11 MODEL ROUTER, B15 EFFORT GOVERNOR).
 - A pattern entry in `architectural-patterns.md` composes roles
   across stages (A10 GRADIENT WORKFLOW).
+- A Haiku / Sonnet / Opus coding or autonomous-loop boundary needs
+  dated empirical evidence; then also read
+  `references/benchmark-grounding.md`.
 
 The architect designs in role classes. The coder thread, at step
 7b, loads the per-harness adapter to resolve role class to concrete
@@ -189,7 +192,9 @@ meeting capability profile; promoted only on cited STAKES.
 See `design-patterns.md` §B12 SELECTION RULE for the canonical
 rule and `design-patterns.md` WRONG-PRIMITIVE BINDING for the
 binding-site requirement (adapters MUST name the per-element
-binding site; absence breaks B12).
+binding site; absence breaks B12). If a Haiku / Sonnet / Opus coding
+or autonomous-loop boundary is contested, cite
+`references/benchmark-grounding.md` (verified 2026-05-29).
 
 ---
 
