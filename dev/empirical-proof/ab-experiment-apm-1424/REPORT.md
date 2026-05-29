@@ -149,9 +149,38 @@ Less than the auditor's projected −720 to −930 ceiling. Higher-risk consolid
 
 ---
 
+## Multi-scenario probe: different-skill architect (release-notes-generator)
+
+To validate that the v0.3.4 PER-LENS discipline produces *differentiated* bindings when the capability profile is heterogeneous (and not just uniform bindings dressed up as "enumerated"), a side-channel architect run was dispatched on a deliberately different skill type: a release-notes-generator (A2 PIPELINE backbone, 50-commit input, mixed feature / breaking / bug-fix sub-tasks).
+
+**Same Opus 4.7 architect persona, same v0.3.4 corpus, different problem shape.**
+
+| Element | CAPABILITY PROFILE (cross-file? STAKES? multi-step?) | REQUIRED class | Bound model |
+|---|---|---|---|
+| E0 orchestrator (SKILL.md) | yes / medium / yes | IMPLEMENTER | session sonnet-4.6 (OMIT — SKILL.md cannot carry `model:`) |
+| E1 commit classifier | no / no / no | **TRIVIAL** | claude-haiku-4.5 |
+| E2 feature prose writer (×10) | yes / yes / partial | **IMPLEMENTER** | claude-sonnet-4.6 |
+| E3 breaking-change prose writer (×5) | yes / **high** / yes | **REVIEWER** | claude-sonnet-4.6 + reviewer persona |
+| E4 bug-fix one-liner writer (×30, batched) | no / no / no | **TRIVIAL** | claude-haiku-4.5 |
+| E5 consistency / style pass | doc-wide / **high** / yes | **REVIEWER** | claude-sonnet-4.6 + reviewer persona |
+
+**Role-class distribution: DIFFERENTIATED.** Three role classes used (TRIVIAL, IMPLEMENTER, REVIEWER), two elements each. PLANNER deliberately NOT invoked (cure for HEAVY ADJUDICATOR honoured).
+
+**Why this matters for the PR-review panel's all-TRIVIAL result:** the PR-review panel landed uniform because every lens genuinely answered `(no, no, no)` on the enumeration — single-pass checklist grading over a finite diff window, no cross-file reasoning, no STAKES-weighted output, no multi-step proof. Uniformity was a *consequence* of legitimate per-lens enumeration, not a rubber-stamp. The release-notes-generator did NOT land uniform precisely because its sub-tasks have *genuinely different* profiles along the enumerated axes — E3+E5 carry STAKES (migration pain, ship-gate quality), E2 carries audience-aware composition, E1+E4 are pattern-matching.
+
+**The architect explicitly flagged the BIND-UP risk on E4:** "wrongly slap-binding [30 bug-fix one-liners] to sonnet under 'release-notes is user-facing' would be BIND-UP-WITHOUT-JUSTIFICATION and would inflate the per-run cost by roughly 30 premium requests in the fan-out variant." That sentence is the v0.3.4 corpus discipline working in the wild: the architect names the anti-pattern by name and uses the enumeration to refute it.
+
+**Predicted executor cost (L scenario, 50 commits): ~$0.18-0.25 per run** with batched bug-fix bucket (~22-23 premium requests). A12 GRADIENT savings vs hypothetical flat-sonnet: ~29 premium requests / run.
+
+Full architect handoff packet: `/tmp/scenario-release-notes/plan.md`.
+
+**Conclusion:** the PER-LENS discipline produces different outputs for different problem shapes — *because the answers to the enumeration questions are different*, not because the architect made a different aesthetic choice. The PR-review panel's uniform Haiku binding is *not* rubber-stamping; it is the discipline working correctly on uniform inputs.
+
+---
+
 ## What this PR does NOT prove (deferred to follow-up PRs)
 
-- **Multi-scenario variance.** The A/B targeted one PR (microsoft/apm#1424, +2363/-114). Cost shape may differ on small bug-fix PRs (<100 LOC), large refactor PRs, or non-code-review skills entirely. A scenario matrix (S1-S5 × {v0.2, v0.3+}) is deferred to a follow-up empirical PR. *Note: small-PR and different-skill-architect probes were dispatched as part of this PR's preparation but did not return data in time for inclusion; raw artifacts retained for follow-up.*
+- **Multi-scenario variance on COST (not just architecture).** The architect-side multi-scenario probe above shows the v0.3.4 discipline produces *differentiated* bindings on a different skill type. A *measured executor run* of the release-notes-generator (or other skills: small bug-fix PR review, large refactor PR review) is deferred to a follow-up empirical PR. *Note: a small-PR executor probe (microsoft/apm#1541) was dispatched as part of this PR's preparation and its data will land in a follow-up if it completes after merge.*
 - **Cross-harness portability.** Probe data is Copilot-CLI only. Claude Code, OpenCode, Codex, Cursor defaults are not measured. The v0.3.3 "bind explicitly for portability" framing rests on first principles + the corpus's per-harness adapter table, not on a multi-harness empirical run.
 - **B14 / B15 / B16 isolated ablations.** Per-technique attribution above isolates B12, A12, and B13 from the existing 4-cell data. Isolating PROMPT THRIFT (B14), TOOL SUBSET (B15), and EFFORT GOVERNOR (B16) requires controlled toggle-one-at-a-time runs; deferred.
 - **PER-LENS DIFFERENTIATION on a verdict-emitting (high-STAKES) skill.** The new corpus discipline was authored from first principles + the existing pattern catalogue. An empirical run on a verdict-emitting PR-review skill (where security + test-coverage SHOULD bind UP to REVIEWER class) would validate that the differentiation moves the cost shape in the predicted direction. Deferred.
