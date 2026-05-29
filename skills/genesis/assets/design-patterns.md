@@ -851,8 +851,8 @@ this rule decides whether to bind at all):
    binding direction.
 
 2. Identify the REQUIRED role class for this work (planner /
-   implementer / reviewer / trivial / safety) per the rubric in
-   `model-catalog.md`.
+   researcher / implementer / reviewer / trivial / long-context-
+   retriever / safety) per the rubric in `model-catalog.md`.
 
 3. Decide binding action. The default is BIND EXPLICITLY -- it
    gives PREDICTABILITY, PORTABILITY, and AUDIT TRAIL. OMIT is
@@ -1118,10 +1118,16 @@ budget.
 MECHANISM: at the primitive's design surface, declare the
 expected effort level per role class:
 - trivial role class -> minimum or none.
-- implementer role class -> low to medium.
-- planner role class -> medium to maximum, depending on the
-  decision's blast radius.
 - reviewer role class -> low (the rubric does the heavy lifting).
+- implementer role class -> low to medium.
+- long-context-retriever role class -> low (retrieval, not
+  reasoning).
+- planner role class -> medium to high, depending on the
+  decision's blast radius.
+- researcher role class -> high to xhigh. Researcher's defining
+  capability IS open-ended reasoning; effort suppression defeats
+  the binding. Reserve for the narrow trigger where the work
+  genuinely lacks a rubric and lacks a plan.
 
 The per-harness adapter binds the abstract level to the
 provider's concrete knob (e.g. `reasoning_effort=low`,
