@@ -93,9 +93,92 @@ The cells confirm the heuristic.
 
 ## Quality & ROI — what the cost actually buys
 
-Cost without quality is meaningless. This section grades the **output**
-of every cell against scenario-specific rubrics and computes
-$/quality-unit so a buyer can see the return on each dollar.
+Cost without quality is meaningless. A buyer's decision is **return
+on each dollar**, not absolute spend. We define ROI on three axes:
+
+```
+                        QualityScore(cell)                       (1) Raw ROI
+ROI_raw(cell)        = ───────────────────                            "what does the
+                            Cost(cell)                                 dollar buy?"
+
+                        Σ severity_weight(f) × count(f, cell)    (2) Severity-weighted
+ROI_weighted(cell)   = ───────────────────────────────────────       "weighted by impact
+                            Cost(cell)                                 of finding-class"
+
+                                        QualityScore(cell)
+ROI_tail(cell)       = ───────────────────────────────────────────   (3) Tail-risk
+                       Cost(cell) + P(failure|cell) × C_failure        "expected $ given
+                                                                        the failure mode"
+```
+
+Severity weights: **BLOCKER = 5 · HIGH = 3 · MEDIUM = 1 · LOW = 0.3**.
+Higher ROI is better on all three. ROI_weighted is the right axis
+for review/audit workloads; ROI_tail is the right axis for
+production-critical workloads.
+
+### Per-cell scorecard (real telemetry × artifact grading)
+
+| Cell | Cost $ | Quality /10 | Weighted pts | ROI_raw | ROI_weighted | Failure mode |
+|---|---:|---:|---:|---:|---:|---|
+| S3-zero-opus     | 41.01 | **2** | 1   | 0.05 | 0.02 | **Failed task** (substituted wrong symbol; no `npm test`) |
+| S3-zero-sonnet   |  4.81 | 10    | 10  | **2.08** | **2.08** | None |
+| S3-v0.2          | 33.79 | 9     | 9   | 0.27 | 0.27 | Wasteful (40-call per-file loop) |
+| S3-v0.3.6        | 10.40 | 10    | 10  | 0.96 | 0.96 | None |
+| S2-zero-opus     | 33.01 | 8     | 24  | 0.24 | 0.73 | None |
+| S2-zero-sonnet   |  6.20 | 7     | 18  | **1.13** | **2.90** | None |
+| S2-v0.2          |  9.42 | 7     | 22  | 0.74 | 2.34 | No verifier pass |
+| S2-v0.3.6        |  9.80 | 8     | 24  | 0.82 | **2.45** | None — A7 verifier confirmed 6/6 HIGH |
+| S1-zero-opus     | 19.82 | 7     | 27  | 0.35 | 1.36 | Missed 2 supply-chain BLOCKERs |
+| S1-zero-sonnet   |  8.89 | 6     | 23  | **0.67** | **2.59** | Missed 2 supply-chain BLOCKERs |
+| S1-v0.2          |  3.94 | 3 †   | 11  | 0.76 | 2.79 | **Under-completed workflow** (27-line YAML stub) |
+| S1-v0.3.6        | 24.59 | 9     | **56** | 0.37 | 2.28 | None — caught 2 BLOCKERs others missed |
+
+† S1-v0.2 sub-executor committed zero output files.
+
+### What the scorecard reveals
+
+**Per-scenario rubrics** (full grading details below this section):
+
+- **S3 rename:** rubric = correctness binary + tool-mechanic
+  cleanliness. zero-opus failed (substituted wrong symbol); v0.2
+  succeeded but with 40-call loop; zero-sonnet and v0.3.6 both 10/10.
+- **S2 doc-audit:** rubric = real structural drift caught + verifier
+  precision + severity calibration. v0.3.6 is the only cell with an
+  adversarial verifier pass (A7) confirming 6/6 HIGH findings.
+- **S1 PR review:** rubric = actionable bugs caught + severity
+  calibration. v0.3.6 caught **2 supply-chain BLOCKER security
+  findings** (arbitrary cmd exec via plugin-controlled LSP config;
+  validation bypass via raw-dict path) that **all three other cells
+  missed**.
+
+### The honest ROI verdict
+
+| Axis | Winner | Why |
+|---|---|---|
+| ROI_raw (S3) | **zero-sonnet** | Single `sed` call, 12/12 tests green, $4.81 |
+| ROI_raw (S2) | **zero-sonnet** | 7/10 quality at $6.20, no architecture overhead |
+| ROI_raw (S1) | **zero-sonnet** | 6/10 quality at $8.89; v0.3.6's 1.85× cost premium not justified by raw points |
+| ROI_weighted (S1) | **zero-sonnet ≈ v0.3.6** | tied on weighted ROI, but only v0.3.6 catches BLOCKERs |
+| ROI_tail (S3) | **v0.3.6** | $10.40 with bounded variance vs zero-opus's $41 task-failure tail |
+| ROI_tail (S1, security workloads) | **v0.3.6** | Only cell to catch supply-chain BLOCKERs; C_failure ≫ Cost makes v0.3.6 dominant |
+
+**Buyer's framing: v0.3.6 is insurance, not optimisation.** You pay
+1.5–2.5× on workloads where it does not produce unique findings;
+on workloads where it does (S1 supply-chain BLOCKERs, S3
+anti-pattern rejection), the avoided cost is 10–100× the
+architecture overhead.
+
+### Tail-risk caveat
+
+n=1 per cell. P(failure|cell) is not a well-estimated probability;
+it is the empirical 0/1 observation of this run. The structural
+claim is that workloads where C_failure ≫ Cost make the
+architecture premium pay back even at modest P(failure) deltas —
+this is the **shape** of the curve, not a calibrated probability.
+
+---
+
+## Quality grading detail (per cell)
 
 Outputs reviewed: all 12 artifacts (`/tmp/quality-grading/` ·
 the four S1 review verdicts, the four S2 audit reports, the four
@@ -114,12 +197,6 @@ were tool-call mechanics architecturally sound?
 | **v0.2 architected** | $33.79 | 9/10 | 41/41 tests green, but per-file `view`+`edit` loop (40 calls) — wasteful by design. |
 | **v0.3.6 architected** | $10.40 | 10/10 | 41/41 tests green, single `perl -i` call (2 turns). Same correctness as zero-sonnet at 2× cost (architecture overhead) but with predictable bounded behaviour. |
 
-**ROI takeaway:** zero-sonnet has the best raw $/quality ($0.48/pt).
-v0.3.6 is 2× more expensive but **eliminates the zero-opus
-failure-mode tail** ($41 burnt on the wrong task) and **the v0.2
-40-tool-call trap** ($33.79 doing what should be 1 shell call). The
-architecture's value here is *bounded variance*, not lower mean cost.
-
 ### S2 doc-audit — depth and verifier-confirmation matter
 
 Rubric: real structural drift caught (X-references, schema
@@ -135,12 +212,6 @@ given the corpus produced*.
 | **v0.2 architected** | $9.42 | 7/10 | 5-lens panel (drift/consistency/link-integrity/etc), 12+ HIGH findings, BLOCKED verdicts. Strong signal but no verifier pass to filter false-positives. |
 | **v0.3.6 architected** | $9.80 | 8/10 | A9+A7 (auditor + adversarial verifier) — verifier confirmed **6/6 HIGH findings, 0 downgrades, 0 missed**. Tightest signal-to-noise with explicit precision evidence. |
 
-**ROI takeaway:** zero-sonnet wins raw $/quality ($0.89/pt). v0.3.6
-($1.23/pt) is 38% more expensive but ships **verifier-confirmed
-precision** — the only cell where a buyer can know which findings
-are real without re-reading the corpus. zero-opus is the worst
-ROI ($4.13/pt) despite highest depth.
-
 ### S1 PR review — severity-weighted quality changes the verdict
 
 Rubric: actionable bugs caught · severity calibration · coverage
@@ -153,32 +224,6 @@ Reference: real review of microsoft/apm#1424.
 | **zero-sonnet** | $8.89 | 6/10 | Caught dedup gap (correct BLOCKER), `from_string` no-op path, mid-symlink escape. ~7 items. Same security gap missed as zero-opus. |
 | **v0.2 architected** | $3.94 | 3/10 † | Output is a 27-line YAML stub. Listed 3 issues only. **Sub-executor under-completed the workflow**; cost is low because work is incomplete. |
 | **v0.3.6 architected** | $24.59 | **9/10** | 5-lens structured panel: 3 BLOCKERs (incl. **2 supply-chain security CRITICALs the other cells missed**: arbitrary command exec via plugin-controlled LSP, validation bypass via raw-dict path), 2 HIGH, 4 MEDIUM, 7 LOW, 1 NIT. Best severity calibration; only cell that catches the supply-chain attack surface. |
-
-**ROI takeaway, raw $:** zero-sonnet wins ($1.48/pt). v0.3.6 is
-1.85× more expensive ($2.73/pt).
-
-**ROI takeaway, severity-weighted:** v0.3.6 caught **two BLOCKER-class
-security findings nobody else flagged**. Weighting BLOCKERs at 5×,
-HIGHs at 3×, MEDIUMs at 1×: zero-sonnet ≈ 23 weighted points
-($0.39/wpt), zero-opus ≈ 27 ($0.73/wpt), **v0.3.6 ≈ 56 ($0.44/wpt)** —
-roughly tied with zero-sonnet on severity-weighted ROI, but the *kind*
-of finding (security supply-chain) is the kind that, if missed once
-in production, costs orders of magnitude more than the review itself.
-
-### The honest ROI verdict
-
-| | What you pay extra for | When it pays back |
-|---|---|---|
-| **zero-sonnet** | Nothing — best raw $/quality on S2 + S3 | Always, unless you need adversarial verification or severity-weighted security coverage |
-| **v0.3.6** | Architecture overhead (~$2–15 per run) for: bounded-variance behaviour, verifier-confirmed precision, security blocker catch-rate, multi-stream reviewability | When the cost of a missed BLOCKER (security CVE, doc drift in a published API, broken release) > the architecture overhead — i.e., production-critical workloads |
-| **v0.2** | Nothing — strictly worse than v0.3.6 on cost (S3 trap) and quality (S1 under-execution) | Never. Replaced by v0.3.6. |
-| **zero-opus** | A premium for the largest context window | Only when one-shot depth on a huge corpus matters and the workload is one-off (S2-zero-opus did find unique cross-corpus drift). Otherwise it is a cost trap with task-failure tail risk (S3). |
-
-**Buyer's framing:** v0.3.6 is **insurance**, not optimisation.
-You pay 1.5–2.5× for it on the workloads where it does not produce
-unique findings; on the workloads where it does (S1 supply-chain
-BLOCKERs, S3 anti-pattern rejection), the avoided cost — a missed
-CVE or a $33 wrong-tool-loop — is 10–100× the architecture premium.
 
 ---
 

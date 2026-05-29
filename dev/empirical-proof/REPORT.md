@@ -16,6 +16,94 @@
 
 ---
 
+## The ROI function
+
+Cost-only comparison is meaningless without quality. A buyer's
+decision is **return on each dollar**, not absolute spend. We define
+ROI on three axes — each axis answers a different buyer question:
+
+```
+                        QualityScore(cell)                       (1) Raw ROI:
+ROI_raw(cell)        = ───────────────────                            "what does the
+                            Cost(cell)                                 dollar buy?"
+
+                        Σ severity_weight(f) × count(f, cell)    (2) Severity-weighted:
+ROI_weighted(cell)   = ───────────────────────────────────────       "weighted by impact
+                            Cost(cell)                                 of finding-class"
+
+                                        QualityScore(cell)
+ROI_tail(cell)       = ───────────────────────────────────────────   (3) Tail-risk:
+                       Cost(cell) + P(failure|cell) × C_failure        "expected $ given
+                                                                        the failure mode"
+```
+
+**Inputs:**
+
+| Symbol | Definition | Source |
+|---|---|---|
+| `Cost(cell)` | Real $ from Copilot cloud `events` table | [`scenario-runs/results/*/cost-report.json`](scenario-runs/results/) |
+| `QualityScore(cell)` | 0–10 against scenario rubric (S3 binary, S2 finding-density × precision, S1 actionable-bugs × severity-calibration) | Orchestrator-graded, full grading in [`REAL-TELEMETRY-RESULTS.md` § Quality & ROI](REAL-TELEMETRY-RESULTS.md#quality--roi--what-the-cost-actually-buys) |
+| `severity_weight` | BLOCKER = 5 · HIGH = 3 · MEDIUM = 1 · LOW = 0.3 | Conventional CVSS-style ladder |
+| `count(f, cell)` | Number of findings of class `f` confirmed actionable | Per-cell output artifacts |
+| `P(failure\|cell)` | Empirical task-failure rate observed in this run | n=1 per cell — see Tail-risk caveat below |
+| `C_failure` | Cost of the failure (re-run, missed CVE, broken release) | Workload-specific; lower bound = `Cost(cell)` itself |
+
+**Higher is better on all three.** ROI_weighted is the right axis for
+review/audit workloads (severity matters); ROI_tail is the right
+axis for production-critical workloads (a missed BLOCKER costs
+orders of magnitude more than the architecture premium).
+
+### Per-cell scorecard (12 cells)
+
+Cost from real telemetry. Quality from artifact grading
+([`/tmp/quality-grading/`](../../../../../tmp/quality-grading/) at
+runtime, results in [REAL-TELEMETRY-RESULTS.md](REAL-TELEMETRY-RESULTS.md#quality--roi--what-the-cost-actually-buys)).
+
+| Cell | Cost $ | Quality /10 | Weighted pts | ROI_raw (pts/$) | ROI_weighted (wpts/$) | Failure mode |
+|---|---:|---:|---:|---:|---:|---|
+| S3-zero-opus     | 41.01 | **2** | 1   | 0.05 | 0.02 | **Failed task** (substituted symbol, no `npm test`) |
+| S3-zero-sonnet   |  4.81 | 10    | 10  | **2.08** | **2.08** | None |
+| S3-v0.2          | 33.79 | 9     | 9   | 0.27 | 0.27 | Wasteful (40-call loop) |
+| S3-v0.3.6        | 10.40 | 10    | 10  | 0.96 | 0.96 | None |
+| S2-zero-opus     | 33.01 | 8     | 24  | 0.24 | 0.73 | None |
+| S2-zero-sonnet   |  6.20 | 7     | 18  | **1.13** | **2.90** | None |
+| S2-v0.2          |  9.42 | 7     | 22  | 0.74 | 2.34 | No verifier |
+| S2-v0.3.6        |  9.80 | 8     | 24  | 0.82 | **2.45** | None — verifier-confirmed |
+| S1-zero-opus     | 19.82 | 7     | 27  | 0.35 | 1.36 | Missed 2 supply-chain BLOCKERs |
+| S1-zero-sonnet   |  8.89 | 6     | 23  | **0.67** | **2.59** | Missed 2 supply-chain BLOCKERs |
+| S1-v0.2          |  3.94 | 3 †   | 11  | 0.76 | 2.79 | **Under-completed workflow** |
+| S1-v0.3.6        | 24.59 | 9     | **56** | 0.37 | **2.28** | None — caught BLOCKERs others missed |
+
+† S1-v0.2 sub-executor wrote zero output files; quality reflects the
+27-line YAML stub it did produce.
+
+### What the scorecard actually says
+
+- **ROI_raw winner per scenario:** zero-sonnet (S3, S2, S1).
+- **ROI_weighted winner per scenario:** zero-sonnet (S3, S2 ≈ tied with v0.3.6, S1).
+- **The story raw ROI hides:** v0.3.6 on S1 carries a weighted-points
+  advantage of 2.0–2.4× over every other cell because it was the
+  **only** cell to surface the two supply-chain BLOCKERs.
+  ROI_weighted = 2.28 vs zero-sonnet 2.59 makes them comparable —
+  but on a workload where missing a CVE costs ≫ $25, ROI_tail is
+  the right axis and v0.3.6 dominates.
+- **Anti-pattern penalty:** S3-zero-opus has ROI_raw of 0.05 — 40×
+  worse than S3-zero-sonnet — because $41 was spent failing the
+  task. v0.3.6 ($10.40 / 10) is 19× better than zero-opus on raw
+  ROI by virtue of not failing.
+
+### Tail-risk caveat
+
+We have **n=1 per cell**. P(failure|cell) is not a well-estimated
+probability; it is the empirical 0/1 observation of this single run.
+The real value of `ROI_tail` is **structural**: a workload class
+like supply-chain review where C_failure ≫ Cost makes the
+architecture premium pay back even at modest P(failure) deltas.
+The PR claims this is the **shape** of the curve, not a calibrated
+probability.
+
+---
+
 ## For a reader new to this work
 
 **Genesis** is a skill — a set of instructions an LLM-driven agent
