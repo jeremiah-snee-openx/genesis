@@ -113,3 +113,55 @@ In Copilot CLI: built-in per-session state directory.
   primitives that need tool access beyond native Copilot affordances.
 - GitHub Actions integration: Copilot agents can be invoked from Actions
   workflows, bridging repo automation and agent reasoning.
+
+## 9. MODEL CATALOG & BILLING (cost-economics)
+
+Maps the abstract role classes in `../model-catalog.md` to concrete
+SKUs offered through GitHub Copilot and to Copilot's premium-request
+billing surface. The genesis architect designs in role classes; this
+adapter binds them at codegen time.
+
+Verified on: 2025-11-14. Always re-verify multipliers against the
+live billing page before quoting; they age out.
+
+### Role class -> concrete model (defaults)
+
+| Role class             | Default SKU                       | Alternative                          |
+|------------------------|------------------------------------|--------------------------------------|
+| planner                | Claude Opus / GPT-5 (premium tier) | Claude Sonnet 4.x for cost balance   |
+| implementer            | Claude Sonnet 4.x / GPT-5 standard | (none -- this IS the default tier)   |
+| reviewer               | Claude Sonnet 4.x / GPT-5 standard | GPT-5 mini for checklist work        |
+| trivial                | GPT-4o mini / GPT-5 mini           | (none)                               |
+| long-context-retriever | Gemini Pro (where offered)         | GPT-5 with extended context          |
+
+### Billing surface
+
+Premium request multipliers. One premium request abstracts the
+underlying token cost; different models charge different multipliers
+per request. Subscription plan determines monthly included quota;
+overage bills per request.
+
+Source: https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing
+(read the live page; per-model multipliers are updated by GitHub
+without prior notice).
+
+### Cost-pattern bindings
+
+- B12 MODEL ROUTER: configure model preference per workflow or per
+  CLI session. Mid-session switch is supported but partitions the
+  Copilot cache.
+- B13 CACHE-AWARE PREFIX: caching behavior is opaque to the operator
+  (handled by Copilot's backend); cache discipline still pays off
+  because the underlying providers cache. Keep persona / skill body
+  stable; avoid mid-session edits to `.github/copilot-instructions.md`.
+- B15 TOOL SUBSET: declare per-MCP-server scoping in
+  `.copilot/config.yml` to keep the catalogue bounded.
+- B16 EFFORT GOVERNOR: where the model supports it, declare via the
+  model selection (a "high effort" SKU IS the effort declaration on
+  Copilot's surface).
+
+### Stance binding
+
+Operator declares stance in the first prompt OR in
+`.github/copilot-instructions.md` as `stance: <value>`. The
+genesis-architect persona reads it at step 1.

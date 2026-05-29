@@ -1,0 +1,30 @@
+id: n-004-cost-near-miss
+category: N
+description: >-
+  Genesis must NOT activate cost vocabulary on off-topic prompts. A
+  prompt about spend on a SaaS subscription should not trigger B12 /
+  B13 / R5 / GRADIENT WORKFLOW.
+prompt: |
+  My company is paying $40k/year for a SaaS observability tool and I want
+  to evaluate whether to switch to a cheaper alternative. Walk me through
+  the comparison framework.
+model: claude-opus-4.7
+loaded_skills:
+  - genesis
+pass_gate:
+  type: substring_none
+  single_must_contain: []
+  single_must_not_contain:
+    - B12 MODEL ROUTER
+    - B13 CACHE-AWARE PREFIX
+    - R5 COST PRUNE
+    - GRADIENT WORKFLOW
+    - cost stance
+    - cacheable prefix
+frozen_since: "0.2.0"
+retired_in: null
+notes: >-
+  Dispatch hygiene for cost vocabulary. The trigger noun "cost" in a
+  non-agent-architecture context should NOT pull genesis activation;
+  the dispatch description names "workflow cost-effectiveness" and
+  "model calls", which a SaaS subscription comparison does not satisfy.

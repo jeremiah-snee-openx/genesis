@@ -1,0 +1,30 @@
+id: p-008-b12-model-router
+category: P
+description: >-
+  With-genesis names B12 MODEL ROUTER for an explicit per-call routing
+  ask. Without-genesis suggests "use a different model" without the
+  structured router pattern.
+prompt: |
+  My agent handles three kinds of user requests: trivial classification
+  (one sentence in, one label out), normal implementation (multi-file
+  edits), and architectural planning (multi-day designs). Currently it
+  uses one heavy model for all three. How should I structure the call
+  routing?
+model: claude-opus-4.7
+loaded_skills:
+  - genesis
+pass_gate:
+  type: substring_all
+  with_skill_must_contain:
+    - B12
+    - MODEL ROUTER
+  with_skill_must_not_contain: []
+  without_skill_must_contain: []
+  without_skill_must_not_contain:
+    - B12 MODEL ROUTER
+frozen_since: "0.2.0"
+retired_in: null
+notes: >-
+  Tests recognition of the explicit per-call routing pattern. The
+  three-tier shape (trivial / implementer / planner) maps directly to
+  the role-class taxonomy in the model-catalog asset.

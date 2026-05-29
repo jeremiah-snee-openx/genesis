@@ -1,0 +1,31 @@
+id: p-004-a12-gradient-workflow
+category: P
+description: >-
+  With-genesis recognises A12 GRADIENT WORKFLOW when given a fan-out
+  workflow burning planner class on bulk lenses. Without-genesis names
+  generic optimisations.
+prompt: |
+  I have a code-review panel that runs 5 lens specialists in parallel
+  and then a synthesiser. Every lens uses Opus. It runs on every PR and
+  the bill is hurting. The lenses just check rubric items; the synthesiser
+  is the only one that genuinely reasons across them. Help me redesign
+  the workflow architecture to bring cost down without losing quality.
+model: claude-opus-4.7
+loaded_skills:
+  - genesis
+pass_gate:
+  type: substring_all
+  with_skill_must_contain:
+    - A12
+    - GRADIENT WORKFLOW
+  with_skill_must_not_contain: []
+  without_skill_must_contain: []
+  without_skill_must_not_contain:
+    - A12
+    - GRADIENT WORKFLOW
+frozen_since: "0.2.0"
+retired_in: null
+notes: >-
+  Tests recognition of the heterogeneous-cost architectural pattern.
+  Without genesis, the LLM is expected to suggest "use a cheaper model"
+  but not name a structured architectural pattern for the gradient.
