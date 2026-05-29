@@ -1048,6 +1048,41 @@ ANTI-PATTERNS:
   have been R1 SPLIT. The body shrinks but its single
   responsibility is still violated; the thrift just hides it.
 
+### B14b. CAVEMAN BRIEF (sub-pattern)
+
+WHEN: a TRIVIAL-class lens dispatch (see model-catalog.md) whose
+output is a fixed schema -- typically `{verdict, rationale}` or
+`{category, evidence}`. Severity classifiers, label-set pickers,
+dup-check oracles all fit.
+
+MECHANISM: strip the brief to imperatives plus the output schema.
+~80 input tokens instead of ~250-400. Anchor with ONE grounding
+line for the most extreme bucket ("blocker = RCE / data-loss /
+full-outage only") to neutralize over-escalation drift.
+
+```
+READ ISSUE. ASSESS SEVERITY: blocker|high|medium|low.
+ANCHOR: blocker = RCE / data-loss / full-outage only.
+OUTPUT JSON: {sev, why}. NO PROSE.
+```
+
+MEASURED EFFECT (severity-keyword lens, haiku-4.5, 8-issue
+fixture, 16 dispatches): 44.6% input-token saving, 75% verdict
+agreement with verbose brief, ZERO downward errors (both
+disagreements were upward escalations safer than the verbose
+verdict). Source: dev/empirical-proof/scenario-runs/results/
+B-pat-B14-caveman/cost-report.json.
+
+GATE: TRIVIAL class only. REVIEWER or higher needs the prose
+context; the caveman variant degrades on lenses that require
+chained reasoning across multiple input dimensions.
+
+ANTI-PATTERN: CAVEMAN ON REVIEWER -- compressing a brief whose
+lens must weigh trade-offs across multiple dimensions. The output
+schema may still be a tag, but the reasoning behind it is not
+classification; it is judgement. Caveman compression collapses
+that judgement into the model's prior.
+
 ---
 
 ## B15. TOOL SUBSET
