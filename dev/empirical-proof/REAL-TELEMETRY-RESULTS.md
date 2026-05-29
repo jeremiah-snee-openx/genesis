@@ -384,6 +384,165 @@ for the next one.
 
 ---
 
+## Per-pattern attribution — which patterns moved which dollars
+
+The v0.3.6 architect handoffs for the three scenarios are committed
+under [`cross-scenario/`](cross-scenario/). They explicitly declare
+which patterns each design invokes, which makes pattern-level
+attribution possible. The cost reports in `scenario-runs/results/*/cost-report.json`
+break the per-cell spend down by model (Haiku / Sonnet / Opus / GPT)
+and by token class (input / output / cache_read / cache_write), which
+makes the dollar attribution concrete.
+
+| Pattern | Where it ran | Empirical effect | Confidence |
+|---|---|---|---|
+| **S7 DETERMINISTIC TOOL BRIDGE** | S3-v0.3.6 (`grep \| xargs perl -i` instead of per-file edit loop) | **$23.39 saved** vs. S3-v0.2's per-file loop ($33.79 → $10.40). The architect, given the rename brief under the v0.3.6 catalogue, *rejected* the per-file design in writing. | **Strong**: same brief, same fixture, controlled comparison. |
+| **B12 SELECTION RULE** | All three v0.3.6 handoffs (every `.agent.md` declares an explicit `model:`) | The architect picked Sonnet for the bulk and Haiku for trivial-class lenses. Visible in S1-v0.3.6 cost-report: 63 Haiku calls at $2.01 (would have cost ~$5–7 on Sonnet). **Net effect: ~$3–5 saved on S1, by routing trivial work down-class.** | **Strong**: per-model token breakdown is in `cost-report.json`. |
+| **A12 GRADIENT WORKFLOW** | S1-v0.3.6 only (Haiku trivial-lens + Sonnet reviewer-lens + GPT-5.4 orchestrator). Explicitly *not* applied in S2 and S3 (architect cited gradient-free workflow). | On S1, gradient routing produced the per-lens entry-tax floor of 6K (Haiku) vs. 35K (Sonnet sub-agent) — see `Pattern 2` table below. **The architect refusing to apply A12 in S2 and S3 is itself the win**: it is the new vocabulary for *not over-architecting*. | **Strong** for S1 (telemetry shows the bucketed turns); **strong-by-omission** for S2/S3 (handoffs explicitly reject gradient). |
+| **B15 TOOL SUBSET** | All three v0.3.6 handoffs (per-`.agent.md` `tools:` lists). | Visible at the Haiku/explore floor (6K input first turn, vs. 35K for a general-purpose Sonnet sub-agent and 54K for the orchestrator). **Saves ~29K input tokens per Haiku spawn vs. a hypothetical "default tool surface" Sonnet spawn.** Caveat: B15 only takes effect when the spawned agent type is also tier-aware; full-feature Sonnet sub-agents still pay the 35K floor. | **Partial**: visible at the Haiku tier; not visible at the Sonnet tier because the harness loads what it loads. |
+| **A1 PANEL + A7 ADVERSARIAL VERIFIER** | S1-v0.3.6 (5-lens panel) and S2-v0.3.6 (A9 auditor + A7 verifier). | These are **quality patterns, not cost patterns**. They *spend* — S1 spends $15.70 over zero-sonnet for multi-stream reviewability; S2 spends $3.60 over zero-sonnet for verifier-confirmed precision (6/6 HIGH confirmed, 0 downgrades). The dollar return is on the severity-weighted and tail-risk-adjusted ROI axes, not raw $/quality. | **Strong**: S2-v0.3.6 is the only cell with a verifier pass; S1-v0.3.6 is the only cell that caught both supply-chain BLOCKERs. |
+| **B13 CACHE-AWARE PREFIX** | Mentioned in all v0.3.6 handoffs. | **No measurable differentiation.** Cache hit rates from telemetry are 93–99% across *every* cell, including zero-sonnet baselines — the Copilot harness already auto-caches conversation prefixes well. B13 is currently a guideline, not a measurable lever. | **None**: cache_read / total_input ratios are nearly identical across cells. |
+| **B14b CAVEMAN BRIEF** | Not invoked in any committed handoff. | The v0.3.6 packets are 5–15K tokens of prose. With CAVEMAN compression to ~1–2K, S1-v0.3.6's 9 dispatches would save 36–117K tokens of preamble per run. **Quick-win opportunity, not a current contributor.** | **None on the empirical side.** Listed as a v0.4 frontier in the next section. |
+| **B16 EFFORT GOVERNOR** | Mentioned but n/a — Anthropic SKUs do not expose a `reasoning_effort` knob; only OpenAI models do. | Would apply if any v0.3.6 design routed reasoning-heavy work to GPT-5; none did in these three scenarios. | **None**: the knob is absent on the SKUs that ran. |
+
+The honest summary: **S7 + B12 + B15 + A12 are doing the work; B14b
++ B13 + B16 are catalogued but not yet pulling weight in the
+empirical record.** The next PR's frontier is to either retire the
+weak patterns or instrument them with per-cell measurement.
+
+---
+
+## v0.3.6 flaws and quick wins — the v0.4 frontier
+
+The data exposes five flaws that the next PR could address with high
+expected ROI on the architect's design quality.
+
+### Flaw 1 — The architect cannot see the entry tax it is paying
+
+The architect chooses *whether* to fan out without a dollar number on
+*how much fanning out costs at the floor*. Telemetry shows the floor
+is 54K Sonnet / 35K Sonnet-sub / 6K Haiku-explore tokens per spawn —
+but the model-catalog and B12 SELECTION RULE talk in qualitative
+terms ("trivial / implementer / reviewer / researcher"). **Quick
+win**: extend the model catalog with measured first-turn token
+floors per spawn type, so the architect's selection cost-function is
+quantitative.
+
+### Flaw 2 — There is no dispatch-coalescing pattern
+
+S1-v0.3.6 paid 9 separate entry taxes to ask 9 related questions.
+A pattern like "**A13 SHARED-CONTEXT BATCH**" — one task() spawn that
+answers N related questions over a shared brief — would pay one tax
+instead of nine. Estimated saving on S1-v0.3.6: 8 × 35K = ~280K
+input tokens, ≈ $1.05 at uncached Sonnet rates, ≈ $0.10 at cache_read
+rates after the first batch. **Quick win**: codify the pattern; the
+architect already has the substrate (it composes A1 PANEL with the
+five lenses).
+
+### Flaw 3 — B14b CAVEMAN BRIEF is in the catalogue but not applied
+
+Every committed v0.3.6 handoff is 5–15K tokens of carefully-crafted
+prose. The brief that the spawned sub-agent actually needs is the
+last 1–2K (the work contract + the inputs). The intervening 4–13K is
+architect's reasoning that the sub-agent does not need to read.
+**Quick win**: gate the architect's handoff output through a
+CAVEMAN compression pass, distinguishing "decision rationale (kept
+for human)" from "spawn-brief (compressed for sub-agent)". Estimated
+saving on S1-v0.3.6: 9 spawns × ~10K of un-needed prose = ~90K input
+tokens, ≈ $0.34 at uncached Sonnet rates per run, plus the cumulative
+cache_read tax.
+
+### Flaw 4 — B15 TOOL SUBSET only effective at the Haiku tier
+
+The Haiku/explore agent type has a 6K floor because the agent type
+itself is tier-aware. General-purpose Sonnet sub-agents have a 35K
+floor regardless of what `tools:` they declare, because the harness
+loads its full tool catalogue. **Quick win** is harness-side, not
+genesis-side: a tier-aware Sonnet sub-agent type would close the
+gap. **Genesis-side workaround**: prefer Haiku-class spawns whenever
+the work is rubric-driven (S1's trivial-lens design already does
+this).
+
+### Flaw 5 — Naïve loops are not auto-detected by the architect
+
+S3-v0.2 designed a per-file edit loop because the v0.2 catalogue had
+no anti-pattern for it. v0.3.6 fixes this for *deterministic batch
+ops* via S7. But for *sequential reasoning loops* (e.g., "review
+each finding individually") the architect could still slip into a
+per-item dispatch. **Quick win**: extend B12 SELECTION RULE with a
+"loop detector" rule of thumb — if the design plans N>5 spawns of
+the same agent type with similar inputs, force a SHARED-CONTEXT
+BATCH or SHELL-FIRST review.
+
+These five quick wins are the visible v0.4 frontier. None of them
+require new harness primitives — all five are catalogue extensions
+or compression passes the architect can run before emitting the
+handoff.
+
+---
+
+## Reliability and predictability — the dimension ROI does not capture
+
+Raw $/quality is a static metric: it scores a single cell on a
+single run. It misses three properties that matter when the question
+shifts from *"which pattern is cheapest for this one task?"* to
+*"which pattern do I want to put in a CI pipeline that runs nightly,
+or hand to a junior engineer to operate?"*.
+
+### Variance bounds — does the workflow have a worst case?
+
+Single-shot Sonnet has no worst-case bound: it might produce a
+5/10 review or a 9/10 review depending on which corner of the
+prompt distribution it lands in. The architected workflow has a
+floor: every lens runs, every verifier confirms, the final output is
+deterministically the union of N independent passes. **n=1 here so
+we cannot measure variance directly**, but the structural argument
+is: the panel's worst case is the worst lens; the synthesizer's
+worst case is the worst lens it is willing to accept; the verifier's
+worst case is bounded by its rubric. Single-shot has no analogous
+floor.
+
+### Auditability — can a reviewer trace the verdict?
+
+S1-v0.3.6 produced 5 lens artifacts + 1 synthesizer artifact + 1
+verifier artifact, all committed. A human reviewer can read each
+lens's claim independently, see where they agree and where they
+diverge, and challenge the synthesizer's adjudication. Single-shot
+zero-sonnet produced one prose blob — the reviewer must trust or
+re-run. **For workloads that gate production decisions** (security
+review, compliance audit, release sign-off), the multi-stream
+artifact is a working audit trail; the single-shot blob is not.
+
+### Repeatability and operator handoff — can a non-author run it?
+
+The architected workflow is a committed packet plus N committed
+sub-agents. A different operator, on a different day, running the
+same packet against the same brief, gets a comparable workflow
+shape (lens sites, verifier, synthesis contract). The single-shot
+prompt is improvisational — the prompt that the human typed once
+in a chat session is not a reusable artifact unless the human also
+turns it into a `.agent.md` and adds tests, which is exactly what
+the architect already does for them.
+
+**This shifts the buyer's calculation.** ROI_raw asks "what does
+this dollar buy on this single run?" — and on simple workloads,
+single-shot Sonnet wins. ROI_repeatable asks "what does this dollar
+buy on the 100th run, operated by someone other than the author,
+inside a CI pipeline that fails closed if the workflow regresses?"
+— and on that axis, only the architected cells produce a workflow
+artifact at all. **For one-off use, zero-sonnet is fine. For
+productionised, repeatable, automatable use, v0.3.6 is the only
+thing on the table.**
+
+This is the legitimate "second axis" of the ROI argument that the
+PR should not lose. It is captured under "What architecture
+buys" in [Finding 2](#2-on-simple-workloads-single-shot-sonnet-is-the-cost-rational-baseline)
+above as "multi-stream reviewability" and "verifier-confirmed
+precision", but the repeatability angle deserves to stand on its
+own.
+
+---
+
 ## What this PR does NOT prove
 
 - It does not prove the architected workflows produce *better*
