@@ -1,4 +1,13 @@
-# Genesis v0.2 → v0.3.5: token economics, measured
+# Genesis v0.2 → v0.3.5: token economics, measured (size-modeled study)
+
+> **🟢 v0.3.6 real-telemetry validation lives at
+> [`REAL-TELEMETRY-RESULTS.md`](REAL-TELEMETRY-RESULTS.md)** — read
+> it first for absolute-cost ground truth measured from the Copilot
+> cloud `events` table on real fixtures. This document is a
+> **size-modeled** pattern-isolation study; its absolute $ figures
+> understate real cost by 50–200× because they omit the Copilot CLI
+> tool-surface overhead. Treat its **ratios** as valid ablations and
+> the new file as the ground truth.
 
 > **Self-contained report.** All claims link to the cost-report
 > artifacts in [`scenario-runs/results/`](scenario-runs/results/).
