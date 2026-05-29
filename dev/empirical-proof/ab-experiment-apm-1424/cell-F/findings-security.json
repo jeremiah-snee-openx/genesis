@@ -1,0 +1,50 @@
+[
+  {
+    "id": "SECURITY-001",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "install() method, lines ~1305-1330 and remove_stale() method, lines ~1135-1185",
+    "summary": "TOCTOU race condition in LSP config file updates",
+    "details": "The install() and remove_stale() methods read, modify in memory, and write back .lsp.json (or ~/.claude.json) without atomic operations or file locking. Between the read and write operations, another concurrent 'apm install' process could modify the file, leading to lost updates or unintended configuration changes. This is a classic time-of-check-to-time-of-use (TOCTOU) vulnerability. While the race window is relatively small, the impact is significant for users running concurrent installations or build scripts. Example: Process A reads .lsp.json, Process B reads the same file, Process A writes updates, Process B writes its updates (losing A's changes). Mitigation would require atomic file operations (e.g., write-to-temp-then-rename) or file locking."
+  },
+  {
+    "id": "SECURITY-002",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "collect_transitive() method, lines ~1063-1099",
+    "summary": "Transitive LSP server dependencies lack explicit trust verification",
+    "details": "The PR allows any installed transitive dependency to inject arbitrary LSP server configurations via .lsp.json files or lspServers in plugin.json. While the documentation states 'LSP servers from installed packages are treated as trusted', there is no explicit mechanism to verify or validate the intent of these transitive dependencies. A supply-chain attack is possible where a deeply nested or seemingly unrelated transitive dependency maliciously injects LSP servers that could be used to:  1) Execute arbitrary commands when Claude Code loads and starts the LSP server, 2) Inject environment variables that modify the LSP server's behavior, 3) Point to external/malicious LSP servers that send sensitive code data to attacker-controlled endpoints. The only validation is format-level (through LSPDependency.from_dict()) which does not verify legitimacy. Mitigation would require: 1) explicit user opt-in for transitive LSP deps, 2) warning when transitive deps are installed, 3) provenance tracking or signatures."
+  },
+  {
+    "id": "SECURITY-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "LSPDependency class, env field definition and to_dict() method",
+    "summary": "Unvalidated environment variable injection through env field",
+    "details": "The env field in LSPDependency is stored as an arbitrary dict without validation of keys or values. A malicious plugin can inject environment variables into the LSP server's execution context. Examples of dangerous values: {\"PATH\": \"/malicious/bin:$PATH\"} to hijack command execution, {\"LD_PRELOAD\": \"/malicious/lib.so\"} to inject code, {\"PYTHONPATH\": \"/malicious\"} to modify Python's import path, or {\"CLAUDE_TOKEN\": \"attacker-controlled-value\"} to leak or override authentication tokens. While Claude Code is responsible for safe env var handling at runtime, APM should validate environment variable names against a whitelist to prevent known dangerous variables (PATH, LD_PRELOAD, DYLD_*, etc.). Current behavior: any env dict is accepted and stored as-is in .lsp.json."
+  },
+  {
+    "id": "SECURITY-004",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "args field definition and validation, to_dict() method",
+    "summary": "Command injection risk through unescaped args field",
+    "details": "The args field is stored as a list of strings in .lsp.json without validation. If Claude Code constructs shell commands by concatenating these args without proper escaping, command injection is possible. Example attack: a malicious plugin sets args to [\"server\", \"; rm -rf /\"] which could execute arbitrary shell commands if Claude Code does `exec(\" \".join(args))` instead of using execvp() with an array. While APM passes args as a list (which is safer), the PR provides no guidance on how Claude Code should process these args, and the tests do not verify safe execution. The validation in LSPDependency.validate() does not check for shell metacharacters in args elements. Mitigation: 1) Document that args must be used as array (execvp-style) not shell string, 2) validate args entries in APM to reject common shell metacharacters, 3) test end-to-end with Claude Code to ensure safe arg handling."
+  },
+  {
+    "id": "SECURITY-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_extract_lsp_servers() function and _substitute_plugin_root() replacement logic",
+    "summary": "Unsafe string substitution of ${CLAUDE_PLUGIN_ROOT} in LSP configs",
+    "details": "The _substitute_plugin_root() function recursively replaces ${CLAUDE_PLUGIN_ROOT} placeholders with the absolute plugin path using simple string.replace(). If the plugin path contains special characters or if the substitution happens in fields like 'command' before path validation, an attacker could craft a plugin path to inject shell metacharacters. Example: plugin at /tmp/plugin$(malicious)/ would result in command=\"/tmp/plugin$(malicious)/lsp-server\". Although the command field is later validated by validate_path_segments(), the substitution happens first, and validation only checks for .. traversal, not for shell metacharacters. Additionally, if substitution happens in the 'env' dict values, an attacker could inject ${CLAUDE_PLUGIN_ROOT}/../../../etc/passwd or similar paths. Mitigation: 1) perform string substitution only on fields known to need it, 2) validate the plugin path itself to reject special characters, 3) apply substitution after path validation."
+  },
+  {
+    "id": "SECURITY-006",
+    "severity": "LOW",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_read_lsp_file() function, path validation logic",
+    "summary": "Path traversal check uses relative_to() which can be bypassed on case-insensitive filesystems",
+    "details": "The _read_lsp_file() function validates that a relative path stays within plugin_root by resolving both paths and using relative_to(). While generally correct, on case-insensitive filesystems (macOS, Windows) an attacker could use mixed-case symlinks or case-variant paths to bypass the check in edge cases. However, the code also checks for symlinks and skips them, which provides defense-in-depth. The vulnerability is low-severity because: 1) symlinks are rejected, 2) resolve() follows symlinks to their targets, 3) relative_to() properly handles path comparison. This is a theoretical issue that would require very specific OS and filesystem conditions."
+  }
+]

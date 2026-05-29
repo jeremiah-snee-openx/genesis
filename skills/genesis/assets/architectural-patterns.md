@@ -908,6 +908,24 @@ class is not a gradient workflow. A panel where one synthesizer
 is planner-class and the lenses are implementer-class IS a
 gradient workflow.
 
+WHERE THE HEAVY ROLE BELONGS: the FRONT (planning, scoping) and
+the BACK SYNTHESIZER ON GENUINELY UNRESOLVED INPUT are the slots
+that justify planner-class. A back-stage synthesizer that
+ADJUDICATES AMONG PRE-EXISTING ANALYSES (downgrade a severity,
+deduplicate findings, reconcile a single severity disagreement,
+verify a flagged claim against the source) is REVIEWER-CLASS
+WORK, not planner -- the structured inputs and bounded decision
+space remove the planner-class capability requirement. Reserve
+planner-class for synthesizers that must GENERATE NEW ANALYSIS
+on top of disagreement (e.g. the lenses surface a contradiction
+the architect could not have anticipated; the synthesizer must
+re-design the problem boundary). On Copilot CLI, this typically
+means: the BACK SYNTHESIZER stays at session-default reviewer
+class (claude-sonnet-4.6) and only the orchestrator's S4 gate
+escalates to planner class on a NARROW pre-defined trigger
+(e.g. ALL lenses fail, or a BLOCKER-severity disagreement that
+the reviewer-class synthesizer explicitly cannot adjudicate).
+
 ANTI-PATTERNS:
 - FLAT WORKFLOW with a heavy class on every stage. Common when
   the architect designs "for quality" and never re-examines
@@ -919,6 +937,21 @@ ANTI-PATTERNS:
   to implementer-class because "the cheap class missed an edge
   case once". Add S4 VALIDATION DECORATOR instead; do not
   flatten the gradient to mask a missing gate.
+- HEAVY ADJUDICATOR -- placing planner-class on the back
+  synthesizer when its work is downgrading severities,
+  deduplicating findings, or reconciling a single severity
+  disagreement among pre-existing analyses. Adjudication of
+  structured inputs is reviewer-class capability; planner-class
+  here is bind-up for STAKES without the stakes (advisory-only
+  output, no consequential side effect, no genuine planning).
+  Measured cost-without-benefit: PR #12 Cell F (v0.3.2) ran
+  a 15-turn Opus synth-heavy ($3.95) to adjudicate one TOCTOU
+  severity disagreement and downgrade three findings -- work
+  any reviewer-class model could have done at 1/4 the cost.
+  Cure: leave the synthesizer at reviewer class; promote to
+  planner only when the S4 gate detects a HIGH-stakes pattern
+  (BLOCKER-severity disagreement among >=2 lenses, or a
+  contradictory CRITICAL claim that requires re-grounding).
 - GRADIENT WITHOUT CACHE DISCIPLINE -- the MID stage runs N
   times but its prefix changes per item (no B13). Every call
   pays full input rate; the gradient savings on output are

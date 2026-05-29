@@ -186,6 +186,51 @@ Source: https://docs.github.com/en/copilot/reference/copilot-billing/models-and-
 (read the live page; per-model multipliers are updated by GitHub
 without prior notice).
 
+### Default role class per primitive type
+
+On Copilot CLI, the role class an element ACTUALLY runs at when
+`model:` is omitted depends on which PRIMITIVE TYPE carries the
+work. The harness default is NOT uniformly "the session model" --
+several subagent spawn types default to a cheaper role class than
+the session. The architect MUST consult this table at B12 step 1
+(the SELECTION RULE in `design-patterns.md` §B12) to know whether
+omitting `model:` will bind-up, bind-down, or hold the line.
+
+Verified on: 2025-11-14. Re-verify against the live Copilot CLI
+release notes if the date stamp is more than 90 days stale.
+
+| Primitive carrying the work                       | Default role class       | Concrete default (today)        | Notes |
+|---------------------------------------------------|--------------------------|----------------------------------|-------|
+| SKILL.md (no `model:` field accepted)             | session default          | per session config               | Cannot be re-bound at the primitive level; see section 2. |
+| `.agent.md` custom agent with no `model:` line    | session default          | per session config               | The PER-ELEMENT binding site exists but is unused. |
+| `.agent.md` custom agent with `model:` line       | (architect's choice)     | (architect's choice)             | B12 binding site. |
+| `task(agent_type='explore')` subagent             | **TRIVIAL**              | claude-haiku-4.5                 | Cheap by default; spawned for parallel exploration. |
+| `task(agent_type='task')` subagent                | **TRIVIAL**              | claude-haiku-4.5                 | Cheap by default; for tool-heavy execution. |
+| `task(agent_type='general-purpose')` subagent     | IMPLEMENTER              | claude-sonnet-4.6                | Full-capability subagent, premium cost. |
+| `task(agent_type='code-review')` subagent         | IMPLEMENTER              | claude-sonnet-4.6                | Tuned for code-review work. |
+| `task(agent_type='research')` subagent            | IMPLEMENTER              | claude-sonnet-4.6                | Tuned for research/grounding. |
+
+CRITICAL CONSEQUENCE for fan-out designs. A 5-lens review PANEL
+implemented as five `task(agent_type='explore')` subagents runs
+the entire fan-out at TRIVIAL class FOR FREE. The architect does
+NOT need to bind anything. The same PANEL implemented as five
+`.agent.md` custom agents with explicit `model: claude-sonnet-4.6`
+runs at IMPLEMENTER class -- a deliberate BIND-UP for stakes,
+which costs ~3-5x more per turn for ~5x more turns of work.
+
+The choice between the two implementations IS the B12 decision on
+Copilot CLI. It is NOT a question of "do we declare `model:`" --
+it is a question of "which primitive type carries the fan-out, and
+does its default role class match what the work needs?"
+
+For a checklist-bound lens (matches the trivial-class capability
+profile: rubric scoring, pattern matching, structured grader) the
+`task(agent_type='explore')` route is the correct cheap answer.
+For a lens that requires cross-file integration reasoning or
+unbounded code understanding (matches implementer or higher), the
+`.agent.md` route with explicit binding is the correct
+quality-justified answer.
+
 ### Cost-pattern bindings
 
 CRITICAL -- READ FIRST. The PER-AGENT BINDING SITE on Copilot is the
@@ -200,12 +245,22 @@ binding.
 
 - B12 MODEL ROUTER:
   - BINDING SITE: `.agent.md` frontmatter `model:` field, one
-    binding per custom agent. Each fan-out lens / arbiter / classifier
-    is its OWN `.agent.md` with its OWN `model:` line, picked from
-    the role-class table above. Default-binding-by-omission is
-    "inherit the session model" -- that is single-model uniform
-    binding, which is what fired (or rather, did NOT fire) in PR #12's
-    Executor B run. To actually fire B12, populate `model:` per agent.
+    binding per custom agent. The SELECTION RULE in
+    `design-patterns.md` §B12 decides WHETHER to populate it for
+    each element. Default-binding-by-omission means the element
+    inherits the HARNESS DEFAULT for its primitive type (see
+    "Default role class per primitive type" above) -- NOT
+    necessarily the session model. On Copilot CLI, omitting
+    `model:` on a `.agent.md` inherits the session default, but
+    expressing the same unit of work as a `task(agent_type=
+    'explore')` subagent runs it at TRIVIAL class instead. The
+    architect's lever is BOTH the primitive type choice AND the
+    `model:` field.
+  - Explicit `model:` matching the harness default is CEREMONY,
+    not B12 firing. See B12 ANTI-PATTERN: CEREMONIAL BINDING.
+    Reserve explicit binding for cases where it changes the
+    bound role class (bind-up for stakes, bind-down for economy,
+    portability across adapters, or operator economic bias).
   - Session-level fallback: configure model preference per CLI
     session or per workflow if NO per-agent override is set. Mid-
     session switch is supported but partitions the Copilot cache
@@ -213,7 +268,9 @@ binding.
   - ANTI-PATTERN unique to Copilot: SKILL-LEVEL ROUTING ATTEMPT --
     adding `model:` to SKILL.md frontmatter has no effect (silently
     ignored). Symptom: architect believes B12 is firing; profiling
-    shows uniform model billing. Fix: move the unit to `.agent.md`.
+    shows uniform model billing. Fix: move the unit to `.agent.md`
+    OR re-express as `task(agent_type=<x>)` subagent and let the
+    spawn-type default fire.
 
 - B13 CACHE-AWARE PREFIX: caching behavior is opaque to the operator
   (handled by Copilot's backend); cache discipline still pays off

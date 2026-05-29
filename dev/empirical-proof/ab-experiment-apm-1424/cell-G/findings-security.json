@@ -1,0 +1,10 @@
+[
+  {
+    "id": "SECURITY-001",
+    "severity": "BLOCKER",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "line 666",
+    "summary": "Call to undefined function _substitute_plugin_root() will cause NameError at runtime",
+    "details": "The code calls _substitute_plugin_root(servers, abs_root, logger) but this function is never defined in the diff. This will cause a NameError at runtime when processing any plugin with LSP servers, completely breaking the LSP feature for plugins using the ${CLAUDE_PLUGIN_ROOT} placeholder pattern. Security impact: if function is absent, placeholder substitution is skipped and paths may be wrong, but the primary impact is a correctness BLOCKER rather than a security issue per se."
+  }
+]

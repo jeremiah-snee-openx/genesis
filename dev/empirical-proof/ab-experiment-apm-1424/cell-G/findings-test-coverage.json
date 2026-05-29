@@ -1,0 +1,82 @@
+[
+  {
+    "id": "TEST-001",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "install (lines 1272-1374)",
+    "summary": "Missing tests for file write failures in LSPIntegrator.install when writing to .lsp.json or ~/.claude.json",
+    "details": "The install() method has try-except blocks (lines 1320-1347 for user scope, 1351-1372 for project scope) that catch generic Exception and log to diagnostics. However, there are NO tests that verify the error handling path: what happens when JSON write fails, encoding error occurs, or file permissions are denied. The production code silently catches and logs these errors, but tests only cover the happy path. Tests should verify: (1) exception is caught gracefully, (2) diagnostics.warn() is called with the error message, (3) return value is still accurate."
+  },
+  {
+    "id": "TEST-002",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "remove_stale (lines 1157-1227)",
+    "summary": "Missing tests for file read/write failures in LSPIntegrator.remove_stale when cleaning .lsp.json or ~/.claude.json",
+    "details": "The remove_stale() method has two large try-except blocks (1185-1201 for project scope, 1207-1227 for user scope) that catch generic Exception. Tests exist for normal removal (test_removes_stale_from_project_lsp_json, test_removes_stale_from_user_claude_json), but NO tests verify the error path: what happens when the JSON file is corrupted, unreadable, or write fails. The production code should gracefully handle these without crashing, but this is not tested. Should add tests for: (1) corrupted JSON file, (2) read permission denied, (3) write permission denied."
+  },
+  {
+    "id": "TEST-003",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "collect_transitive (lines 1072-1112)",
+    "summary": "Missing tests for error handling when parsing apm.yml files in transitive collection",
+    "details": "The collect_transitive() method iterates over apm.yml files and calls APMPackage.from_apm_yml() inside a try-except block (1100-1111). If parsing fails, it silently continues with a debug log. However, there are NO tests verifying this error path. Additionally, the method doesn't verify that packages actually have LSP dependencies before trying to get them - a malformed apm.yml could cause failures. Tests should verify: (1) malformed apm.yml is skipped gracefully, (2) packages without LSP deps don't break iteration, (3) error count/logging is correct."
+  },
+  {
+    "id": "TEST-004",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "run_lsp_integration (lines 825-922)",
+    "summary": "Missing test for LSP collection error handling when collect_transitive raises exception",
+    "details": "The run_lsp_integration() function calls LSPIntegrator.collect_transitive() at line 873-876 without any error handling. If this call raises an exception (due to file I/O, JSON parse, or other errors), the entire LSP integration fails. The test file test_lsp_integration.py mocks this call, so real error paths are never tested. An integration test should verify: (1) collect_transitive errors don't crash the install, (2) partial results are still processed, (3) diagnostics capture the error."
+  },
+  {
+    "id": "TEST-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "update_lockfile (lines 1233-1265)",
+    "summary": "Missing tests for lockfile update failures and recovery",
+    "details": "The update_lockfile() method tries to read, modify, and save the lockfile (lines 1252-1259). If LockFile.read() returns None or save() fails, these are caught silently (lines 1252-1265). Tests exist for normal success path (test_persists_lsp_servers, test_persists_lsp_configs), but NO tests cover: (1) lockfile.save() throws exception, (2) lockfile doesn't exist initially, (3) lockfile is corrupted/unreadable, (4) concurrent write attempts. Should add tests for these failure modes."
+  },
+  {
+    "id": "TEST-006",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "validate (lines 1678-1733)",
+    "summary": "Missing tests for edge cases in path traversal validation in LSPDependency",
+    "details": "The validate() method uses validate_path_segments() from utils.path_security to check for '..' in command (lines 1704-1713). While test_traversal_in_command_raises exists, there are NO tests for: (1) command with multiple '..' segments (e.g., '../../bin/evil'), (2) command with '..' mixed in middle (e.g., './foo/../../../bad'), (3) empty command string, (4) command with null bytes or other path injection techniques. Should add comprehensive path traversal tests."
+  },
+  {
+    "id": "TEST-007",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "run_lsp_integration orchestration (lines 871-920)",
+    "summary": "Missing end-to-end integration test for LSP server lifecycle (add, update, remove cycle)",
+    "details": "The test file test_lsp_integration.py uses mocks for LSPIntegrator, so the real integration between orchestrator and integrator is never tested. There should be at least one end-to-end test that: (1) creates a project with .lsp.json, (2) runs install with new LSP deps, (3) verifies .lsp.json is updated correctly, (4) runs install again with fewer deps, (5) verifies stale servers are removed. This would catch integration bugs between run_lsp_integration and LSPIntegrator methods."
+  },
+  {
+    "id": "TEST-008",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_extract_lsp_servers (lines 623-668)",
+    "summary": "Missing test for plugin root substitution with special characters or edge cases",
+    "details": "The _extract_lsp_servers() function substitutes ${CLAUDE_PLUGIN_ROOT} in string values (lines 664-666). Test test_plugin_root_substitution exists, but it only tests a simple case. Missing tests for: (1) multiple ${CLAUDE_PLUGIN_ROOT} occurrences in single value, (2) ${CLAUDE_PLUGIN_ROOT} with nested paths like '${CLAUDE_PLUGIN_ROOT}/../../escape', (3) ${CLAUDE_PLUGIN_ROOT} in complex dict structures (e.g., env vars), (4) case sensitivity of the substitution placeholder."
+  },
+  {
+    "id": "TEST-009",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_read_lsp_file (lines 671-686)",
+    "summary": "Missing tests for symlink and path traversal attacks in LSP file reading",
+    "details": "The _read_lsp_file() function validates path traversal (lines 674-677) and skips symlinks (line 683). Tests exist for basic path traversal (test_path_traversal_in_string_ref_blocked) and symlinks (test_symlink_lsp_json_skipped), but missing: (1) symlink that points outside plugin root (should be skipped), (2) relative path with '..' that resolves correctly vs those that escape, (3) circular symlinks, (4) hardlinks vs symlinks distinction. Should enhance symlink/traversal tests."
+  },
+  {
+    "id": "TEST-010",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "install method - non-dict/non-object deps (lines 1300-1311)",
+    "summary": "Missing tests for install() handling of malformed dependency objects",
+    "details": "The install() method checks if deps have to_lsp_json_entry() or to_dict() methods (lines 1301-1306) or are dicts (1307-1310). Tests exist for dict deps (test_dict_deps_handled) and objects, but NO tests for: (1) dependency object with only partial attributes (e.g., has 'name' but not 'command'), (2) dict dependency missing 'name' key, (3) None in dep list, (4) non-serializable objects in dep list. These edge cases should silently skip or be handled gracefully."
+  }
+]

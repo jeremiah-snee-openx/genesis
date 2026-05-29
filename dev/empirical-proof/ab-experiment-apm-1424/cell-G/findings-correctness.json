@@ -1,0 +1,42 @@
+[
+  {
+    "id": "CORRECTNESS-001",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "1315-1374",
+    "summary": "LSPIntegrator.install() returns inaccurate count when file write fails",
+    "details": "The install() method increments the 'count' variable (lines 1335, 1361) before attempting to write the configuration files (lines 1339, 1364). If writing the file fails with an exception (caught on lines 1344-1347, 1369-1372), the method still returns the count as if the write succeeded. This causes the caller (run_lsp_integration) to incorrectly report the number of configured servers. The return value should reflect only the servers that were successfully written to disk. Recommendation: Move count increment inside successful write blocks, or initialize count after the try block succeeds."
+  },
+  {
+    "id": "CORRECTNESS-002",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "886-891",
+    "summary": "Missing logger parameter passed to LSPIntegrator.install()",
+    "details": "The run_lsp_integration() function has a 'logger' parameter available (line 834), but when calling LSPIntegrator.install() (lines 886-891), the logger is not passed. This causes LSPIntegrator.install() to initialize a default NullCommandLogger (line 1291-1292) instead of using the provided logger instance. This results in suppressed logging and diagnostics. While not a critical bug since it falls back to a null logger, it breaks the logging chain. The logger parameter should be added to the install() call."
+  },
+  {
+    "id": "CORRECTNESS-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "1186-1227",
+    "summary": "Stale server cleanup may silently fail without error propagation",
+    "details": "The remove_stale() method catches all exceptions (lines 1197-1201, 1223-1227) and only logs debug messages. If the .lsp.json or ~/.claude.json files cannot be read or written due to permission errors or corrupted JSON, the method silently fails without informing the caller or user (no warning to diagnostics). This could leave stale server entries in configuration files indefinitely. The method should either: (1) propagate the exception, (2) pass diagnostics to the method, or (3) call logger.warning() for critical failures like permission errors."
+  },
+  {
+    "id": "CORRECTNESS-004",
+    "severity": "LOW",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "1598-1610",
+    "summary": "Incomplete handling of None vs missing keys in LSPDependency.from_dict()",
+    "details": "Lines 1605-1610 use the `or` operator to fall back between camelCase and snake_case field names. This works, but for boolean fields like restart_on_crash (lines 1607-1609), the pattern `d.get('restartOnCrash') if d.get('restartOnCrash') is not None else d.get('restart_on_crash')` is used. However, for integer fields like max_restarts (line 1610), it uses `d.get('maxRestarts') or d.get('max_restarts')`. This is inconsistent: if maxRestarts=0 is provided, the `or` operator would treat it as falsy and fall back to the snake_case key. The pattern should match the boolean field handling for consistency."
+  },
+  {
+    "id": "CORRECTNESS-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "705-764",
+    "summary": "LSP dependency validation failures are silently skipped without clear reporting",
+    "details": "In _lsp_servers_to_apm_deps(), invalid LSP server configs are skipped with a warning (lines 756-760) if LSPDependency.from_dict() raises an exception. However, when a plugin defines multiple LSP servers and some fail validation, the user receives only a warning and no clear indication of which servers were configured vs which failed. This could silently drop half of a plugin's LSP servers without obvious feedback. The method should aggregate and report all validation errors together, or fail fast rather than partial success."
+  }
+]

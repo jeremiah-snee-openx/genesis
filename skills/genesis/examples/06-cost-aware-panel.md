@@ -145,6 +145,24 @@ claude-code.md` model catalog):
 | Cost-aware (agree path, ~80%) | 1 trivial router + 5 reviewer (Sonnet) + 1 trivial detector + 1 reviewer synth | ~7 x 4K + ~1K = 29K | ~5 x 600 + 200 + ~700 = ~3900 | ~$0.10-0.15 |
 | Cost-aware (disagree path, ~20%) | adds 1 planner arbiter on top | +~5K | +~1K | ~$0.20-0.30 |
 
+PROVENANCE WARNING. The numbers above are arithmetic projections
+against the Anthropic API direct-billing model (the reference shape
+this example was derived from). They are NOT measured. PR #12's
+empirical A/B on Copilot CLI (Cell D v0.1 baseline vs Cell E
+v0.3.1) measured the OPPOSITE direction for the same review-panel
+shape: v0.3.1 cost +25% vs v0.1 because the architect bound the
+5-lens fan-out at IMPLEMENTER class explicitly when the Copilot
+CLI default for `task(agent_type='explore')` subagents is already
+TRIVIAL class (Haiku). On Copilot CLI, the cheapest correct
+implementation of this PANEL is `task(agent_type='explore')` per
+lens with NO `model:` declared anywhere -- the harness default IS
+the trivial-class binding. Re-read `per-harness/copilot.md`
+section "Default role class per primitive type" before applying
+this example on Copilot CLI; the dollar figures shown here apply
+ONLY when the bound architecture is a `.agent.md` fan-out (where
+the default would otherwise be the session model, typically
+implementer or higher).
+
 Arithmetic (per `claude-code.md` Section 9, verified 2025-11-14): Opus
 $15/Mtok input, $75/Mtok output. Cost-unconscious row = 30K x $15/M +
 6K x $75/M = $0.45 + $0.45 = ~$0.90. Sonnet $3/Mtok input, $15/Mtok

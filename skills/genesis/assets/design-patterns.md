@@ -837,6 +837,53 @@ The router itself MUST be lightweight: planner-class routers eat
 the savings. The typical break-even is a router that costs less
 than 5% of the most expensive downstream call.
 
+SELECTION RULE (apply BEFORE writing any concrete `model:` field;
+this rule decides whether to bind at all):
+
+1. Identify the HARNESS DEFAULT role class for the primitive type
+   that will carry the work. Consult the adapter's "default role
+   class per primitive type" table (e.g. `per-harness/copilot.md`
+   section "Default role class per primitive type"). The harness
+   default is NOT always the session model -- on some harnesses,
+   subagent spawn types (e.g. Copilot CLI's `task(agent_type=
+   'explore')`) default to a CHEAPER role class than the session
+   model. Without this lookup the architect cannot reason about
+   binding direction.
+
+2. Identify the REQUIRED role class for this work (planner /
+   implementer / reviewer / trivial / safety) per the rubric in
+   `model-catalog.md`.
+
+3. Decide binding action:
+   - DEFAULT == REQUIRED  -> OMIT `model:`. Trust the harness
+     default. This is the correct, cheap answer. Adding an
+     explicit `model:` that matches the default is CEREMONY,
+     not B12 firing -- it produces no cost or quality delta
+     and inflates the design surface.
+   - DEFAULT < REQUIRED   -> BIND UP for STAKES. Declare the
+     higher role class explicitly. Cost increase is justified
+     by the quality requirement.
+   - DEFAULT > REQUIRED   -> BIND DOWN for ECONOMY. Declare the
+     cheaper role class explicitly. Cost reduction IS the
+     benefit. This is the second core B12 use case (the first
+     being binding-up classifiers in front of expensive workers).
+   - PORTABILITY required across harnesses with different
+     defaults -> BIND explicitly so the choice survives
+     adapter swap.
+   - OPERATOR ECONOMIC BIAS = MAX_QUALITY -> tolerate more
+     binding-up; MAX_ECONOMY -> prefer binding-down and accept
+     quality risk on non-critical elements; BALANCED (default)
+     -> apply rule 3 as stated.
+
+CONSEQUENCE: a B12 design that touches N agentic elements may
+legitimately produce explicit `model:` on ZERO of them (every
+element fits the harness default for its primitive type), on a
+SUBSET (only the elements whose required class differs from the
+default), or on ALL (rare; usually a portability or maximum-
+economy stance). All three are valid B12 firings. The metric is
+"did we pick the cheapest role class that meets each element's
+required class," NOT "did we populate `model:` everywhere."
+
 ANTI-PATTERNS:
 - HARDCODED MODEL NAMES in the design. Models age out; the
   catalogue should reference role classes only. (Concrete names
@@ -865,6 +912,21 @@ ANTI-PATTERNS:
   confirm WHICH primitive type carries the `model:` field on the
   target harness; restructure the unit of work to use that
   primitive type if it is currently held by another.
+- CEREMONIAL BINDING -- declaring `model:` on every agentic
+  element when most of them already match the harness default
+  for their primitive type. The architect believes "explicit
+  bindings make B12 firing intentional and future-proof"; in
+  practice they only enlarge the design surface and PREVENT the
+  reader from spotting the genuine cross-class bindings. PR #12's
+  empirical A/B (Cell E v0.3.1, 7 of 8 elements bound explicitly,
+  6 to session default) measured zero cost benefit from the 6
+  ceremonial bindings and a +25% TOTAL run cost vs the v0.1
+  baseline (Cell D) because the architect also bound the lens
+  fan-out off the harness's cheap subagent default. Cure: apply
+  the SELECTION RULE above; bind explicitly only when default !=
+  required, or portability requires it, or economic bias declares
+  it. Default-by-omission for matching classes is correct, not
+  a regression.
 
 ---
 

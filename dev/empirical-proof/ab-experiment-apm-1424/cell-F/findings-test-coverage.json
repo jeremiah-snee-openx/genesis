@@ -1,0 +1,98 @@
+[
+  {
+    "id": "TEST-001",
+    "severity": "HIGH",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_extract_lsp_servers, line ~666",
+    "summary": "Missing implementation of `_substitute_plugin_root` called in LSP extraction — confirmed BLOCKER from correctness lens",
+    "details": "The function `_extract_lsp_servers` calls `_substitute_plugin_root(servers, abs_root, logger)` but this function is NOT defined anywhere in the codebase. Will fail at runtime with NameError when plugins declare LSP servers using ${CLAUDE_PLUGIN_ROOT} placeholders. Corroborates CORRECTNESS-001."
+  },
+  {
+    "id": "TEST-002",
+    "severity": "HIGH",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_read_lsp_file, line ~671-688",
+    "summary": "No test for symlink pointing outside plugin root after path validation passes (TOCTOU)",
+    "details": "The path traversal check uses `relative_to()` but symlink check only blocks symlinks at the candidate path itself. An attacker could create a symlink AFTER validation but BEFORE the file read. No test verifies this case. Corroborates SECURITY-006."
+  },
+  {
+    "id": "TEST-003",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "collect_transitive, line ~50-75",
+    "summary": "No test for exception handling when APMPackage parsing fails during transitive LSP collection",
+    "details": "The `collect_transitive` method catches exceptions but only logs them. No tests verify partial collection is still usable, that error counts are reported, or that collection continues with remaining valid packages after a failure."
+  },
+  {
+    "id": "TEST-004",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "install, line ~290-320",
+    "summary": "No tests for JSON write failure scenarios (permission denied, read-only files)",
+    "details": "The `install` method has try/except blocks for JSON write failures but tests only cover success paths. No tests verify behavior when .lsp.json write fails, or that partial writes don't corrupt existing configs."
+  },
+  {
+    "id": "TEST-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "get_server_configs, line ~103-113",
+    "summary": "No test for LSPDependency objects lacking to_dict() or name attribute",
+    "details": "The `get_server_configs` method assumes LSPDependency objects have both `to_dict` and `name` attributes. No tests for malformed dependency objects, which could silently drop server configurations."
+  },
+  {
+    "id": "TEST-006",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "update_lockfile, line ~213-227",
+    "summary": "No test for corrupted YAML lockfile or type mismatches during lockfile update",
+    "details": "Tests don't cover: corrupted YAML in existing lockfile, lsp_servers as list vs set type mismatch, or whether clearing to empty set properly removes old configurations."
+  },
+  {
+    "id": "TEST-007",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "remove_stale, line ~124-185",
+    "summary": "No test for JSON parsing errors when removing stale LSP servers",
+    "details": "Tests only cover valid JSON files. No tests verify behavior when .lsp.json contains invalid JSON, or that partial corruption isn't written back to disk."
+  },
+  {
+    "id": "TEST-008",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_lsp_servers_to_apm_deps, line ~705-760",
+    "summary": "No test verifying warning logs are generated for skipped invalid servers",
+    "details": "The function skips invalid servers with logging but tests don't verify that warning logs are actually generated or that a mix of valid and invalid servers is handled correctly."
+  },
+  {
+    "id": "TEST-009",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_read_lsp_json, line ~689-704",
+    "summary": "No test for non-dict JSON top-level structures in .lsp.json",
+    "details": "No tests verify that array-or-null top-level JSON is safely rejected. A plugin with a malicious .lsp.json could exploit incomplete validation."
+  },
+  {
+    "id": "TEST-010",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "run_lsp_integration",
+    "summary": "No end-to-end test for direct_lsp_deps + collected_lsp_deps merge and deduplication",
+    "details": "Tests for run_lsp_integration use mocks. No test verifies that direct and transitive LSP dependencies are properly merged before deduplication in a real code path."
+  },
+  {
+    "id": "TEST-011",
+    "severity": "LOW",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "validate, line ~145-185",
+    "summary": "Missing edge cases in path traversal validation for command field",
+    "details": "Tests check basic invalid names but not comprehensive boundary cases: commands with spaces, absolute vs relative paths, empty string, or None with strict=False."
+  },
+  {
+    "id": "TEST-012",
+    "severity": "LOW",
+    "file": "src/apm_cli/models/apm_package.py",
+    "line_anchor": "get_lsp_dependencies / get_dev_lsp_dependencies",
+    "summary": "No test for malformed lsp entries in dependencies dict",
+    "details": "No tests for behavior when dependencies['lsp'] contains mixed types, is None, or is not a list. No test verifying get_lsp_dependencies and get_dev_lsp_dependencies don't overlap."
+  }
+]

@@ -1,0 +1,2837 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 1110f2352..1e60ab394 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
+ 
+ ## [Unreleased]
+ 
++### Added
++
++- First-class LSP server support in the install pipeline: `dependencies.lsp` in `apm.yml`, `.lsp.json` auto-discovery from plugins, transitive collection, deduplication, stale cleanup, and lockfile persistence. (#1424) -- by @stbenjam
++
+ ### Fixed
+ 
+ - Copilot, Codex, Cursor, Claude, Windsurf, OpenCode, and Gemini adapters handle MCP v0.1 `runtimeArguments`/`packageArguments` with `variables` (no `type` key), matching the VS Code fix from #1444. (#1461, closes #1452, thanks @sergio-sisternes-epam)
+diff --git a/apm.lock.yaml b/apm.lock.yaml
+index e04200e17..4064d9e57 100644
+--- a/apm.lock.yaml
++++ b/apm.lock.yaml
+@@ -1,77 +1,14 @@
+ lockfile_version: '1'
+-generated_at: '2026-05-21T20:29:36.132987+00:00'
+-apm_version: 0.14.1
++generated_at: '2026-05-24T02:22:37.516770+00:00'
++apm_version: 0.14.2
+ dependencies:
+ - repo_url: _local/apm-review-panel
+   package_type: hybrid
+-  deployed_files:
+-  - .agents/skills/apm-review-panel
+   source: local
+   local_path: ./packages/apm-review-panel
+ - repo_url: _local/batch-bug-shepherd
+   package_type: apm_package
+   deployed_files:
+-  - .agents/skills/batch-bug-shepherd
++  - copilot-app-db://workflows/apm--_local--batch-bug-shepherd--batch-bug-shepherd
+   source: local
+   local_path: ./packages/batch-bug-shepherd
+-local_deployed_files:
+-- .agents/skills/apm-strategy
+-- .agents/skills/apm-triage-panel
+-- .agents/skills/auth
+-- .agents/skills/cli-logging-ux
+-- .agents/skills/devx-ux
+-- .agents/skills/docs-impact-architect
+-- .agents/skills/docs-impact-classifier
+-- .agents/skills/docs-impact-localizer
+-- .agents/skills/docs-sync
+-- .agents/skills/oss-growth
+-- .agents/skills/pr-description-skill
+-- .agents/skills/python-architecture
+-- .agents/skills/supply-chain-security
+-- .github/agents/agentic-workflows.agent.md
+-- .github/agents/apm-ceo.agent.md
+-- .github/agents/apm-primitives-architect.agent.md
+-- .github/agents/auth-expert.agent.md
+-- .github/agents/cdo.agent.md
+-- .github/agents/cli-logging-expert.agent.md
+-- .github/agents/devx-ux-expert.agent.md
+-- .github/agents/doc-analyser.agent.md
+-- .github/agents/doc-writer.agent.md
+-- .github/agents/editorial-owner.agent.md
+-- .github/agents/oss-growth-hacker.agent.md
+-- .github/agents/python-architect.agent.md
+-- .github/agents/supply-chain-security-expert.agent.md
+-- .github/agents/test-coverage-expert.agent.md
+-- .github/instructions/changelog.instructions.md
+-- .github/instructions/cicd.instructions.md
+-- .github/instructions/cli.instructions.md
+-- .github/instructions/doc-sync.instructions.md
+-- .github/instructions/encoding.instructions.md
+-- .github/instructions/integrators.instructions.md
+-- .github/instructions/linting.instructions.md
+-- .github/instructions/python.instructions.md
+-- .github/instructions/tests.instructions.md
+-local_deployed_file_hashes:
+-  .github/agents/agentic-workflows.agent.md: sha256:d1ea2d038e2af8be11d6c95b3213b03b9777fae46f0438efa95d5a803e6c3765
+-  .github/agents/apm-ceo.agent.md: sha256:484da64428ea46a6183dffd3f30c9fc5fc5c747639c0c79e55be69dba0899323
+-  .github/agents/apm-primitives-architect.agent.md: sha256:6c01eab74ba18d70f21d45010d636cc6535d63cee81da12e61898d8036e0b028
+-  .github/agents/auth-expert.agent.md: sha256:18264a933cba432b77d133e6ae11eee294c92ed245629af8c9b7a5bb7a9a300c
+-  .github/agents/cdo.agent.md: sha256:71e7684942679f86199b6720fc69d52ef796a0ec28981250b9ad275a1ed41d31
+-  .github/agents/cli-logging-expert.agent.md: sha256:3ed7fe1a2e28e03a40311d4999ef54330908920d6515205708dd3f037abfcf0f
+-  .github/agents/devx-ux-expert.agent.md: sha256:8310d130cca5bc548baf4a2a84e3c9680c9dc5d83a2718150636896ab2aa1f30
+-  .github/agents/doc-analyser.agent.md: sha256:47b1d0204904b786c19d4fe84343e86cdab6f92f862f676ba741ffe6e1385679
+-  .github/agents/doc-writer.agent.md: sha256:328a5b9ea079869b8ccd914a6e2135c204225a5eedb42f59a1ec73058f7f0b47
+-  .github/agents/editorial-owner.agent.md: sha256:9dd101a9476dd93b67da1b823cc3b649f1227168fd809b108c74f9304262d860
+-  .github/agents/oss-growth-hacker.agent.md: sha256:1cd56bb78ab37d52c50e45ab69d759f775cd49cdf35981b3dc6c4004315c6b83
+-  .github/agents/python-architect.agent.md: sha256:7587ee7c684c61046a83dfa1b7e39d1345f2f119c3395478e3ca2dbbaaaff0e9
+-  .github/agents/supply-chain-security-expert.agent.md: sha256:8fb8cc426d6af17ba084a28b3f026c2b475b62e3ca63ed2f88b83bd823f877af
+-  .github/agents/test-coverage-expert.agent.md: sha256:bc588d89530362469502bfbea788df892a9a0b00e630cd0f3926d3dfd2c2a9e2
+-  .github/instructions/changelog.instructions.md: sha256:1e51ec4c74e847967962bd279dc4c6e582c5d3578490b3c28d5f3acd3e05f73e
+-  .github/instructions/cicd.instructions.md: sha256:9c0fafc74f743aa97e5adba2168d66c9e3a327b135065e3b804bdbb5f04cda5d
+-  .github/instructions/cli.instructions.md: sha256:8e39e8d5047ce88575cb02f87c2bcede584dfef258bd86f7466c7badf136541a
+-  .github/instructions/doc-sync.instructions.md: sha256:bb3816254f8df6bffc6faacd556871f36903e9d7f348982f1e2de0339384c696
+-  .github/instructions/encoding.instructions.md: sha256:93db7377dc896f6efecf2c5d8c5d89255a555562f468d034d64c42edd5cf46d5
+-  .github/instructions/integrators.instructions.md: sha256:b151e0438088d2c0b636dfc28532ecf43c3b51e5f1070a354b8d5b57c345e335
+-  .github/instructions/linting.instructions.md: sha256:8d31137f18842570bef6c93f8396587ac691e5fc973988bd865b008b0983f90d
+-  .github/instructions/python.instructions.md: sha256:45173f778eddc126c37c7ace96acd0e17adb1895031eec134ec0754638d3ba37
+-  .github/instructions/tests.instructions.md: sha256:b527ccaecf0e92f74d300fc9027f1bc49bb43d8ddcdd36338c1556fcde0d8b2d
+diff --git a/docs/src/content/docs/consumer/install-lsp-servers.md b/docs/src/content/docs/consumer/install-lsp-servers.md
+new file mode 100644
+index 000000000..314e52341
+--- /dev/null
++++ b/docs/src/content/docs/consumer/install-lsp-servers.md
+@@ -0,0 +1,184 @@
++---
++title: "Install LSP servers"
++description: "Declare LSP servers in apm.yml and let apm install wire them into Claude Code."
++---
++
++`apm install` handles three dependency kinds: APM packages
++(see [Install Packages](../install-packages/)), MCP servers
++(see [Install MCP servers](../install-mcp-servers/)), and LSP servers.
++This page covers LSP servers: how you declare them, what gets written,
++and how the install pipeline manages their lifecycle.
++
++LSP integration currently targets **Claude Code only**. The dependency
++model is runtime-agnostic, so support for additional runtimes can be
++added as they adopt LSP plugin configuration. For Claude Code's LSP
++specification, see the
++[Plugins reference](https://code.claude.com/docs/en/plugins-reference).
++
++## One-line answer
++
++Declare an LSP server in `apm.yml` and run `apm install`:
++
++```yaml
++dependencies:
++  lsp:
++    - name: gopls
++      command: gopls
++      args: ["serve"]
++      extensionToLanguage:
++        ".go": go
++```
++
++```bash
++apm install
++```
++
++APM writes a `.lsp.json` at the project root (or updates `lspServers`
++in `~/.claude.json` when installed with `-g`). Claude Code reads
++this file and starts the configured language servers automatically.
++
++## The `lsp:` section in apm.yml
++
++LSP servers live under `dependencies.lsp:` (or `devDependencies.lsp:`).
++Two forms are valid:
++
++```yaml
++dependencies:
++  lsp:
++    # 1. String reference (server name only -- resolved from
++    #    transitive packages or plugin .lsp.json)
++    - gopls
++
++    # 2. Full object (self-contained server definition)
++    - name: pyright
++      command: pyright-langserver
++      args: ["--stdio"]
++      extensionToLanguage:
++        ".py": python
++        ".pyi": python
++      transport: stdio
++      env:
++        PYTHONPATH: "./src"
++      startupTimeout: 10000
++```
++
++The full field reference is in the
++[Manifest schema](../../reference/manifest-schema/#43-dependencieslsp----listlspdependency).
++
++## What `apm install` writes to disk
++
++| Scope | File | Format |
++|---|---|---|
++| Project (default) | `.lsp.json` at project root | JSON: server name as key, config as value |
++| User (`-g`) | `~/.claude.json` | JSON: `lspServers` section |
++
++**Project-scope `.lsp.json` example:**
++
++```json
++{
++  "gopls": {
++    "command": "gopls",
++    "args": ["serve"],
++    "extensionToLanguage": {
++      ".go": "go"
++    }
++  }
++}
++```
++
++**User-scope `~/.claude.json` excerpt:**
++
++```json
++{
++  "lspServers": {
++    "gopls": {
++      "command": "gopls",
++      "args": ["serve"],
++      "extensionToLanguage": {
++        ".go": "go"
++      }
++    }
++  }
++}
++```
++
++## Required and optional fields
++
++Two fields are required for every LSP server definition (object form):
++
++| Field | Type | Description |
++|---|---|---|
++| `command` | `string` | Binary to execute. Must be on `$PATH` or a relative path. |
++| `extensionToLanguage` | `map<string, string>` | Maps file extensions to LSP language identifiers (e.g. `".go": "go"`). |
++
++Optional fields give you finer control:
++
++| Field | Type | Default | Description |
++|---|---|---|---|
++| `args` | `list<string>` | `[]` | Command-line arguments. |
++| `transport` | `string` | `stdio` | `stdio` or `socket`. |
++| `env` | `map<string, string>` | `{}` | Environment variables set when starting the server. |
++| `initializationOptions` | `any` | -- | Options passed during LSP initialization. |
++| `settings` | `any` | -- | Settings passed via `workspace/didChangeConfiguration`. |
++| `workspaceFolder` | `string` | -- | Workspace folder path. |
++| `startupTimeout` | `int` | -- | Max time (ms) to wait for server startup. |
++| `shutdownTimeout` | `int` | -- | Max time (ms) for graceful shutdown. |
++| `restartOnCrash` | `bool` | -- | Restart the server automatically on crash. |
++| `maxRestarts` | `int` | -- | Maximum restart attempts before giving up. |
++
++## Transitive LSP dependencies
++
++When an APM package you depend on declares its own `dependencies.lsp`
++entries, APM collects them transitively after installation. Direct
++(root) dependencies take precedence: if the root manifest and a
++transitive package both declare a server with the same name, the
++root definition wins.
++
++Unlike MCP, LSP has no registry vs self-defined distinction. All
++LSP servers from installed packages are treated as trusted.
++
++## Stale server cleanup
++
++When a previously installed LSP server is no longer declared by
++any dependency, APM removes it from `.lsp.json` (or `~/.claude.json`
++at user scope). The lockfile tracks which servers APM manages, so
++hand-added servers are never touched.
++
++## Lockfile
++
++`apm install` persists two fields in `apm.lock.yaml`:
++
++- `lsp_servers` -- sorted list of APM-managed server names.
++- `lsp_configs` -- server-name-to-config baseline for drift detection.
++
++See the [Lockfile specification](../../reference/lockfile-spec/).
++
++## Plugin extraction
++
++When APM installs a Claude Code plugin that contains `lspServers` in
++`plugin.json` or a `.lsp.json` file, the LSP servers are automatically
++extracted and wired into the install pipeline. The `${CLAUDE_PLUGIN_ROOT}`
++placeholder in server configs is replaced with the absolute plugin path.
++
++## Runtime support
++
++LSP integration currently writes configuration for Claude Code only.
++The `LSPDependency` model and manifest format are runtime-agnostic --
++as other runtimes adopt LSP plugin configuration, APM can add write
++targets without changing the dependency schema.
++
++| Runtime | LSP support |
++|---|---|
++| Claude Code | `.lsp.json` / `~/.claude.json` |
++| Cursor | Uses LSP internally; no external config format yet |
++| OpenCode | Has LSP integration; no APM adapter yet |
++| Others | Not yet supported |
++
++## Next
++
++- Full field reference and validation rules --
++  [Manifest schema](../../reference/manifest-schema/#43-dependencieslsp----listlspdependency).
++- Lockfile fields --
++  [Lockfile specification](../../reference/lockfile-spec/).
++- Claude Code LSP plugin authoring --
++  [Plugins reference](https://code.claude.com/docs/en/plugins-reference).
+diff --git a/docs/src/content/docs/reference/lockfile-spec.md b/docs/src/content/docs/reference/lockfile-spec.md
+index ca876ef38..5a1f051c8 100644
+--- a/docs/src/content/docs/reference/lockfile-spec.md
++++ b/docs/src/content/docs/reference/lockfile-spec.md
+@@ -53,6 +53,14 @@ mcp_configs:
+     type: stdio
+     command: docker
+     args: ["run", "-i", "--rm", "ghcr.io/github/github-mcp-server"]
++lsp_servers:
++  - pyright
++lsp_configs:
++  pyright:
++    command: pyright-langserver
++    args: ["--stdio"]
++    extensionToLanguage:
++      ".py": python
+ local_deployed_files:
+   - .github/skills/my-local-skill/SKILL.md
+ local_deployed_file_hashes:
+@@ -67,6 +75,8 @@ local_deployed_file_hashes:
+ | `dependencies` | list | yes | Resolved APM packages. See [per-entry fields](#per-entry-fields). |
+ | `mcp_servers` | list of strings | no | Names of MCP servers declared in the manifest at install time. |
+ | `mcp_configs` | map | no | `server_name -> resolved config dict` baseline used to detect MCP drift. |
++| `lsp_servers` | list of strings | no | Names of LSP servers declared in the manifest at install time. Claude Code only. |
++| `lsp_configs` | map | no | `server_name -> resolved config dict` baseline used to detect LSP drift. |
+ | `local_deployed_files` | list | no | Files this project itself contributes (sources its own primitives). See [self entry](#self-entry). |
+ | `local_deployed_file_hashes` | map | no | `path -> sha256` for `local_deployed_files`. |
+ 
+diff --git a/docs/src/content/docs/reference/manifest-schema.md b/docs/src/content/docs/reference/manifest-schema.md
+index 2d53f7eec..7b3d604dc 100644
+--- a/docs/src/content/docs/reference/manifest-schema.md
++++ b/docs/src/content/docs/reference/manifest-schema.md
+@@ -6,8 +6,8 @@ sidebar:
+ ---
+ 
+ <dl>
+-<dt>Version</dt><dd>0.2 (Working Draft)</dd>
+-<dt>Date</dt><dd>2026-05-10</dd>
++<dt>Version</dt><dd>0.3 (Working Draft)</dd>
++<dt>Date</dt><dd>2026-05-20</dd>
+ <dt>Editors</dt><dd>Daniel Meppiel (Microsoft)</dd>
+ <dt>Repository</dt><dd>https://github.com/microsoft/apm</dd>
+ <dt>Format</dt><dd>YAML 1.2</dd>
+@@ -53,9 +53,11 @@ includes:      <enum | list<string>>
+ dependencies:
+   apm:         <list<ApmDependency>>
+   mcp:         <list<McpDependency>>
++  lsp:         <list<LspDependency>>
+ devDependencies:
+   apm:         <list<ApmDependency>>
+   mcp:         <list<McpDependency>>
++  lsp:         <list<LspDependency>>
+ compilation:   <CompilationConfig>
+ policy:        <PolicyConfig>
+ marketplace:   <MarketplaceConfig>       # OPTIONAL; marketplace authoring
+@@ -255,9 +257,9 @@ Full semantics (network failure matrix, hash pin verification, policy precedence
+ |---|---|
+ | **Type** | `object` |
+ | **Required** | OPTIONAL |
+-| **Known keys** | `apm`, `mcp` |
++| **Known keys** | `apm`, `mcp`, `lsp` |
+ 
+-Contains two OPTIONAL lists: `apm` for agent primitive packages and `mcp` for MCP servers. Each list entry is either a string shorthand or a typed object. Additional keys MAY be present for future dependency types; conforming resolvers MUST ignore unknown keys for resolution but MUST preserve them when reading and rewriting manifests.
++Contains three OPTIONAL lists: `apm` for agent primitive packages, `mcp` for MCP servers, and `lsp` for LSP servers. Each list entry is either a string shorthand or a typed object. Additional keys MAY be present for future dependency types; conforming resolvers MUST ignore unknown keys for resolution but MUST preserve them when reading and rewriting manifests.
+ 
+ ---
+ 
+@@ -472,13 +474,84 @@ dependencies:
+ 
+ ---
+ 
++### 4.3. `dependencies.lsp` -- `list<LspDependency>`
++
++LSP (Language Server Protocol) server dependencies give Claude Code real-time code intelligence -- diagnostics, go-to-definition, and type information. LSP integration currently targets Claude Code only; see the [Plugins reference](https://code.claude.com/docs/en/plugins-reference) for Claude Code's LSP specification.
++
++Each element MUST be one of two forms: **string** or **object**.
++
++#### 4.3.1. String Form
++
++A plain server name reference: `gopls`. String-form entries carry only a name and are resolved from transitive packages or plugin `.lsp.json` files. They bypass strict validation (no `command` or `extensionToLanguage` required).
++
++#### 4.3.2. Object Form
++
++| Field | Type | Required | Constraint | Description |
++|---|---|---|---|---|
++| `name` | `string` | REQUIRED | `^[a-zA-Z0-9@_][a-zA-Z0-9._@/:=-]{0,127}$`; no `..` segments | Server identifier. |
++| `command` | `string` | REQUIRED | No `..` path segments | Binary to execute (must be on `$PATH` or a relative path). |
++| `extensionToLanguage` | `map<string, string>` | REQUIRED | Non-empty dict | Maps file extensions to LSP language identifiers (e.g. `".go": "go"`). |
++| `args` | `list<string>` | OPTIONAL | | Command-line arguments for the server. |
++| `transport` | `enum<string>` | OPTIONAL | `stdio`, `socket` | Communication transport. Defaults to `stdio`. |
++| `env` | `map<string, string>` | OPTIONAL | | Environment variables set when starting the server. |
++| `initializationOptions` | `any` | OPTIONAL | | Options passed to the server during LSP initialization. |
++| `settings` | `any` | OPTIONAL | | Settings passed via `workspace/didChangeConfiguration`. |
++| `workspaceFolder` | `string` | OPTIONAL | | Workspace folder path for the server. |
++| `startupTimeout` | `int` | OPTIONAL | | Max time (ms) to wait for server startup. |
++| `shutdownTimeout` | `int` | OPTIONAL | | Max time (ms) to wait for graceful shutdown. |
++| `restartOnCrash` | `bool` | OPTIONAL | | Whether to automatically restart on crash. |
++| `maxRestarts` | `int` | OPTIONAL | | Maximum restart attempts before giving up. |
++
++Both `command` and `extensionToLanguage` are REQUIRED in the object form. A missing or empty value for either is a validation error.
++
++#### 4.3.3. Validation Rules
++
++1. `name` MUST match the pattern above and MUST NOT contain `..` path segments.
++2. `command` MUST be a string and MUST NOT contain `..` path traversal.
++3. `transport`, when present, MUST be `stdio` or `socket`.
++4. `extensionToLanguage` MUST be a non-empty dict mapping string keys to string values.
++
++Manifest keys use camelCase (`extensionToLanguage`, `initializationOptions`, `workspaceFolder`, `startupTimeout`, `shutdownTimeout`, `restartOnCrash`, `maxRestarts`). Snake_case aliases are accepted on input for ergonomics but camelCase is canonical.
++
++```yaml
++dependencies:
++  lsp:
++    # String form
++    - gopls
++
++    # Object form
++    - name: pyright
++      command: pyright-langserver
++      args: ["--stdio"]
++      extensionToLanguage:
++        ".py": python
++        ".pyi": python
++      transport: stdio
++      env:
++        PYTHONPATH: "./src"
++      startupTimeout: 10000
++
++    - name: rust-analyzer
++      command: rust-analyzer
++      extensionToLanguage:
++        ".rs": rust
++      restartOnCrash: true
++      maxRestarts: 3
++```
++
++#### 4.3.4. What Gets Written
++
++`apm install` writes LSP server configs to `.lsp.json` at the project root (project scope) or to the `lspServers` section of `~/.claude.json` (user scope with `-g`). See [Install LSP servers](../../consumer/install-lsp-servers/) for the output format and lifecycle details.
++
++---
++
+ ## 5. devDependencies
+ 
+ | | |
+ |---|---|
+ | **Type** | `object` |
+ | **Required** | OPTIONAL |
+-| **Known keys** | `apm`, `mcp` |
++| **Known keys** | `apm`, `mcp`, `lsp` |
+ 
+ Development-only dependencies installed locally but excluded from plugin bundles produced by [`apm pack`](../cli/pack/) (plugin format is the default). Uses the same structure as [`dependencies`](#4-dependencies).
+ 
+@@ -717,6 +790,13 @@ dependencies:
+       command: ./bin/my-server
+       env:
+         API_KEY: ${{ secrets.KEY }}
++  lsp:
++    - name: pyright
++      command: pyright-langserver
++      args: ["--stdio"]
++      extensionToLanguage:
++        ".py": python
++        ".pyi": python
+ 
+ devDependencies:
+   apm:
+@@ -751,4 +831,5 @@ marketplace:
+ | Version | Date | Changes |
+ |---|---|---|
+ | 0.1 | 2026-03-06 | Initial Working Draft. |
+-| 0.2 | 2026-05-10 | Added Section 7 (Marketplace authoring block). Documented `scripts.start` as the default `apm run` entry point. Cross-links updated to `../cli/<verb>/` paths. ASCII-only enforcement. |
+\ No newline at end of file
++| 0.2 | 2026-05-10 | Added Section 7 (Marketplace authoring block). Documented `scripts.start` as the default `apm run` entry point. Cross-links updated to `../cli/<verb>/` paths. ASCII-only enforcement. |
++| 0.3 | 2026-05-20 | Added Section 4.3 (`dependencies.lsp`). LSP servers as a third dependency kind (Claude Code only). Updated document structure, devDependencies known keys, and Appendix A. |
+\ No newline at end of file
+diff --git a/packages/apm-guide/.apm/skills/apm-usage/dependencies.md b/packages/apm-guide/.apm/skills/apm-usage/dependencies.md
+index 92b33c816..f27aa86d4 100644
+--- a/packages/apm-guide/.apm/skills/apm-usage/dependencies.md
++++ b/packages/apm-guide/.apm/skills/apm-usage/dependencies.md
+@@ -199,6 +199,48 @@ dependencies:
+       url: "https://mcp.internal.example.com"
+ ```
+ 
++## LSP dependency formats
++
++LSP (Language Server Protocol) servers give Claude Code real-time code
++intelligence. LSP integration currently targets Claude Code only. See
++the [Claude Code Plugins reference](https://code.claude.com/docs/en/plugins-reference)
++for the LSP specification.
++
++```yaml
++dependencies:
++  lsp:
++    # String reference (name only)
++    - gopls
++
++    # Full object
++    - name: pyright
++      command: pyright-langserver
++      args: ["--stdio"]
++      extensionToLanguage:
++        ".py": python
++        ".pyi": python
++      transport: stdio                          # stdio (default) | socket
++      env:
++        PYTHONPATH: "./src"
++      startupTimeout: 10000
++
++    - name: rust-analyzer
++      command: rust-analyzer
++      extensionToLanguage:
++        ".rs": rust
++      restartOnCrash: true
++      maxRestarts: 3
++```
++
++Required fields (object form): `name`, `command`, `extensionToLanguage`.
++
++Optional fields: `args`, `transport`, `env`, `initializationOptions`,
++`settings`, `workspaceFolder`, `startupTimeout`, `shutdownTimeout`,
++`restartOnCrash`, `maxRestarts`.
++
++`apm install` writes LSP config to `.lsp.json` (project scope) or
++`~/.claude.json` `lspServers` section (user scope with `-g`).
++
+ ## Version pinning
+ 
+ | Strategy | Syntax | When to use |
+diff --git a/src/apm_cli/commands/install.py b/src/apm_cli/commands/install.py
+index f81f828b5..266799ed2 100644
+--- a/src/apm_cli/commands/install.py
++++ b/src/apm_cli/commands/install.py
+@@ -1887,6 +1887,23 @@ def _install_apm_packages(ctx, outcome):
+         # mcp_servers.  Restore the previous set so it is not lost.
+         MCPIntegrator.update_lockfile(old_mcp_servers, _lock_path, mcp_configs=old_mcp_configs)
+ 
++    # -------------------------------------------------------------------------
++    # LSP integration (extracted to install/lsp/integration.py)
++    # -------------------------------------------------------------------------
++    from apm_cli.install.lsp import run_lsp_integration
++
++    run_lsp_integration(
++        apm_package=apm_package,
++        apm_modules_path=apm_modules_path,
++        lock_path=_lock_path,
++        existing_lock=_existing_lock,
++        project_root=ctx.project_root,
++        user_scope=(ctx.scope is InstallScope.USER),
++        should_install=should_install_mcp,
++        logger=logger,
++        diagnostics=apm_diagnostics,
++    )
++
+     # Local .apm/ content integration is now handled inside the
+     # install pipeline (phases/integrate.py + phases/post_deps_local.py,
+     # refactor F3).  The duplicate target resolution, integrator
+diff --git a/src/apm_cli/deps/lockfile.py b/src/apm_cli/deps/lockfile.py
+index e2c20333c..2750f9f9f 100644
+--- a/src/apm_cli/deps/lockfile.py
++++ b/src/apm_cli/deps/lockfile.py
+@@ -235,6 +235,8 @@ class LockFile:
+     dependencies: dict[str, LockedDependency] = field(default_factory=dict)
+     mcp_servers: list[str] = field(default_factory=list)
+     mcp_configs: dict[str, dict] = field(default_factory=dict)
++    lsp_servers: list[str] = field(default_factory=list)
++    lsp_configs: dict[str, dict] = field(default_factory=dict)
+     local_deployed_files: list[str] = field(default_factory=list)
+     local_deployed_file_hashes: dict[str, str] = field(default_factory=dict)
+ 
+@@ -277,6 +279,10 @@ def to_yaml(self) -> str:
+                 data["mcp_servers"] = sorted(self.mcp_servers)
+             if self.mcp_configs:
+                 data["mcp_configs"] = dict(sorted(self.mcp_configs.items()))
++            if self.lsp_servers:
++                data["lsp_servers"] = sorted(self.lsp_servers)
++            if self.lsp_configs:
++                data["lsp_configs"] = dict(sorted(self.lsp_configs.items()))
+             if self.local_deployed_files:
+                 data["local_deployed_files"] = sorted(self.local_deployed_files)
+             if self.local_deployed_file_hashes:
+@@ -307,6 +313,8 @@ def from_yaml(cls, yaml_str: str) -> "LockFile":
+             lock.add_dependency(LockedDependency.from_dict(dep_data))
+         lock.mcp_servers = list(data.get("mcp_servers", []))
+         lock.mcp_configs = dict(data.get("mcp_configs") or {})
++        lock.lsp_servers = list(data.get("lsp_servers", []))
++        lock.lsp_configs = dict(data.get("lsp_configs") or {})
+         lock.local_deployed_files = list(data.get("local_deployed_files", []))
+         lock.local_deployed_file_hashes = dict(data.get("local_deployed_file_hashes") or {})
+         # Synthesize a virtual self-entry representing the project's own
+@@ -435,7 +443,7 @@ def save(self, path: Path) -> None:
+         self.write(path)
+ 
+     def is_semantically_equivalent(self, other: "LockFile") -> bool:
+-        """Return True if *other* has the same deps, MCP servers, and configs.
++        """Return True if *other* has the same deps, MCP/LSP servers, and configs.
+ 
+         Ignores ``generated_at`` and ``apm_version`` so that a no-change
+         install does not dirty the lockfile.
+@@ -452,6 +460,10 @@ def is_semantically_equivalent(self, other: "LockFile") -> bool:
+             return False
+         if self.mcp_configs != other.mcp_configs:
+             return False
++        if sorted(self.lsp_servers) != sorted(other.lsp_servers):
++            return False
++        if self.lsp_configs != other.lsp_configs:
++            return False
+         if sorted(self.local_deployed_files) != sorted(other.local_deployed_files):
+             return False
+         # Issue #887: include hash dict in equivalence so post-install
+diff --git a/src/apm_cli/deps/plugin_parser.py b/src/apm_cli/deps/plugin_parser.py
+index 3d1c78e2e..5e3ea8e25 100644
+--- a/src/apm_cli/deps/plugin_parser.py
++++ b/src/apm_cli/deps/plugin_parser.py
+@@ -197,6 +197,13 @@ def synthesize_apm_yml_from_plugin(plugin_path: Path, manifest: dict[str, Any])
+         if mcp_deps:
+             manifest["_mcp_deps"] = mcp_deps
+ 
++    # Extract LSP servers from plugin and convert to dependency format
++    lsp_servers = _extract_lsp_servers(plugin_path, manifest)
++    if lsp_servers:
++        lsp_deps = _lsp_servers_to_apm_deps(lsp_servers, plugin_path)
++        if lsp_deps:
++            manifest["_lsp_deps"] = lsp_deps
++
+     # Generate apm.yml from plugin metadata
+     apm_yml_content = _generate_apm_yml(manifest)
+     apm_yml_path = plugin_path / "apm.yml"
+@@ -406,6 +413,150 @@ def _mcp_servers_to_apm_deps(servers: dict[str, Any], plugin_path: Path) -> list
+     return deps
+ 
+ 
++def _extract_lsp_servers(plugin_path: Path, manifest: dict[str, Any]) -> dict[str, Any]:
++    """Extract LSP server definitions from a plugin manifest.
++
++    Resolves ``lspServers`` by type (per Claude Code spec):
++    - ``str``  -> read that file path relative to plugin root, parse JSON.
++    - ``dict`` -> use directly as inline server definitions.
++
++    When ``lspServers`` is absent and ``.lsp.json`` exists at plugin root,
++    read it as the default (matches Claude Code auto-discovery).
++
++    Security: symlinks are skipped, JSON parse errors are logged as warnings.
++
++    ``${CLAUDE_PLUGIN_ROOT}`` in string values is replaced with the absolute
++    plugin path.
++
++    Args:
++        plugin_path: Root of the plugin directory.
++        manifest: Parsed plugin.json dict.
++
++    Returns:
++        dict mapping server name -> server config.  Empty on failure.
++    """
++    logger = logging.getLogger("apm")
++    lsp_value = manifest.get("lspServers")
++
++    if lsp_value is not None:
++        if isinstance(lsp_value, dict):
++            servers = dict(lsp_value)
++        elif isinstance(lsp_value, str):
++            servers = _read_lsp_file(plugin_path, lsp_value, logger)
++        else:
++            logger.warning("Unsupported lspServers type %s; ignoring", type(lsp_value).__name__)
++            return {}
++    else:
++        # Fall back to auto-discovery: .lsp.json
++        servers = {}
++        candidate = plugin_path / ".lsp.json"
++        if candidate.exists() and candidate.is_file() and not candidate.is_symlink():
++            servers = _read_lsp_json(candidate, logger)
++
++    # Substitute ${CLAUDE_PLUGIN_ROOT} in all string values
++    if servers:
++        abs_root = str(plugin_path.resolve())
++        servers = _substitute_plugin_root(servers, abs_root, logger)
++
++    return servers
++
++
++def _read_lsp_file(plugin_path: Path, rel_path: str, logger: logging.Logger) -> dict[str, Any]:
++    """Read a JSON file relative to *plugin_path* and return its LSP server dict."""
++    target = (plugin_path / rel_path).resolve()
++    try:
++        target.relative_to(plugin_path.resolve())
++    except ValueError:
++        logger.warning("LSP file path escapes plugin root: %s", rel_path)
++        return {}
++    candidate = plugin_path / rel_path
++    if not candidate.exists() or not candidate.is_file():
++        logger.warning("LSP file not found: %s", candidate)
++        return {}
++    if candidate.is_symlink():
++        logger.warning("Skipping symlinked LSP file: %s", candidate)
++        return {}
++    return _read_lsp_json(candidate, logger)
++
++
++def _read_lsp_json(path: Path, logger: logging.Logger) -> dict[str, Any]:
++    """Parse a JSON file and return the LSP servers mapping.
++
++    Unlike .mcp.json which has a wrapper key, .lsp.json uses server names
++    as top-level keys directly.
++    """
++    try:
++        data = json.loads(path.read_text(encoding="utf-8"))
++    except (json.JSONDecodeError, OSError) as exc:
++        logger.warning("Failed to read LSP config %s: %s", path, exc)
++        return {}
++    if not isinstance(data, dict):
++        return {}
++    return dict(data)
++
++
++def _lsp_servers_to_apm_deps(servers: dict[str, Any], plugin_path: Path) -> list[dict[str, Any]]:
++    """Convert raw LSP server configs to ``dependencies.lsp`` dicts.
++
++    Required fields per Claude Code spec:
++    - ``command``: binary to run
++    - ``extensionToLanguage``: mapping of file extensions to language IDs
++
++    All resulting entries are routed through ``LSPDependency.from_dict()``
++    for validation. Entries that fail validation are skipped with a warning.
++
++    Args:
++        servers: Mapping of server name -> server config dict.
++        plugin_path: Plugin root (used for log context only).
++
++    Returns:
++        List of dicts consumable by ``LSPDependency.from_dict()``.
++    """
++    from ..models.dependency.lsp import LSPDependency
++
++    logger = logging.getLogger("apm")
++    deps: list[dict[str, Any]] = []
++
++    for name, cfg in servers.items():
++        if not isinstance(cfg, dict):
++            logger.warning("Skipping non-dict LSP server config '%s'", name)
++            continue
++
++        dep: dict[str, Any] = {"name": name}
++
++        # Copy all recognized fields
++        for key in (
++            "command",
++            "args",
++            "extensionToLanguage",
++            "transport",
++            "env",
++            "initializationOptions",
++            "settings",
++            "workspaceFolder",
++            "startupTimeout",
++            "shutdownTimeout",
++            "restartOnCrash",
++            "maxRestarts",
++        ):
++            if key in cfg:
++                dep[key] = cfg[key]
++
++        # Route through the validation chokepoint
++        try:
++            LSPDependency.from_dict(dep)
++        except Exception as exc:
++            _surface_warning(
++                f"Skipping invalid LSP server '{name}' from plugin '{plugin_path.name}': {exc}",
++                logger,
++            )
++            continue
++
++        deps.append(dep)
++
++    return deps
++
++
+ def _map_plugin_artifacts(
+     plugin_path: Path, apm_dir: Path, manifest: dict[str, Any] | None = None
+ ) -> None:
+@@ -654,6 +805,11 @@ def _generate_apm_yml(manifest: dict[str, Any]) -> str:
+     if mcp_deps:
+         apm_package.setdefault("dependencies", {})["mcp"] = mcp_deps
+ 
++    # Inject LSP deps extracted from plugin lspServers / .lsp.json
++    lsp_deps = manifest.get("_lsp_deps")
++    if lsp_deps:
++        apm_package.setdefault("dependencies", {})["lsp"] = lsp_deps
++
+     # Install behavior is driven by file presence (SKILL.md, etc.), not this
+     # field.  Default to hybrid so the standard pipeline handles all components.
+     apm_package["type"] = "hybrid"
+diff --git a/src/apm_cli/install/context.py b/src/apm_cli/install/context.py
+index 84b426b19..a9e6dcfdc 100644
+--- a/src/apm_cli/install/context.py
++++ b/src/apm_cli/install/context.py
+@@ -137,6 +137,7 @@ class InstallContext:
+     skill_subset_from_cli: bool = False  # True when user passed --skill (even --skill '*')
+     early_lockfile: Any = None  # LockFile read before pipeline phases (avoids re-read)
+     direct_mcp_deps: list[Any] | None = None  # Direct MCP deps from apm.yml for policy gate
++    direct_lsp_deps: list[Any] | None = None  # Direct LSP deps from apm.yml for LSP integration
+ 
+     # ------------------------------------------------------------------
+     # Post-deps local content tracking (F3)
+diff --git a/src/apm_cli/install/lsp/__init__.py b/src/apm_cli/install/lsp/__init__.py
+new file mode 100644
+index 000000000..2aa884d2c
+--- /dev/null
++++ b/src/apm_cli/install/lsp/__init__.py
+@@ -0,0 +1,5 @@
++"""LSP integration for APM install pipeline."""
++
++from .integration import run_lsp_integration
++
++__all__ = ["run_lsp_integration"]
+diff --git a/src/apm_cli/install/lsp/integration.py b/src/apm_cli/install/lsp/integration.py
+new file mode 100644
+index 000000000..4f9887fd0
+--- /dev/null
++++ b/src/apm_cli/install/lsp/integration.py
+@@ -0,0 +1,112 @@
++"""LSP server integration for the APM install pipeline.
++
++Mirrors the MCP integration pattern but is simpler since LSP is Claude Code-only.
++"""
++
++import builtins
++from pathlib import Path
++from typing import TYPE_CHECKING
++
++if TYPE_CHECKING:
++    from apm_cli.deps.lockfile import LockFile
++    from apm_cli.models.apm_package import APMPackage
++
++
++def run_lsp_integration(
++    *,
++    apm_package: "APMPackage",
++    apm_modules_path: Path,
++    lock_path: Path,
++    existing_lock: "LockFile | None",
++    project_root: Path,
++    user_scope: bool,
++    should_install: bool,
++    logger,
++    diagnostics=None,
++) -> int:
++    """Run LSP server integration after APM package installation.
++
++    Mirrors the MCP integration pattern:
++    1. Collect direct + transitive LSP deps
++    2. Deduplicate (first occurrence wins)
++    3. Install to .lsp.json
++    4. Clean up stale servers
++    5. Update lockfile
++
++    Args:
++        apm_package: Root APM package with LSP deps.
++        apm_modules_path: Path to apm_modules directory.
++        lock_path: Path to apm.lock.yaml.
++        existing_lock: Previously loaded lockfile (for old LSP state).
++        project_root: Project root directory.
++        user_scope: If True, write to ~/.claude.json instead of .lsp.json.
++        should_install: Whether LSP integration should run (same gate as MCP).
++        logger: Install logger instance.
++        diagnostics: Optional DiagnosticCollector.
++
++    Returns:
++        Number of LSP servers configured.
++    """
++    from apm_cli.integration.lsp_integrator import LSPIntegrator
++
++    lsp_deps = apm_package.get_lsp_dependencies()
++
++    # Capture old LSP servers from lockfile
++    old_lsp_servers: builtins.set = builtins.set()
++    old_lsp_configs: builtins.dict = {}
++    if existing_lock:
++        old_lsp_servers = builtins.set(existing_lock.lsp_servers)
++        old_lsp_configs = builtins.dict(existing_lock.lsp_configs)
++
++    # Collect transitive LSP deps from installed packages
++    if should_install and apm_modules_path.exists():
++        transitive_lsp = LSPIntegrator.collect_transitive(
++            apm_modules_path,
++            lock_path,
++            diagnostics=diagnostics,
++        )
++        if transitive_lsp:
++            logger.verbose_detail(f"Collected {len(transitive_lsp)} transitive LSP dependency(ies)")
++            lsp_deps = LSPIntegrator.deduplicate(lsp_deps + transitive_lsp)
++
++    lsp_count = 0
++    new_lsp_servers: builtins.set = builtins.set()
++
++    if should_install and lsp_deps:
++        lsp_count = LSPIntegrator.install(
++            lsp_deps,
++            project_root=project_root,
++            user_scope=user_scope,
++            diagnostics=diagnostics,
++        )
++        new_lsp_servers = LSPIntegrator.get_server_names(lsp_deps)
++        new_lsp_configs = LSPIntegrator.get_server_configs(lsp_deps)
++
++        # Remove stale LSP servers
++        stale_lsp = old_lsp_servers - new_lsp_servers
++        if stale_lsp:
++            LSPIntegrator.remove_stale(
++                stale_lsp,
++                project_root=project_root,
++                user_scope=user_scope,
++            )
++
++        # Persist LSP servers in lockfile
++        LSPIntegrator.update_lockfile(new_lsp_servers, lock_path, lsp_configs=new_lsp_configs)
++
++    elif should_install and not lsp_deps:
++        # No LSP deps -- remove any old APM-managed servers
++        if old_lsp_servers:
++            LSPIntegrator.remove_stale(
++                old_lsp_servers,
++                project_root=project_root,
++                user_scope=user_scope,
++            )
++            LSPIntegrator.update_lockfile(builtins.set(), lock_path, lsp_configs={})
++        logger.verbose_detail("No LSP dependencies found in apm.yml")
++
++    elif not should_install and old_lsp_servers:
++        # --only=apm: restore old LSP servers
++        LSPIntegrator.update_lockfile(old_lsp_servers, lock_path, lsp_configs=old_lsp_configs)
++
++    return lsp_count
+diff --git a/src/apm_cli/install/pipeline.py b/src/apm_cli/install/pipeline.py
+index 027e4483f..baa6f1478 100644
+--- a/src/apm_cli/install/pipeline.py
++++ b/src/apm_cli/install/pipeline.py
+@@ -495,6 +495,9 @@ def run_install_pipeline(  # noqa: PLR0913, RUF100
+         # can enforce MCP allow/deny rules on them (S2 fix).
+         ctx.direct_mcp_deps = apm_package.get_mcp_dependencies()
+ 
++        # Populate direct LSP deps from the manifest for LSP integration.
++        ctx.direct_lsp_deps = apm_package.get_lsp_dependencies()
++
+         from .phases import policy_gate as _policy_gate_phase
+         from .phases.policy_gate import PolicyViolationError
+ 
+diff --git a/src/apm_cli/integration/__init__.py b/src/apm_cli/integration/__init__.py
+index d5bd87e16..07b367f90 100644
+--- a/src/apm_cli/integration/__init__.py
++++ b/src/apm_cli/integration/__init__.py
+@@ -6,6 +6,7 @@
+ from .dispatch import PrimitiveDispatch, get_dispatch_table
+ from .hook_integrator import HookIntegrator
+ from .instruction_integrator import InstructionIntegrator
++from .lsp_integrator import LSPIntegrator
+ from .mcp_integrator import MCPIntegrator
+ from .prompt_integrator import PromptIntegrator
+ from .skill_integrator import (
+@@ -34,6 +35,7 @@
+     "HookIntegrator",
+     "InstructionIntegrator",
+     "IntegrationResult",
++    "LSPIntegrator",
+     "MCPIntegrator",
+     "PrimitiveDispatch",
+     "PrimitiveMapping",
+diff --git a/src/apm_cli/integration/_shared.py b/src/apm_cli/integration/_shared.py
+new file mode 100644
+index 000000000..24c1e38e0
+--- /dev/null
++++ b/src/apm_cli/integration/_shared.py
+@@ -0,0 +1,71 @@
++"""Shared helpers for MCP and LSP integrators.
++
++Extracted to satisfy the R0801 (duplicate-code) lint gate.
++"""
++
++from __future__ import annotations
++
++import builtins
++from pathlib import Path
++
++from apm_cli.deps.lockfile import LockFile
++
++
++def deduplicate_deps(deps: list) -> list:
++    """Deduplicate dependency entries by name; first occurrence wins.
++
++    Root deps are listed before transitive, so root overlays take
++    precedence.  Works with any object that has a ``name`` attribute,
++    plain dicts with a ``"name"`` key, or bare strings.
++    """
++    seen_names: builtins.set = builtins.set()
++    result: list = []
++    for dep in deps:
++        if hasattr(dep, "name"):
++            name = dep.name
++        elif isinstance(dep, dict):
++            name = dep.get("name", "")
++        else:
++            name = str(dep)
++        if not name:
++            if dep not in result:
++                result.append(dep)
++            continue
++        if name not in seen_names:
++            seen_names.add(name)
++            result.append(dep)
++    return result
++
++
++def resolve_locked_apm_yml_paths(
++    apm_modules_dir: Path,
++    lock_path: Path | None,
++) -> tuple[list[Path] | None, builtins.set]:
++    """Resolve apm.yml paths from the lockfile.
++
++    Returns ``(locked_paths_or_None, direct_paths_set)``.
++    When *locked_paths* is ``None`` the caller should fall back to rglob.
++    """
++    locked_paths: builtins.set | None = None
++    direct_paths: builtins.set = builtins.set()
++
++    if lock_path and lock_path.exists():
++        lockfile = LockFile.read(lock_path)
++        if lockfile is not None:
++            locked_paths = builtins.set()
++            for dep in lockfile.get_package_dependencies():
++                if dep.repo_url:
++                    yml = (
++                        apm_modules_dir / dep.repo_url / dep.virtual_path / "apm.yml"
++                        if dep.virtual_path
++                        else apm_modules_dir / dep.repo_url / "apm.yml"
++                    )
++                    locked_paths.add(yml.resolve())
++                    if dep.depth == 1:
++                        direct_paths.add(yml.resolve())
++
++    if locked_paths is not None:
++        resolved = [path for path in sorted(locked_paths) if path.exists()]
++        return resolved, direct_paths
++
++    return None, direct_paths
+diff --git a/src/apm_cli/integration/lsp_integrator.py b/src/apm_cli/integration/lsp_integrator.py
+new file mode 100644
+index 000000000..9a7b4332e
+--- /dev/null
++++ b/src/apm_cli/integration/lsp_integrator.py
+@@ -0,0 +1,335 @@
++"""Standalone LSP lifecycle orchestrator.
++
++Owns all LSP dependency resolution, installation, stale cleanup, and lockfile
++persistence logic. Mirrors the MCPIntegrator pattern but is simpler since
++LSP is Claude Code-only (no multi-runtime targeting).
++
++Claude Code reads LSP config from `.lsp.json` at the project/plugin root.
++"""
++
++import builtins
++import json
++import logging
++from pathlib import Path
++
++from apm_cli.core.null_logger import NullCommandLogger
++from apm_cli.deps.lockfile import LockFile, get_lockfile_path
++from apm_cli.integration._shared import deduplicate_deps, resolve_locked_apm_yml_paths
++
++_log = logging.getLogger(__name__)
++
++
++class LSPIntegrator:
++    """LSP lifecycle orchestrator -- dependency resolution, installation, and cleanup.
++
++    All methods are static: the class is a logical namespace, not a stateful
++    object.
++    """
++
++    # ------------------------------------------------------------------
++    # Dependency resolution
++    # ------------------------------------------------------------------
++
++    @staticmethod
++    def collect_transitive(
++        apm_modules_dir: Path,
++        lock_path: Path | None = None,
++        logger=None,
++        diagnostics=None,
++    ) -> list:
++        """Collect LSP dependencies from resolved APM packages listed in apm.lock.
++
++        Only scans apm.yml files for packages present in apm.lock to avoid
++        picking up stale/orphaned packages from previous installs.
++        Falls back to scanning all apm.yml files if no lock file is available.
++
++        All LSP servers from installed packages are trusted (unlike MCP,
++        LSP has no registry vs self-defined distinction).
++        """
++        if logger is None:
++            logger = NullCommandLogger()
++        if not apm_modules_dir.exists():
++            return []
++
++        from apm_cli.models.apm_package import APMPackage
++
++        resolved, _ = resolve_locked_apm_yml_paths(apm_modules_dir, lock_path)
++        apm_yml_paths = resolved if resolved is not None else apm_modules_dir.rglob("apm.yml")
++
++        collected = []
++        for apm_yml_path in apm_yml_paths:
++            try:
++                pkg = APMPackage.from_apm_yml(apm_yml_path)
++                lsp = pkg.get_lsp_dependencies()
++                if lsp:
++                    collected.extend(lsp)
++            except Exception:
++                _log.debug(
++                    "Skipping package at %s: failed to parse apm.yml",
++                    apm_yml_path,
++                    exc_info=True,
++                )
++                continue
++        return collected
++
++    # ------------------------------------------------------------------
++    # Deduplication
++    # ------------------------------------------------------------------
++
++    @staticmethod
++    def deduplicate(deps: list) -> list:
++        """Deduplicate LSP dependencies by name; first occurrence wins.
++
++        Root deps are listed before transitive, so root overlays take
++        precedence.
++        """
++        return deduplicate_deps(deps)
++
++    # ------------------------------------------------------------------
++    # Name extraction
++    # ------------------------------------------------------------------
++
++    @staticmethod
++    def get_server_names(lsp_deps: list) -> builtins.set:
++        """Extract unique server names from a list of LSP dependencies."""
++        names: builtins.set = builtins.set()
++        for dep in lsp_deps:
++            if hasattr(dep, "name"):
++                names.add(dep.name)
++            elif isinstance(dep, str):
++                names.add(dep)
++        return names
++
++    @staticmethod
++    def get_server_configs(lsp_deps: list) -> builtins.dict:
++        """Extract server configs as {name: config_dict} from LSP dependencies."""
++        configs: builtins.dict = {}
++        for dep in lsp_deps:
++            if hasattr(dep, "to_dict") and hasattr(dep, "name"):
++                configs[dep.name] = dep.to_dict()
++            elif isinstance(dep, str):
++                configs[dep] = {"name": dep}
++        return configs
++
++    # ------------------------------------------------------------------
++    # Stale server cleanup
++    # ------------------------------------------------------------------
++
++    @staticmethod
++    def remove_stale(
++        stale_names: builtins.set,
++        project_root=None,
++        user_scope: bool = False,
++        logger=None,
++    ) -> None:
++        """Remove LSP server entries that are no longer required by any dependency.
++
++        Cleans up .lsp.json at project root or ~/.claude.json for user scope.
++
++        Args:
++            stale_names: Set of LSP server names to remove.
++            project_root: Project root directory.
++            user_scope: If True, clean user-level config (~/.claude.json).
++            logger: Optional logger instance.
++        """
++        if logger is None:
++            logger = NullCommandLogger()
++        if not stale_names:
++            return
++
++        project_root_path = Path(project_root) if project_root is not None else Path.cwd()
++
++        # Clean project .lsp.json
++        if not user_scope:
++            lsp_json = project_root_path / ".lsp.json"
++            if lsp_json.exists():
++                try:
++                    config = json.loads(lsp_json.read_text(encoding="utf-8"))
++                    if isinstance(config, dict):
++                        removed = [n for n in stale_names if n in config]
++                        for name in removed:
++                            del config[name]
++                        if removed:
++                            lsp_json.write_text(
++                                json.dumps(config, indent=2) + "\n", encoding="utf-8"
++                            )
++                            for name in removed:
++                                logger.progress(f"Removed stale LSP server '{name}' from .lsp.json")
++                except Exception:
++                    _log.debug(
++                        "Failed to clean stale LSP servers from .lsp.json",
++                        exc_info=True,
++                    )
++
++        # Clean user ~/.claude.json (lspServers section)
++        if user_scope:
++            claude_user = Path.home() / ".claude.json"
++            if claude_user.exists():
++                try:
++                    config = json.loads(claude_user.read_text(encoding="utf-8"))
++                    if isinstance(config, dict):
++                        servers = config.get("lspServers", {})
++                        if isinstance(servers, dict):
++                            removed = [n for n in stale_names if n in servers]
++                            for name in removed:
++                                del servers[name]
++                            if removed:
++                                claude_user.write_text(
++                                    json.dumps(config, indent=2) + "\n", encoding="utf-8"
++                                )
++                                for name in removed:
++                                    logger.progress(
++                                        f"Removed stale LSP server '{name}' from ~/.claude.json"
++                                    )
++                except Exception:
++                    _log.debug(
++                        "Failed to clean stale LSP servers from ~/.claude.json",
++                        exc_info=True,
++                    )
++
++    # ------------------------------------------------------------------
++    # Lockfile persistence
++    # ------------------------------------------------------------------
++
++    @staticmethod
++    def update_lockfile(
++        lsp_server_names: builtins.set,
++        lock_path: Path | None = None,
++        *,
++        lsp_configs: builtins.dict | None = None,
++    ) -> None:
++        """Update the lockfile with the current set of APM-managed LSP server names.
++
++        Args:
++            lsp_server_names: Set of LSP server names to persist.
++            lock_path: Path to the lockfile. Defaults to ``apm.lock.yaml`` in CWD.
++            lsp_configs: Keyword-only. When provided, overwrites ``lsp_configs``
++                         in the lockfile (used for drift-detection baseline).
++        """
++        if lock_path is None:
++            lock_path = get_lockfile_path(Path.cwd())
++        if not lock_path.exists():
++            return
++        try:
++            lockfile = LockFile.read(lock_path)
++            if lockfile is None:
++                return
++            lockfile.lsp_servers = sorted(lsp_server_names)
++            if lsp_configs is not None:
++                lockfile.lsp_configs = lsp_configs
++            lockfile.save(lock_path)
++        except Exception:
++            _log.debug(
++                "Failed to update LSP servers in lockfile at %s",
++                lock_path,
++                exc_info=True,
++            )
++
++    # ------------------------------------------------------------------
++    # Main orchestrator
++    # ------------------------------------------------------------------
++
++    @staticmethod
++    def install(
++        lsp_deps: list,
++        project_root=None,
++        user_scope: bool = False,
++        logger=None,
++        diagnostics=None,
++    ) -> int:
++        """Install LSP dependencies by writing to .lsp.json.
++
++        Args:
++            lsp_deps: List of LSP dependency entries (LSPDependency objects).
++            project_root: Project root for .lsp.json location.
++            user_scope: If True, write to ~/.claude.json instead.
++            logger: Optional logger instance.
++            diagnostics: Optional DiagnosticCollector for warnings.
++
++        Returns:
++            Number of LSP servers newly configured or updated.
++        """
++        if logger is None:
++            logger = NullCommandLogger()
++        if not lsp_deps:
++            return 0
++
++        project_root_path = Path(project_root) if project_root is not None else Path.cwd()
++
++        # Build server config dict
++        servers: builtins.dict = {}
++        for dep in lsp_deps:
++            if hasattr(dep, "to_lsp_json_entry") and hasattr(dep, "name"):
++                servers[dep.name] = dep.to_lsp_json_entry()
++            elif hasattr(dep, "name") and hasattr(dep, "to_dict"):
++                entry = dep.to_dict()
++                entry.pop("name", None)
++                servers[dep.name] = entry
++            elif isinstance(dep, dict) and "name" in dep:
++                name = dep["name"]
++                entry = {k: v for k, v in dep.items() if k != "name"}
++                servers[name] = entry
++
++        if not servers:
++            return 0
++
++        count = 0
++
++        if user_scope:
++            # Write to ~/.claude.json lspServers section
++            claude_user = Path.home() / ".claude.json"
++            try:
++                if claude_user.exists():
++                    config = json.loads(claude_user.read_text(encoding="utf-8"))
++                else:
++                    config = {}
++
++                if not isinstance(config, dict):
++                    config = {}
++
++                existing = config.get("lspServers", {})
++                if not isinstance(existing, dict):
++                    existing = {}
++
++                for name, cfg in servers.items():
++                    if name not in existing or existing[name] != cfg:
++                        count += 1
++                    existing[name] = cfg
++
++                config["lspServers"] = existing
++                claude_user.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
++
++                if count > 0:
++                    logger.progress(f"Configured {count} LSP server(s) in ~/.claude.json")
++
++            except Exception as exc:
++                _log.debug("Failed to write LSP config to ~/.claude.json", exc_info=True)
++                if diagnostics:
++                    diagnostics.warn(f"Failed to write LSP config: {exc}")
++        else:
++            # Write to project .lsp.json
++            lsp_json = project_root_path / ".lsp.json"
++            try:
++                if lsp_json.exists():
++                    existing = json.loads(lsp_json.read_text(encoding="utf-8"))
++                    if not isinstance(existing, dict):
++                        existing = {}
++                else:
++                    existing = {}
++
++                for name, cfg in servers.items():
++                    if name not in existing or existing[name] != cfg:
++                        count += 1
++                    existing[name] = cfg
++
++                lsp_json.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
++
++                if count > 0:
++                    logger.progress(f"Configured {count} LSP server(s) in .lsp.json")
++
++            except Exception as exc:
++                _log.debug("Failed to write LSP config to .lsp.json", exc_info=True)
++                if diagnostics:
++                    diagnostics.warn(f"Failed to write LSP config: {exc}")
++
++        return count
+diff --git a/src/apm_cli/integration/mcp_integrator.py b/src/apm_cli/integration/mcp_integrator.py
+index 411b57dbb..88cced5b2 100644
+--- a/src/apm_cli/integration/mcp_integrator.py
++++ b/src/apm_cli/integration/mcp_integrator.py
+@@ -21,6 +21,7 @@
+ 
+ from apm_cli.core.null_logger import NullCommandLogger
+ from apm_cli.deps.lockfile import LockFile, get_lockfile_path
++from apm_cli.integration._shared import deduplicate_deps, resolve_locked_apm_yml_paths
+ from apm_cli.runtime.utils import find_runtime_binary
+ from apm_cli.utils.console import (
+     _get_console,  # noqa: F401  -- module attribute; patched by tests and used via re-export
+@@ -88,30 +89,8 @@ def collect_transitive(
+         from apm_cli.models.apm_package import APMPackage
+ 
+         # Build set of expected apm.yml paths from apm.lock
+-        locked_paths = None
+-        direct_paths: builtins.set = builtins.set()
+-        lockfile = None
+-        if lock_path and lock_path.exists():
+-            lockfile = LockFile.read(lock_path)
+-            if lockfile is not None:
+-                locked_paths = builtins.set()
+-                for dep in lockfile.get_package_dependencies():
+-                    if dep.repo_url:
+-                        yml = (
+-                            apm_modules_dir / dep.repo_url / dep.virtual_path / "apm.yml"
+-                            if dep.virtual_path
+-                            else apm_modules_dir / dep.repo_url / "apm.yml"
+-                        )
+-                        locked_paths.add(yml.resolve())
+-                        if dep.depth == 1:
+-                            direct_paths.add(yml.resolve())
+-
+-        # Prefer iterating lock-derived paths directly (existing files only).
+-        # Fall back to full scan only when lock parsing is unavailable.
+-        if locked_paths is not None:
+-            apm_yml_paths = [path for path in sorted(locked_paths) if path.exists()]
+-        else:
+-            apm_yml_paths = apm_modules_dir.rglob("apm.yml")
++        resolved, direct_paths = resolve_locked_apm_yml_paths(apm_modules_dir, lock_path)
++        apm_yml_paths = resolved if resolved is not None else apm_modules_dir.rglob("apm.yml")
+ 
+         collected = []
+         for apm_yml_path in apm_yml_paths:
+@@ -163,23 +142,7 @@ def deduplicate(deps: list) -> list:
+         Root deps are listed before transitive, so root overlays take
+         precedence.
+         """
+-        seen_names: builtins.set = builtins.set()
+-        result = []
+-        for dep in deps:
+-            if hasattr(dep, "name"):
+-                name = dep.name
+-            elif isinstance(dep, dict):
+-                name = dep.get("name", "")
+-            else:
+-                name = str(dep)
+-            if not name:
+-                if dep not in result:
+-                    result.append(dep)
+-                continue
+-            if name not in seen_names:
+-                seen_names.add(name)
+-                result.append(dep)
+-        return result
++        return deduplicate_deps(deps)
+ 
+     # ------------------------------------------------------------------
+     # Server info helpers
+diff --git a/src/apm_cli/models/apm_package.py b/src/apm_cli/models/apm_package.py
+index bd458b4ac..e342a2429 100644
+--- a/src/apm_cli/models/apm_package.py
++++ b/src/apm_cli/models/apm_package.py
+@@ -16,6 +16,7 @@
+ from .dependency import (
+     DependencyReference,
+     GitReferenceType,
++    LSPDependency,
+     MCPDependency,
+     RemoteRef,
+     ResolvedReference,
+@@ -35,6 +36,7 @@
+     # Backward-compatible re-exports from .dependency
+     "DependencyReference",
+     "GitReferenceType",
++    "LSPDependency",
+     "MCPDependency",
+     "RemoteRef",
+     "ResolvedReference",
+@@ -147,6 +149,19 @@ def _parse_dependency_dict(cls, raw_deps: dict, label: str = "") -> dict:
+                         except ValueError as e:
+                             raise ValueError(f"Invalid {label}MCP dependency: {e}")  # noqa: B904
+                 parsed[dep_type] = parsed_mcp
++            elif dep_type == "lsp":
++                from .dependency.lsp import LSPDependency as LSPDep
++
++                parsed_lsp: list = []
++                for dep in dep_list:
++                    if isinstance(dep, str):
++                        parsed_lsp.append(LSPDep.from_string(dep))
++                    elif isinstance(dep, dict):
++                        try:
++                            parsed_lsp.append(LSPDep.from_dict(dep))
++                        except ValueError as e:
++                            raise ValueError(f"Invalid {label}LSP dependency: {e}")  # noqa: B904
++                parsed[dep_type] = parsed_lsp
+             else:
+                 parsed[dep_type] = [dep for dep in dep_list if isinstance(dep, (str, dict))]
+         return parsed
+@@ -344,6 +359,24 @@ def get_dev_mcp_dependencies(self) -> list["MCPDependency"]:
+             if isinstance(dep, MCPDependency)
+         ]
+ 
++    def get_lsp_dependencies(self) -> list["LSPDependency"]:
++        """Get list of LSP dependencies."""
++        if not self.dependencies or "lsp" not in self.dependencies:
++            return []
++        return [
++            dep for dep in (self.dependencies.get("lsp") or []) if isinstance(dep, LSPDependency)
++        ]
++
++    def get_dev_lsp_dependencies(self) -> list["LSPDependency"]:
++        """Get list of dev LSP dependencies."""
++        if not self.dev_dependencies or "lsp" not in self.dev_dependencies:
++            return []
++        return [
++            dep
++            for dep in (self.dev_dependencies.get("lsp") or [])
++            if isinstance(dep, LSPDependency)
++        ]
++
+ 
+ @dataclass
+ class PackageInfo:
+diff --git a/src/apm_cli/models/dependency/__init__.py b/src/apm_cli/models/dependency/__init__.py
+index 014dd01b5..ef93ee90b 100644
+--- a/src/apm_cli/models/dependency/__init__.py
++++ b/src/apm_cli/models/dependency/__init__.py
+@@ -1,5 +1,6 @@
+ """Dependency reference models and Git reference utilities."""
+ 
++from .lsp import LSPDependency
+ from .mcp import MCPDependency
+ from .reference import DependencyReference
+ from .types import (
+@@ -13,6 +14,7 @@
+ __all__ = [
+     "DependencyReference",
+     "GitReferenceType",
++    "LSPDependency",
+     "MCPDependency",
+     "RemoteRef",
+     "ResolvedReference",
+diff --git a/src/apm_cli/models/dependency/lsp.py b/src/apm_cli/models/dependency/lsp.py
+new file mode 100644
+index 000000000..4db438731
+--- /dev/null
++++ b/src/apm_cli/models/dependency/lsp.py
+@@ -0,0 +1,198 @@
++"""LSP dependency model."""
++
++import re
++from dataclasses import dataclass
++from typing import Any
++
++from apm_cli.utils.path_security import PathTraversalError, validate_path_segments
++
++_NAME_REGEX = re.compile(r"^[a-zA-Z0-9@_][a-zA-Z0-9._@/:=-]{0,127}$")
++
++
++@dataclass
++class LSPDependency:
++    """Represents an LSP server dependency.
++
++    Claude Code reads LSP config from `.lsp.json` at the plugin root. This model
++    represents the server entries in that file or inline `lspServers` in plugin.json.
++
++    Required fields:
++    - name: server name (key in lspServers dict)
++    - command: binary to run
++    - extension_to_language: mapping from file extension to LSP language ID
++
++    Optional fields mirror the Claude Code plugin schema (lspServers).
++    """
++
++    name: str
++    command: str | None = None
++    args: list[str] | None = None
++    extension_to_language: dict[str, str] | None = None
++    transport: str | None = None  # "stdio" (default) | "socket"
++    env: dict[str, str] | None = None
++    initialization_options: Any | None = None
++    settings: Any | None = None
++    workspace_folder: str | None = None
++    startup_timeout: int | None = None
++    shutdown_timeout: int | None = None
++    restart_on_crash: bool | None = None
++    max_restarts: int | None = None
++
++    _VALID_TRANSPORTS = frozenset({"stdio", "socket"})
++
++    @classmethod
++    def from_string(cls, s: str) -> "LSPDependency":
++        """Create an LSPDependency from a plain string (server name reference)."""
++        instance = cls(name=s)
++        instance.validate(strict=False)
++        return instance
++
++    @classmethod
++    def from_dict(cls, d: dict) -> "LSPDependency":
++        """Parse an LSPDependency from a dict.
++
++        Handles camelCase to snake_case mapping for fields from plugin.json.
++        Unknown keys are silently ignored for forward compatibility.
++        """
++        if "name" not in d:
++            raise ValueError("LSP dependency dict must contain 'name'")
++
++        instance = cls(
++            name=d["name"],
++            command=d.get("command"),
++            args=d.get("args"),
++            extension_to_language=d.get("extensionToLanguage") or d.get("extension_to_language"),
++            transport=d.get("transport"),
++            env=d.get("env"),
++            initialization_options=d.get("initializationOptions")
++            or d.get("initialization_options"),
++            settings=d.get("settings"),
++            workspace_folder=d.get("workspaceFolder") or d.get("workspace_folder"),
++            startup_timeout=d.get("startupTimeout") or d.get("startup_timeout"),
++            shutdown_timeout=d.get("shutdownTimeout") or d.get("shutdown_timeout"),
++            restart_on_crash=d.get("restartOnCrash")
++            if d.get("restartOnCrash") is not None
++            else d.get("restart_on_crash"),
++            max_restarts=d.get("maxRestarts") or d.get("max_restarts"),
++        )
++
++        instance.validate(strict=True)
++        return instance
++
++    def to_dict(self) -> dict:
++        """Serialize to dict with camelCase keys for .lsp.json output.
++
++        Includes only non-None fields.
++        """
++        result: dict[str, Any] = {"name": self.name}
++        if self.command is not None:
++            result["command"] = self.command
++        if self.args is not None:
++            result["args"] = self.args
++        if self.extension_to_language is not None:
++            result["extensionToLanguage"] = self.extension_to_language
++        if self.transport is not None:
++            result["transport"] = self.transport
++        if self.env is not None:
++            result["env"] = self.env
++        if self.initialization_options is not None:
++            result["initializationOptions"] = self.initialization_options
++        if self.settings is not None:
++            result["settings"] = self.settings
++        if self.workspace_folder is not None:
++            result["workspaceFolder"] = self.workspace_folder
++        if self.startup_timeout is not None:
++            result["startupTimeout"] = self.startup_timeout
++        if self.shutdown_timeout is not None:
++            result["shutdownTimeout"] = self.shutdown_timeout
++        if self.restart_on_crash is not None:
++            result["restartOnCrash"] = self.restart_on_crash
++        if self.max_restarts is not None:
++            result["maxRestarts"] = self.max_restarts
++        return result
++
++    def to_lsp_json_entry(self) -> dict:
++        """Serialize to the format expected in .lsp.json (no name key).
++
++        Returns just the server config without the name, since .lsp.json
++        uses the server name as the dict key.
++        """
++        d = self.to_dict()
++        d.pop("name", None)
++        return d
++
++    def __str__(self) -> str:
++        """Return a human-friendly identifier for logging and CLI output."""
++        if self.transport:
++            return f"{self.name} ({self.transport})"
++        return self.name
++
++    def __repr__(self) -> str:
++        """Return a redacted representation to keep secrets out of debug logs."""
++        parts = [f"name={self.name!r}"]
++        if self.command:
++            parts.append(f"command={self.command!r}")
++        if self.transport:
++            parts.append(f"transport={self.transport!r}")
++        if self.env:
++            safe_env = {k: "***" for k in self.env}
++            parts.append(f"env={safe_env}")
++        if self.extension_to_language:
++            parts.append(f"extensionToLanguage={self.extension_to_language!r}")
++        return f"LSPDependency({', '.join(parts)})"
++
++    def validate(self, strict: bool = True) -> None:
++        """Validate the dependency. Raises ValueError on invalid state.
++
++        Args:
++            strict: If True, validates required fields (command, extensionToLanguage).
++                    If False, only validates name format.
++        """
++        if not self.name:
++            raise ValueError("LSP dependency 'name' must not be empty")
++        if not _NAME_REGEX.match(self.name):
++            raise ValueError(
++                f"Invalid LSP dependency name '{self.name}': "
++                f"must start with a letter, digit, '@', or '_' and contain "
++                f"only [a-zA-Z0-9._@/:=-] (max 128 chars)."
++            )
++        if ".." in self.name.split("/"):
++            raise ValueError(
++                f"Invalid LSP dependency name '{self.name}': must not contain '..' path segments."
++            )
++
++        if self.command is not None:
++            if not isinstance(self.command, str):
++                raise ValueError(
++                    f"LSP dependency '{self.name}': 'command' must be a string, "
++                    f"got {type(self.command).__name__}."
++                )
++            try:
++                validate_path_segments(
++                    self.command,
++                    context="LSP command",
++                    allow_current_dir=True,
++                )
++            except PathTraversalError:
++                raise ValueError(
++                    f"Invalid LSP command '{self.command}': must not contain '..' path segments."
++                ) from None
++
++        if self.transport is not None and self.transport not in self._VALID_TRANSPORTS:
++            raise ValueError(
++                f"LSP dependency '{self.name}' has unsupported transport "
++                f"'{self.transport}'. Valid values: {', '.join(sorted(self._VALID_TRANSPORTS))}"
++            )
++
++        if not strict:
++            return
++
++        if not self.command:
++            raise ValueError(f"LSP dependency '{self.name}' requires 'command'")
++        if not self.extension_to_language:
++            raise ValueError(f"LSP dependency '{self.name}' requires 'extensionToLanguage'")
++        if not isinstance(self.extension_to_language, dict):
++            raise ValueError(
++                f"LSP dependency '{self.name}': 'extensionToLanguage' must be a dict, "
++                f"got {type(self.extension_to_language).__name__}"
++            )
+diff --git a/tests/unit/deps/test_lsp_dependency.py b/tests/unit/deps/test_lsp_dependency.py
+new file mode 100644
+index 000000000..0a2b5fbf4
+--- /dev/null
++++ b/tests/unit/deps/test_lsp_dependency.py
+@@ -0,0 +1,252 @@
++"""Unit tests for ``apm_cli.models.dependency.lsp.LSPDependency``."""
++
++from __future__ import annotations
++
++import pytest
++
++from apm_cli.models.dependency.lsp import LSPDependency
++
++# ===========================================================================
++# LSPDependency.from_string
++# ===========================================================================
++
++
++class TestFromString:
++    """Construct LSPDependency from a plain server name string."""
++
++    def test_simple_name(self):
++        dep = LSPDependency.from_string("pyright")
++        assert dep.name == "pyright"
++        assert dep.command is None
++        assert dep.extension_to_language is None
++
++    def test_scoped_name(self):
++        dep = LSPDependency.from_string("@scope/lsp-server")
++        assert dep.name == "@scope/lsp-server"
++
++    def test_empty_name_raises(self):
++        with pytest.raises(ValueError, match="must not be empty"):
++            LSPDependency.from_string("")
++
++    def test_invalid_chars_raises(self):
++        with pytest.raises(ValueError, match="Invalid LSP dependency name"):
++            LSPDependency.from_string("bad name!")
++
++    def test_traversal_in_name_raises(self):
++        with pytest.raises(ValueError, match="Invalid LSP dependency name"):
++            LSPDependency.from_string("../escape")
++
++
++# ===========================================================================
++# LSPDependency.from_dict
++# ===========================================================================
++
++
++class TestFromDict:
++    """Construct LSPDependency from a dict (strict validation)."""
++
++    def test_minimal_valid(self):
++        dep = LSPDependency.from_dict(
++            {
++                "name": "pyright",
++                "command": "pyright-langserver",
++                "extensionToLanguage": {".py": "python"},
++            }
++        )
++        assert dep.name == "pyright"
++        assert dep.command == "pyright-langserver"
++        assert dep.extension_to_language == {".py": "python"}
++
++    def test_all_optional_fields(self):
++        dep = LSPDependency.from_dict(
++            {
++                "name": "ruff-lsp",
++                "command": "ruff",
++                "args": ["server"],
++                "extensionToLanguage": {".py": "python"},
++                "transport": "stdio",
++                "env": {"RUFF_LOG": "debug"},
++                "initializationOptions": {"lint": True},
++                "settings": {"format": True},
++                "workspaceFolder": "/projects",
++                "startupTimeout": 5000,
++                "shutdownTimeout": 3000,
++                "restartOnCrash": True,
++                "maxRestarts": 3,
++            }
++        )
++        assert dep.transport == "stdio"
++        assert dep.args == ["server"]
++        assert dep.env == {"RUFF_LOG": "debug"}
++        assert dep.initialization_options == {"lint": True}
++        assert dep.settings == {"format": True}
++        assert dep.workspace_folder == "/projects"
++        assert dep.startup_timeout == 5000
++        assert dep.shutdown_timeout == 3000
++        assert dep.restart_on_crash is True
++        assert dep.max_restarts == 3
++
++    def test_snake_case_keys_accepted(self):
++        dep = LSPDependency.from_dict(
++            {
++                "name": "ts-lsp",
++                "command": "typescript-language-server",
++                "extension_to_language": {".ts": "typescript"},
++                "workspace_folder": "/home",
++                "startup_timeout": 1000,
++            }
++        )
++        assert dep.extension_to_language == {".ts": "typescript"}
++        assert dep.workspace_folder == "/home"
++        assert dep.startup_timeout == 1000
++
++    def test_missing_name_raises(self):
++        with pytest.raises(ValueError, match="must contain 'name'"):
++            LSPDependency.from_dict({"command": "x", "extensionToLanguage": {".py": "python"}})
++
++    def test_missing_command_strict_raises(self):
++        with pytest.raises(ValueError, match="requires 'command'"):
++            LSPDependency.from_dict({"name": "no-cmd", "extensionToLanguage": {".py": "python"}})
++
++    def test_missing_extension_to_language_strict_raises(self):
++        with pytest.raises(ValueError, match="requires 'extensionToLanguage'"):
++            LSPDependency.from_dict({"name": "no-ext", "command": "x"})
++
++    def test_invalid_transport_raises(self):
++        with pytest.raises(ValueError, match="unsupported transport"):
++            LSPDependency.from_dict(
++                {
++                    "name": "bad-transport",
++                    "command": "x",
++                    "extensionToLanguage": {".py": "python"},
++                    "transport": "grpc",
++                }
++            )
++
++    def test_traversal_in_command_raises(self):
++        with pytest.raises(ValueError, match="must not contain"):
++            LSPDependency.from_dict(
++                {
++                    "name": "bad-cmd",
++                    "command": "../../../bin/evil",
++                    "extensionToLanguage": {".py": "python"},
++                }
++            )
++
++    def test_unknown_keys_ignored(self):
++        dep = LSPDependency.from_dict(
++            {
++                "name": "forward-compat",
++                "command": "lsp",
++                "extensionToLanguage": {".rs": "rust"},
++                "futureField": True,
++            }
++        )
++        assert dep.name == "forward-compat"
++
++
++# ===========================================================================
++# LSPDependency.to_dict / to_lsp_json_entry
++# ===========================================================================
++
++
++class TestSerialisation:
++    """Round-trip serialisation behaviour."""
++
++    def test_minimal_to_dict(self):
++        dep = LSPDependency(name="pyright")
++        d = dep.to_dict()
++        assert d == {"name": "pyright"}
++
++    def test_full_round_trip(self):
++        original = {
++            "name": "ruff-lsp",
++            "command": "ruff",
++            "extensionToLanguage": {".py": "python"},
++            "transport": "stdio",
++        }
++        dep = LSPDependency.from_dict(original)
++        d = dep.to_dict()
++        assert d["name"] == "ruff-lsp"
++        assert d["command"] == "ruff"
++        assert d["extensionToLanguage"] == {".py": "python"}
++        assert d["transport"] == "stdio"
++
++    def test_to_lsp_json_entry_excludes_name(self):
++        dep = LSPDependency.from_dict(
++            {
++                "name": "pyright",
++                "command": "pyright-langserver",
++                "extensionToLanguage": {".py": "python"},
++            }
++        )
++        entry = dep.to_lsp_json_entry()
++        assert "name" not in entry
++        assert entry["command"] == "pyright-langserver"
++
++    def test_none_fields_omitted(self):
++        dep = LSPDependency(name="minimal", command="x", extension_to_language={".py": "python"})
++        d = dep.to_dict()
++        assert "args" not in d
++        assert "env" not in d
++        assert "transport" not in d
++
++
++# ===========================================================================
++# LSPDependency.__str__ / __repr__
++# ===========================================================================
++
++
++class TestStringRepresentation:
++    def test_str_without_transport(self):
++        dep = LSPDependency(name="pyright")
++        assert str(dep) == "pyright"
++
++    def test_str_with_transport(self):
++        dep = LSPDependency(name="pyright", transport="stdio")
++        assert str(dep) == "pyright (stdio)"
++
++    def test_repr_redacts_env(self):
++        dep = LSPDependency(name="s", command="cmd", env={"SECRET": "token123"})
++        r = repr(dep)
++        assert "token123" not in r
++        assert "***" in r
++
++
++# ===========================================================================
++# LSPDependency.validate edge cases
++# ===========================================================================
++
++
++class TestValidateEdgeCases:
++    def test_name_max_length_accepted(self):
++        name = "a" * 128
++        dep = LSPDependency(name=name)
++        dep.validate(strict=False)
++
++    def test_name_too_long_rejected(self):
++        name = "a" * 129
++        with pytest.raises(ValueError, match="Invalid LSP dependency name"):
++            LSPDependency(name=name).validate(strict=False)
++
++    def test_socket_transport_accepted(self):
++        dep = LSPDependency(
++            name="socket-lsp",
++            command="lsp",
++            extension_to_language={".py": "python"},
++            transport="socket",
++        )
++        dep.validate(strict=True)
++
++    def test_non_strict_skips_command_check(self):
++        dep = LSPDependency(name="ref-only")
++        dep.validate(strict=False)
++
++    def test_extension_to_language_non_dict_raises(self):
++        dep = LSPDependency(
++            name="bad-ext",
++            command="x",
++            extension_to_language="not-a-dict",  # type: ignore[arg-type]
++        )
++        with pytest.raises(ValueError, match="must be a dict"):
++            dep.validate(strict=True)
+diff --git a/tests/unit/deps/test_plugin_parser_lsp.py b/tests/unit/deps/test_plugin_parser_lsp.py
+new file mode 100644
+index 000000000..12fecc18a
+--- /dev/null
++++ b/tests/unit/deps/test_plugin_parser_lsp.py
+@@ -0,0 +1,213 @@
++"""Unit tests for LSP extraction in ``apm_cli.deps.plugin_parser``.
++
++Covers ``_extract_lsp_servers``, ``_read_lsp_json``, ``_read_lsp_file``,
++and ``_lsp_servers_to_apm_deps`` -- the LSP-specific helpers added to
++the plugin parser.
++"""
++
++from __future__ import annotations
++
++import json
++
++from apm_cli.deps.plugin_parser import (
++    _extract_lsp_servers,
++    _lsp_servers_to_apm_deps,
++    _read_lsp_json,
++)
++
++# ===========================================================================
++# _read_lsp_json
++# ===========================================================================
++
++
++class TestReadLspJson:
++    def test_reads_valid_json(self, tmp_path, caplog):
++        lsp_file = tmp_path / ".lsp.json"
++        lsp_file.write_text(json.dumps({"pyright": {"command": "pyright-langserver"}}))
++
++        import logging
++
++        result = _read_lsp_json(lsp_file, logging.getLogger("test"))
++        assert "pyright" in result
++
++    def test_returns_empty_on_invalid_json(self, tmp_path, caplog):
++        lsp_file = tmp_path / ".lsp.json"
++        lsp_file.write_text("not valid json{")
++
++        import logging
++
++        result = _read_lsp_json(lsp_file, logging.getLogger("test"))
++        assert result == {}
++
++    def test_returns_empty_on_non_dict_json(self, tmp_path):
++        lsp_file = tmp_path / ".lsp.json"
++        lsp_file.write_text(json.dumps(["not", "a", "dict"]))
++
++        import logging
++
++        result = _read_lsp_json(lsp_file, logging.getLogger("test"))
++        assert result == {}
++
++
++# ===========================================================================
++# _extract_lsp_servers
++# ===========================================================================
++
++
++class TestExtractLspServers:
++    def test_inline_dict_lsp_servers(self, tmp_path):
++        manifest = {
++            "lspServers": {
++                "pyright": {
++                    "command": "pyright-langserver",
++                    "extensionToLanguage": {".py": "python"},
++                }
++            }
++        }
++        result = _extract_lsp_servers(tmp_path, manifest)
++        assert "pyright" in result
++
++    def test_string_reference_to_lsp_file(self, tmp_path):
++        lsp_file = tmp_path / "lsp-config.json"
++        lsp_file.write_text(
++            json.dumps({"ruff-lsp": {"command": "ruff", "extensionToLanguage": {".py": "python"}}})
++        )
++
++        manifest = {"lspServers": "lsp-config.json"}
++        result = _extract_lsp_servers(tmp_path, manifest)
++        assert "ruff-lsp" in result
++
++    def test_auto_discovery_of_lsp_json(self, tmp_path):
++        lsp_json = tmp_path / ".lsp.json"
++        lsp_json.write_text(
++            json.dumps(
++                {
++                    "ts-lsp": {
++                        "command": "typescript-language-server",
++                        "extensionToLanguage": {".ts": "typescript"},
++                    }
++                }
++            )
++        )
++
++        manifest = {}  # No lspServers key
++        result = _extract_lsp_servers(tmp_path, manifest)
++        assert "ts-lsp" in result
++
++    def test_no_lsp_servers_no_file_returns_empty(self, tmp_path):
++        result = _extract_lsp_servers(tmp_path, {})
++        assert result == {}
++
++    def test_unsupported_type_returns_empty(self, tmp_path):
++        manifest = {"lspServers": 42}
++        result = _extract_lsp_servers(tmp_path, manifest)
++        assert result == {}
++
++    def test_symlink_lsp_json_skipped(self, tmp_path):
++        real = tmp_path / "real.json"
++        real.write_text(json.dumps({"evil": {"command": "x"}}))
++        link = tmp_path / ".lsp.json"
++        link.symlink_to(real)
++
++        result = _extract_lsp_servers(tmp_path, {})
++        assert result == {}
++
++    def test_path_traversal_in_string_ref_blocked(self, tmp_path):
++        # Create a file outside plugin root
++        outside = tmp_path.parent / "outside.json"
++        outside.write_text(json.dumps({"evil": {"command": "x"}}))
++
++        manifest = {"lspServers": "../outside.json"}
++        result = _extract_lsp_servers(tmp_path, manifest)
++        assert result == {}
++
++    def test_plugin_root_substitution(self, tmp_path):
++        manifest = {
++            "lspServers": {
++                "my-lsp": {
++                    "command": "${CLAUDE_PLUGIN_ROOT}/bin/lsp",
++                    "extensionToLanguage": {".py": "python"},
++                }
++            }
++        }
++        result = _extract_lsp_servers(tmp_path, manifest)
++        assert "my-lsp" in result
++        abs_root = str(tmp_path.resolve())
++        assert result["my-lsp"]["command"] == f"{abs_root}/bin/lsp"
++
++
++# ===========================================================================
++# _lsp_servers_to_apm_deps
++# ===========================================================================
++
++
++class TestLspServersToApmDeps:
++    def test_valid_server_converted(self, tmp_path):
++        servers = {
++            "pyright": {
++                "command": "pyright-langserver",
++                "extensionToLanguage": {".py": "python"},
++            }
++        }
++        deps = _lsp_servers_to_apm_deps(servers, tmp_path)
++        assert len(deps) == 1
++        assert deps[0]["name"] == "pyright"
++        assert deps[0]["command"] == "pyright-langserver"
++
++    def test_non_dict_config_skipped(self, tmp_path):
++        servers = {"bad": "not-a-dict"}
++        deps = _lsp_servers_to_apm_deps(servers, tmp_path)
++        assert deps == []
++
++    def test_invalid_server_skipped(self, tmp_path):
++        """A server that fails validation is skipped with a warning."""
++        servers = {
++            "no-cmd": {
++                # Missing required 'command' and 'extensionToLanguage'
++                "transport": "stdio",
++            }
++        }
++        deps = _lsp_servers_to_apm_deps(servers, tmp_path)
++        assert deps == []
++
++    def test_multiple_servers_mixed_validity(self, tmp_path):
++        servers = {
++            "valid": {
++                "command": "lsp",
++                "extensionToLanguage": {".py": "python"},
++            },
++            "invalid": {
++                # Missing required fields
++            },
++        }
++        deps = _lsp_servers_to_apm_deps(servers, tmp_path)
++        assert len(deps) == 1
++        assert deps[0]["name"] == "valid"
++
++    def test_all_fields_copied(self, tmp_path):
++        servers = {
++            "full": {
++                "command": "lsp",
++                "args": ["--stdio"],
++                "extensionToLanguage": {".py": "python"},
++                "transport": "stdio",
++                "env": {"KEY": "val"},
++                "initializationOptions": {"lint": True},
++                "settings": {},
++                "workspaceFolder": "/x",
++                "startupTimeout": 5000,
++                "shutdownTimeout": 3000,
++                "restartOnCrash": True,
++                "maxRestarts": 3,
++            }
++        }
++        deps = _lsp_servers_to_apm_deps(servers, tmp_path)
++        assert len(deps) == 1
++        d = deps[0]
++        assert d["args"] == ["--stdio"]
++        assert d["transport"] == "stdio"
++        assert d["env"] == {"KEY": "val"}
++        assert d["initializationOptions"] == {"lint": True}
++        assert d["startupTimeout"] == 5000
++        assert d["restartOnCrash"] is True
++        assert d["maxRestarts"] == 3
+diff --git a/tests/unit/install/test_lsp_integration.py b/tests/unit/install/test_lsp_integration.py
+new file mode 100644
+index 000000000..235cc177b
+--- /dev/null
++++ b/tests/unit/install/test_lsp_integration.py
+@@ -0,0 +1,224 @@
++"""Unit tests for ``apm_cli.install.lsp.integration.run_lsp_integration``.
++
++Covers the high-level orchestration that wires together LSPIntegrator
++calls: transitive collection, deduplication, install, stale cleanup,
++and lockfile persistence.
++"""
++
++from __future__ import annotations
++
++from unittest.mock import MagicMock, patch
++
++from apm_cli.install.lsp.integration import run_lsp_integration
++from apm_cli.models.dependency.lsp import LSPDependency
++
++# ---------------------------------------------------------------------------
++# Helpers
++# ---------------------------------------------------------------------------
++
++
++def _make_dep(name: str, **kwargs) -> LSPDependency:
++    defaults = {
++        "command": kwargs.pop("command", f"{name}-langserver"),
++        "extension_to_language": kwargs.pop("extension_to_language", {".py": "python"}),
++    }
++    defaults.update(kwargs)
++    return LSPDependency(name=name, **defaults)
++
++
++def _mock_logger():
++    logger = MagicMock()
++    logger.verbose_detail = MagicMock()
++    logger.progress = MagicMock()
++    return logger
++
++
++def _mock_lock(*, lsp_servers=None, lsp_configs=None):
++    lock = MagicMock()
++    lock.lsp_servers = lsp_servers or []
++    lock.lsp_configs = lsp_configs or {}
++    return lock
++
++
++_PATCH_TARGET = "apm_cli.integration.lsp_integrator.LSPIntegrator"
++
++
++# ===========================================================================
++# Basic orchestration
++# ===========================================================================
++
++
++class TestRunLspIntegration:
++    @patch(_PATCH_TARGET)
++    def test_no_lsp_deps_no_old_servers(self, mock_integrator, tmp_path):
++        """No LSP deps and no previous state -- nothing to do."""
++        apm_package = MagicMock()
++        apm_package.get_lsp_dependencies.return_value = []
++
++        count = run_lsp_integration(
++            apm_package=apm_package,
++            apm_modules_path=tmp_path / "apm_modules",
++            lock_path=tmp_path / "apm.lock.yaml",
++            existing_lock=None,
++            project_root=tmp_path,
++            user_scope=False,
++            should_install=True,
++            logger=_mock_logger(),
++        )
++
++        assert count == 0
++        mock_integrator.install.assert_not_called()
++
++    @patch(_PATCH_TARGET)
++    def test_installs_direct_deps(self, mock_integrator, tmp_path):
++        """Direct LSP deps are installed when should_install is True."""
++        deps = [_make_dep("pyright")]
++        apm_package = MagicMock()
++        apm_package.get_lsp_dependencies.return_value = deps
++
++        mock_integrator.install.return_value = 1
++        mock_integrator.get_server_names.return_value = {"pyright"}
++        mock_integrator.get_server_configs.return_value = {"pyright": {}}
++        mock_integrator.collect_transitive.return_value = []
++
++        modules = tmp_path / "apm_modules"
++        modules.mkdir()
++
++        count = run_lsp_integration(
++            apm_package=apm_package,
++            apm_modules_path=modules,
++            lock_path=tmp_path / "apm.lock.yaml",
++            existing_lock=None,
++            project_root=tmp_path,
++            user_scope=False,
++            should_install=True,
++            logger=_mock_logger(),
++        )
++
++        assert count == 1
++        mock_integrator.install.assert_called_once()
++
++    @patch(_PATCH_TARGET)
++    def test_deduplicates_transitive(self, mock_integrator, tmp_path):
++        """When transitive deps exist, deduplication is applied."""
++        direct = [_make_dep("pyright")]
++        transitive = [_make_dep("ruff-lsp")]
++
++        apm_package = MagicMock()
++        apm_package.get_lsp_dependencies.return_value = direct
++
++        mock_integrator.collect_transitive.return_value = transitive
++        mock_integrator.deduplicate.return_value = direct + transitive
++        mock_integrator.install.return_value = 2
++        mock_integrator.get_server_names.return_value = {"pyright", "ruff-lsp"}
++        mock_integrator.get_server_configs.return_value = {}
++
++        modules = tmp_path / "apm_modules"
++        modules.mkdir()
++
++        count = run_lsp_integration(
++            apm_package=apm_package,
++            apm_modules_path=modules,
++            lock_path=tmp_path / "apm.lock.yaml",
++            existing_lock=None,
++            project_root=tmp_path,
++            user_scope=False,
++            should_install=True,
++            logger=_mock_logger(),
++        )
++
++        assert count == 2
++        mock_integrator.deduplicate.assert_called_once()
++
++
++# ===========================================================================
++# Stale cleanup
++# ===========================================================================
++
++
++class TestStaleCleanup:
++    @patch(_PATCH_TARGET)
++    def test_removes_stale_servers(self, mock_integrator, tmp_path):
++        """Servers in old lockfile but not in new deps are removed."""
++        apm_package = MagicMock()
++        apm_package.get_lsp_dependencies.return_value = [_make_dep("pyright")]
++
++        old_lock = _mock_lock(lsp_servers=["pyright", "old-server"])
++
++        mock_integrator.collect_transitive.return_value = []
++        mock_integrator.install.return_value = 1
++        mock_integrator.get_server_names.return_value = {"pyright"}
++        mock_integrator.get_server_configs.return_value = {}
++
++        modules = tmp_path / "apm_modules"
++        modules.mkdir()
++
++        run_lsp_integration(
++            apm_package=apm_package,
++            apm_modules_path=modules,
++            lock_path=tmp_path / "apm.lock.yaml",
++            existing_lock=old_lock,
++            project_root=tmp_path,
++            user_scope=False,
++            should_install=True,
++            logger=_mock_logger(),
++        )
++
++        mock_integrator.remove_stale.assert_called_once()
++        stale_arg = mock_integrator.remove_stale.call_args
++        assert "old-server" in stale_arg.args[0] or "old-server" in stale_arg[0][0]
++
++    @patch(_PATCH_TARGET)
++    def test_removes_all_old_when_no_deps_remain(self, mock_integrator, tmp_path):
++        """When no LSP deps remain, all old servers are removed."""
++        apm_package = MagicMock()
++        apm_package.get_lsp_dependencies.return_value = []
++
++        old_lock = _mock_lock(lsp_servers=["old-a", "old-b"])
++
++        run_lsp_integration(
++            apm_package=apm_package,
++            apm_modules_path=tmp_path / "apm_modules",
++            lock_path=tmp_path / "apm.lock.yaml",
++            existing_lock=old_lock,
++            project_root=tmp_path,
++            user_scope=False,
++            should_install=True,
++            logger=_mock_logger(),
++        )
++
++        mock_integrator.remove_stale.assert_called_once()
++        stale_arg = mock_integrator.remove_stale.call_args[0][0]
++        assert stale_arg == {"old-a", "old-b"}
++
++
++# ===========================================================================
++# --only=apm (should_install=False)
++# ===========================================================================
++
++
++class TestSkipInstall:
++    @patch(_PATCH_TARGET)
++    def test_restores_old_lockfile_when_not_installing(self, mock_integrator, tmp_path):
++        """When should_install=False with old servers, lockfile is restored."""
++        apm_package = MagicMock()
++        apm_package.get_lsp_dependencies.return_value = []
++
++        old_lock = _mock_lock(
++            lsp_servers=["preserved"],
++            lsp_configs={"preserved": {"name": "preserved"}},
++        )
++
++        run_lsp_integration(
++            apm_package=apm_package,
++            apm_modules_path=tmp_path / "apm_modules",
++            lock_path=tmp_path / "apm.lock.yaml",
++            existing_lock=old_lock,
++            project_root=tmp_path,
++            user_scope=False,
++            should_install=False,
++            logger=_mock_logger(),
++        )
++
++        mock_integrator.update_lockfile.assert_called_once()
++        mock_integrator.install.assert_not_called()
+diff --git a/tests/unit/integration/test_lsp_integrator.py b/tests/unit/integration/test_lsp_integrator.py
+new file mode 100644
+index 000000000..5f9e6255d
+--- /dev/null
++++ b/tests/unit/integration/test_lsp_integrator.py
+@@ -0,0 +1,392 @@
++"""Unit tests for ``apm_cli.integration.lsp_integrator.LSPIntegrator``.
++
++Tests focus on pure-logic methods: deduplication, name extraction,
++config building, stale cleanup, lockfile update, and the install
++orchestrator -- without requiring live network calls or runtimes.
++"""
++
++from __future__ import annotations
++
++import json
++from pathlib import Path
++from unittest.mock import patch
++
++from apm_cli.integration.lsp_integrator import LSPIntegrator
++from apm_cli.models.dependency.lsp import LSPDependency
++
++# ---------------------------------------------------------------------------
++# Helpers
++# ---------------------------------------------------------------------------
++
++
++def _make_dep(name: str, **kwargs) -> LSPDependency:
++    """Convenience factory for LSPDependency."""
++    defaults = {
++        "command": kwargs.pop("command", f"{name}-langserver"),
++        "extension_to_language": kwargs.pop("extension_to_language", {".py": "python"}),
++    }
++    defaults.update(kwargs)
++    return LSPDependency(name=name, **defaults)
++
++
++# ===========================================================================
++# LSPIntegrator.deduplicate
++# ===========================================================================
++
++
++class TestDeduplicate:
++    def test_empty_list(self):
++        assert LSPIntegrator.deduplicate([]) == []
++
++    def test_no_duplicates(self):
++        deps = [_make_dep("a"), _make_dep("b"), _make_dep("c")]
++        result = LSPIntegrator.deduplicate(deps)
++        assert [d.name for d in result] == ["a", "b", "c"]
++
++    def test_first_occurrence_wins(self):
++        dep1 = _make_dep("pyright", transport="stdio")
++        dep2 = _make_dep("pyright", transport="socket")
++        result = LSPIntegrator.deduplicate([dep1, dep2])
++        assert len(result) == 1
++        assert result[0].transport == "stdio"
++
++    def test_dict_entries_dedup_by_name(self):
++        deps = [{"name": "foo"}, {"name": "foo"}, {"name": "bar"}]
++        result = LSPIntegrator.deduplicate(deps)
++        assert len(result) == 2
++        assert result[0]["name"] == "foo"
++        assert result[1]["name"] == "bar"
++
++    def test_nameless_items_kept_by_value_inequality(self):
++        dep1 = {"other": "x"}
++        dep2 = {"other": "y"}
++        result = LSPIntegrator.deduplicate([dep1, dep2])
++        assert len(result) == 2
++
++    def test_nameless_duplicate_reference_skipped(self):
++        dep = {"other": "x"}
++        result = LSPIntegrator.deduplicate([dep, dep])
++        assert len(result) == 1
++
++    def test_mixed_string_and_object(self):
++        deps = ["alpha", _make_dep("beta"), "alpha"]
++        result = LSPIntegrator.deduplicate(deps)
++        assert len(result) == 2
++
++    def test_preserves_order(self):
++        names = ["z", "a", "m", "b"]
++        deps = [_make_dep(n) for n in names]
++        result = LSPIntegrator.deduplicate(deps)
++        assert [d.name for d in result] == names
++
++
++# ===========================================================================
++# LSPIntegrator.get_server_names
++# ===========================================================================
++
++
++class TestGetServerNames:
++    def test_empty(self):
++        assert LSPIntegrator.get_server_names([]) == set()
++
++    def test_dep_objects(self):
++        deps = [_make_dep("pyright"), _make_dep("ruff-lsp")]
++        assert LSPIntegrator.get_server_names(deps) == {"pyright", "ruff-lsp"}
++
++    def test_plain_strings(self):
++        assert LSPIntegrator.get_server_names(["foo", "bar"]) == {"foo", "bar"}
++
++    def test_deduplication(self):
++        deps = [_make_dep("x"), _make_dep("x"), "x"]
++        assert LSPIntegrator.get_server_names(deps) == {"x"}
++
++
++# ===========================================================================
++# LSPIntegrator.get_server_configs
++# ===========================================================================
++
++
++class TestGetServerConfigs:
++    def test_empty(self):
++        assert LSPIntegrator.get_server_configs([]) == {}
++
++    def test_dep_object_serialised(self):
++        dep = _make_dep("pyright", transport="stdio")
++        configs = LSPIntegrator.get_server_configs([dep])
++        assert "pyright" in configs
++        assert configs["pyright"]["name"] == "pyright"
++        assert configs["pyright"]["transport"] == "stdio"
++
++    def test_plain_string_fallback(self):
++        configs = LSPIntegrator.get_server_configs(["plain-server"])
++        assert configs == {"plain-server": {"name": "plain-server"}}
++
++    def test_multiple_deps(self):
++        deps = [_make_dep("a"), _make_dep("b")]
++        configs = LSPIntegrator.get_server_configs(deps)
++        assert set(configs.keys()) == {"a", "b"}
++
++
++# ===========================================================================
++# LSPIntegrator.install -- project scope
++# ===========================================================================
++
++
++class TestInstallProjectScope:
++    def test_empty_deps_returns_zero(self, tmp_path):
++        count = LSPIntegrator.install([], project_root=tmp_path)
++        assert count == 0
++
++    def test_creates_lsp_json(self, tmp_path):
++        deps = [_make_dep("pyright")]
++        count = LSPIntegrator.install(deps, project_root=tmp_path)
++        assert count == 1
++
++        lsp_json = tmp_path / ".lsp.json"
++        assert lsp_json.exists()
++        data = json.loads(lsp_json.read_text())
++        assert "pyright" in data
++        assert data["pyright"]["command"] == "pyright-langserver"
++        assert "name" not in data["pyright"]  # name is the key, not in value
++
++    def test_merges_with_existing_lsp_json(self, tmp_path):
++        lsp_json = tmp_path / ".lsp.json"
++        lsp_json.write_text(json.dumps({"existing-server": {"command": "x"}}))
++
++        deps = [_make_dep("new-server")]
++        LSPIntegrator.install(deps, project_root=tmp_path)
++
++        data = json.loads(lsp_json.read_text())
++        assert "existing-server" in data
++        assert "new-server" in data
++
++    def test_update_existing_server_counts_as_change(self, tmp_path):
++        lsp_json = tmp_path / ".lsp.json"
++        lsp_json.write_text(json.dumps({"pyright": {"command": "old-cmd"}}))
++
++        deps = [_make_dep("pyright")]
++        count = LSPIntegrator.install(deps, project_root=tmp_path)
++        assert count == 1  # changed config counts
++
++    def test_no_change_returns_zero(self, tmp_path):
++        dep = _make_dep("pyright")
++        # First install
++        LSPIntegrator.install([dep], project_root=tmp_path)
++        # Second install with same config
++        count = LSPIntegrator.install([dep], project_root=tmp_path)
++        assert count == 0
++
++    def test_dict_deps_handled(self, tmp_path):
++        deps = [{"name": "dict-server", "command": "x", "extensionToLanguage": {".py": "python"}}]
++        count = LSPIntegrator.install(deps, project_root=tmp_path)
++        assert count == 1
++        data = json.loads((tmp_path / ".lsp.json").read_text())
++        assert "dict-server" in data
++
++    def test_multiple_servers(self, tmp_path):
++        deps = [_make_dep("pyright"), _make_dep("ruff-lsp")]
++        count = LSPIntegrator.install(deps, project_root=tmp_path)
++        assert count == 2
++
++
++# ===========================================================================
++# LSPIntegrator.install -- user scope
++# ===========================================================================
++
++
++class TestInstallUserScope:
++    def test_writes_to_claude_json(self, tmp_path):
++        claude_json = tmp_path / ".claude.json"
++        with patch("apm_cli.integration.lsp_integrator.Path.home", return_value=tmp_path):
++            deps = [_make_dep("pyright")]
++            count = LSPIntegrator.install(deps, user_scope=True)
++            assert count == 1
++
++        data = json.loads(claude_json.read_text())
++        assert "lspServers" in data
++        assert "pyright" in data["lspServers"]
++
++    def test_merges_with_existing_claude_json(self, tmp_path):
++        claude_json = tmp_path / ".claude.json"
++        claude_json.write_text(json.dumps({"existingKey": True}))
++
++        with patch("apm_cli.integration.lsp_integrator.Path.home", return_value=tmp_path):
++            LSPIntegrator.install([_make_dep("ruff")], user_scope=True)
++
++        data = json.loads(claude_json.read_text())
++        assert data["existingKey"] is True
++        assert "ruff" in data["lspServers"]
++
++
++# ===========================================================================
++# LSPIntegrator.remove_stale
++# ===========================================================================
++
++
++class TestRemoveStale:
++    def test_empty_stale_set_is_noop(self, tmp_path):
++        lsp_json = tmp_path / ".lsp.json"
++        lsp_json.write_text(json.dumps({"keep": {"command": "x"}}))
++
++        LSPIntegrator.remove_stale(set(), project_root=tmp_path)
++        data = json.loads(lsp_json.read_text())
++        assert "keep" in data
++
++    def test_removes_stale_from_project_lsp_json(self, tmp_path):
++        lsp_json = tmp_path / ".lsp.json"
++        lsp_json.write_text(
++            json.dumps(
++                {
++                    "keep": {"command": "x"},
++                    "stale": {"command": "y"},
++                }
++            )
++        )
++
++        LSPIntegrator.remove_stale({"stale"}, project_root=tmp_path)
++        data = json.loads(lsp_json.read_text())
++        assert "keep" in data
++        assert "stale" not in data
++
++    def test_removes_stale_from_user_claude_json(self, tmp_path):
++        claude_json = tmp_path / ".claude.json"
++        claude_json.write_text(
++            json.dumps(
++                {
++                    "lspServers": {
++                        "keep": {"command": "x"},
++                        "stale": {"command": "y"},
++                    }
++                }
++            )
++        )
++
++        with patch("apm_cli.integration.lsp_integrator.Path.home", return_value=tmp_path):
++            LSPIntegrator.remove_stale({"stale"}, user_scope=True)
++
++        data = json.loads(claude_json.read_text())
++        assert "keep" in data["lspServers"]
++        assert "stale" not in data["lspServers"]
++
++    def test_no_lsp_json_is_noop(self, tmp_path):
++        # Should not raise even if .lsp.json does not exist
++        LSPIntegrator.remove_stale({"nonexistent"}, project_root=tmp_path)
++
++    def test_multiple_stale_removed(self, tmp_path):
++        lsp_json = tmp_path / ".lsp.json"
++        lsp_json.write_text(
++            json.dumps(
++                {
++                    "keep": {"command": "x"},
++                    "stale1": {"command": "y"},
++                    "stale2": {"command": "z"},
++                }
++            )
++        )
++
++        LSPIntegrator.remove_stale({"stale1", "stale2"}, project_root=tmp_path)
++        data = json.loads(lsp_json.read_text())
++        assert set(data.keys()) == {"keep"}
++
++
++# ===========================================================================
++# LSPIntegrator.update_lockfile
++# ===========================================================================
++
++
++class TestUpdateLockfile:
++    def _write_lockfile(self, path: Path) -> None:
++        """Write a minimal valid lockfile."""
++        from apm_cli.deps.lockfile import LockFile
++
++        lock = LockFile()
++        lock.save(path)
++
++    def test_persists_lsp_servers(self, tmp_path):
++        lock_path = tmp_path / "apm.lock.yaml"
++        self._write_lockfile(lock_path)
++
++        LSPIntegrator.update_lockfile({"pyright", "ruff-lsp"}, lock_path)
++
++        from apm_cli.deps.lockfile import LockFile
++
++        lock = LockFile.read(lock_path)
++        assert lock is not None
++        assert set(lock.lsp_servers) == {"pyright", "ruff-lsp"}
++
++    def test_persists_lsp_configs(self, tmp_path):
++        lock_path = tmp_path / "apm.lock.yaml"
++        self._write_lockfile(lock_path)
++
++        configs = {"pyright": {"name": "pyright", "command": "pyright-langserver"}}
++        LSPIntegrator.update_lockfile({"pyright"}, lock_path, lsp_configs=configs)
++
++        from apm_cli.deps.lockfile import LockFile
++
++        lock = LockFile.read(lock_path)
++        assert lock is not None
++        assert lock.lsp_configs == configs
++
++    def test_clears_servers_on_empty_set(self, tmp_path):
++        lock_path = tmp_path / "apm.lock.yaml"
++        self._write_lockfile(lock_path)
++
++        LSPIntegrator.update_lockfile({"pyright"}, lock_path)
++        LSPIntegrator.update_lockfile(set(), lock_path, lsp_configs={})
++
++        from apm_cli.deps.lockfile import LockFile
++
++        lock = LockFile.read(lock_path)
++        assert lock is not None
++        assert lock.lsp_servers == []
++
++    def test_no_lockfile_is_noop(self, tmp_path):
++        lock_path = tmp_path / "apm.lock.yaml"
++        # Should not raise if lockfile does not exist
++        LSPIntegrator.update_lockfile({"pyright"}, lock_path)
++        assert not lock_path.exists()
++
++
++# ===========================================================================
++# LSPIntegrator.collect_transitive
++# ===========================================================================
++
++
++class TestCollectTransitive:
++    def test_empty_modules_dir(self, tmp_path):
++        result = LSPIntegrator.collect_transitive(tmp_path / "nonexistent")
++        assert result == []
++
++    def test_collects_from_apm_yml(self, tmp_path):
++        """Set up a mock package with LSP deps and verify collection."""
++        pkg_dir = tmp_path / "apm_modules" / "owner/repo"
++        pkg_dir.mkdir(parents=True)
++
++        apm_yml = pkg_dir / "apm.yml"
++        apm_yml.write_text(
++            "name: test-pkg\n"
++            "version: 1.0.0\n"
++            "dependencies:\n"
++            "  lsp:\n"
++            "    - name: pyright\n"
++            "      command: pyright-langserver\n"
++            "      extensionToLanguage:\n"
++            "        .py: python\n"
++        )
++
++        # Create lockfile referencing this package
++        lock_path = tmp_path / "apm.lock.yaml"
++        from apm_cli.deps.lockfile import LockedDependency, LockFile
++
++        lock = LockFile()
++        dep = LockedDependency(
++            repo_url="owner/repo",
++            version="1.0.0",
++        )
++        lock.add_dependency(dep)
++        lock.save(lock_path)
++
++        modules_dir = tmp_path / "apm_modules"
++        result = LSPIntegrator.collect_transitive(modules_dir, lock_path)
++        assert len(result) == 1
++        assert result[0].name == "pyright"

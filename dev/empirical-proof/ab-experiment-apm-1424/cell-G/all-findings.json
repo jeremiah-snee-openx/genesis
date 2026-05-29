@@ -1,0 +1,218 @@
+[
+  {
+    "id": "CORRECTNESS-001",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "1315-1374",
+    "summary": "LSPIntegrator.install() returns inaccurate count when file write fails",
+    "details": "The install() method increments the 'count' variable (lines 1335, 1361) before attempting to write the configuration files (lines 1339, 1364). If writing the file fails with an exception (caught on lines 1344-1347, 1369-1372), the method still returns the count as if the write succeeded. This causes the caller (run_lsp_integration) to incorrectly report the number of configured servers. The return value should reflect only the servers that were successfully written to disk. Recommendation: Move count increment inside successful write blocks, or initialize count after the try block succeeds.",
+    "_lens": "correctness"
+  },
+  {
+    "id": "CORRECTNESS-002",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "886-891",
+    "summary": "Missing logger parameter passed to LSPIntegrator.install()",
+    "details": "The run_lsp_integration() function has a 'logger' parameter available (line 834), but when calling LSPIntegrator.install() (lines 886-891), the logger is not passed. This causes LSPIntegrator.install() to initialize a default NullCommandLogger (line 1291-1292) instead of using the provided logger instance. This results in suppressed logging and diagnostics. While not a critical bug since it falls back to a null logger, it breaks the logging chain. The logger parameter should be added to the install() call.",
+    "_lens": "correctness"
+  },
+  {
+    "id": "CORRECTNESS-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "1186-1227",
+    "summary": "Stale server cleanup may silently fail without error propagation",
+    "details": "The remove_stale() method catches all exceptions (lines 1197-1201, 1223-1227) and only logs debug messages. If the .lsp.json or ~/.claude.json files cannot be read or written due to permission errors or corrupted JSON, the method silently fails without informing the caller or user (no warning to diagnostics). This could leave stale server entries in configuration files indefinitely. The method should either: (1) propagate the exception, (2) pass diagnostics to the method, or (3) call logger.warning() for critical failures like permission errors.",
+    "_lens": "correctness"
+  },
+  {
+    "id": "CORRECTNESS-004",
+    "severity": "LOW",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "1598-1610",
+    "summary": "Incomplete handling of None vs missing keys in LSPDependency.from_dict()",
+    "details": "Lines 1605-1610 use the `or` operator to fall back between camelCase and snake_case field names. This works, but for boolean fields like restart_on_crash (lines 1607-1609), the pattern `d.get('restartOnCrash') if d.get('restartOnCrash') is not None else d.get('restart_on_crash')` is used. However, for integer fields like max_restarts (line 1610), it uses `d.get('maxRestarts') or d.get('max_restarts')`. This is inconsistent: if maxRestarts=0 is provided, the `or` operator would treat it as falsy and fall back to the snake_case key. The pattern should match the boolean field handling for consistency.",
+    "_lens": "correctness"
+  },
+  {
+    "id": "CORRECTNESS-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "705-764",
+    "summary": "LSP dependency validation failures are silently skipped without clear reporting",
+    "details": "In _lsp_servers_to_apm_deps(), invalid LSP server configs are skipped with a warning (lines 756-760) if LSPDependency.from_dict() raises an exception. However, when a plugin defines multiple LSP servers and some fail validation, the user receives only a warning and no clear indication of which servers were configured vs which failed. This could silently drop half of a plugin's LSP servers without obvious feedback. The method should aggregate and report all validation errors together, or fail fast rather than partial success.",
+    "_lens": "correctness"
+  },
+  {
+    "id": "PERF-001",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "lines 878-880",
+    "summary": "Redundant LSP dependency collection and deduplication on every install",
+    "details": "When transitive LSP deps are collected, they are immediately deduplicated via LSPIntegrator.deduplicate(lsp_deps + transitive_lsp). This O(n+m) concatenation followed by O(n*log(n)) deduplication happens for every install with transitive dependencies. The transitive collection already scans all apm.yml files via rglob (expensive I/O), and then the list is rebuilt. For large monorepos with many transitive LSP servers, this causes unnecessary list allocations and repeated name lookups.",
+    "_lens": "performance"
+  },
+  {
+    "id": "PERF-002",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1184-1217",
+    "summary": "Repeated full JSON read/write cycle during stale server cleanup",
+    "details": "In remove_stale(), the entire .lsp.json or ~/.claude.json file is read into memory, parsed, modified, and written back. This happens even when removing a single stale server from a potentially large config file. For multiple stale servers being removed in batch, this should be a single read-parse-modify-write cycle, not one per file access.",
+    "_lens": "performance"
+  },
+  {
+    "id": "PERF-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1333-1339 and 1359-1364",
+    "summary": "Inefficient config comparison on every write in install()",
+    "details": "In LSPIntegrator.install(), dict comparison existing[name] != cfg is performed for every server to increment a count variable used only for logging. Dict equality uses deep comparison O(size of dict). For servers with large initializationOptions or settings dicts this becomes expensive.",
+    "_lens": "performance"
+  },
+  {
+    "id": "PERF-004",
+    "severity": "LOW",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "lines 735-750",
+    "summary": "Linear scan of hardcoded field list per LSP server during plugin extraction",
+    "details": "In _lsp_servers_to_apm_deps(), a hardcoded tuple of 12 field names is iterated for every server config with if key in cfg checks. A more efficient approach would use dict.get() or copy specific keys at once. Impact is negligible given the small field list.",
+    "_lens": "performance"
+  },
+  {
+    "id": "STYLE-001",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "1049, 1132-1151, 1159-1238",
+    "summary": "Unnecessary use of builtins.set and builtins.dict throughout the file",
+    "details": "The file imports `builtins` and then uses `builtins.set()` and `builtins.dict` in multiple places (lines 1049, 1132, 1134, 1143, 1145, 1159, 1235, 1238, 1299). This is non-idiomatic Python and violates the principle that Python's built-in types should be used directly without the module prefix. This pattern contradicts the MCP integrator cleanup in the same PR which removes exactly these antipatterns. All 22 instances of 'builtins.set()' or 'builtins.dict' in the LSP code should be replaced with plain 'set()' and 'dict'. Example fixes: (1) Remove 'import builtins' (2) Replace 'builtins.set()' with 'set()' (3) Replace 'builtins.dict' type annotations with 'dict' (4) Replace 'builtins.dict()' with 'dict()'",
+    "_lens": "style"
+  },
+  {
+    "id": "STYLE-002",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/_shared.py",
+    "line_anchor": "970, 983, 1005, 1011-1012, 1017",
+    "summary": "Unnecessary use of builtins.set in shared integration helpers",
+    "details": "Similar to lsp_integrator.py, this file imports `builtins` and uses `builtins.set()` and `builtins.set` type annotations. Lines affected: import builtins (970), seen_names: builtins.set = builtins.set() (983), tuple return type with builtins.set (1005), variable initialization with builtins.set (1011-1012, 1017). This shared code is used by both MCP and LSP integrators, so the antipattern affects both code paths. Replace all 'builtins.set' with 'set' and remove the unnecessary import.",
+    "_lens": "style"
+  },
+  {
+    "id": "STYLE-003",
+    "severity": "HIGH",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "816, 865-869, 883, 915",
+    "summary": "Unnecessary use of builtins.set and builtins.dict in LSP pipeline integration",
+    "details": "This file imports `builtins` at line 816 and uses `builtins.set()` and `builtins.dict` type annotations in the run_lsp_integration function. Specific lines: old_lsp_servers: builtins.set = builtins.set() (865), old_lsp_configs: builtins.dict = {} (866), reassignments with builtins.set() and builtins.dict() (868-869), new_lsp_servers: builtins.set = builtins.set() (883), builtins.set() constructor call (915). This is the third file with the same antipattern. The consistent reintroduction of these patterns across all new LSP files is a significant style regression that should be fixed uniformly.",
+    "_lens": "style"
+  },
+  {
+    "id": "STYLE-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "1279-1374",
+    "summary": "LSPIntegrator.install() method is complex with high cyclomatic complexity",
+    "details": "The install() method (lines 1272-1374, ~103 lines) handles multiple responsibilities: building server configs, handling both user_scope and project_scope scenarios, reading/writing JSON files, error handling, and logging. The user_scope and project_scope branches are nearly identical code (~60 lines duplicated logic). Consider extracting the JSON read/write logic into separate helper methods to reduce complexity: _write_lsp_json_user_scope() and _write_lsp_json_project_scope(). This would improve readability and maintainability.",
+    "_lens": "style"
+  },
+  {
+    "id": "STYLE-006",
+    "severity": "LOW",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "1621-1646",
+    "summary": "Repetitive if-check pattern in to_dict() method",
+    "details": "The to_dict() method (lines 1616-1646) uses a repetitive pattern of checking each field individually and conditionally adding it to the result dict: 'if self.command is not None: result[...] = self.command' repeated for 11 fields. While functionally correct, this could be more maintainable using a data-driven approach or a dict comprehension with a field mapping. For example, define a mapping of field_name -> (attr_name, camelCase_key) and iterate over it, reducing the 30 lines to ~10 lines. This would also make adding new fields less error-prone.",
+    "_lens": "style"
+  },
+  {
+    "id": "TEST-001",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "install (lines 1272-1374)",
+    "summary": "Missing tests for file write failures in LSPIntegrator.install when writing to .lsp.json or ~/.claude.json",
+    "details": "The install() method has try-except blocks (lines 1320-1347 for user scope, 1351-1372 for project scope) that catch generic Exception and log to diagnostics. However, there are NO tests that verify the error handling path: what happens when JSON write fails, encoding error occurs, or file permissions are denied. The production code silently catches and logs these errors, but tests only cover the happy path. Tests should verify: (1) exception is caught gracefully, (2) diagnostics.warn() is called with the error message, (3) return value is still accurate.",
+    "_lens": "test-coverage"
+  },
+  {
+    "id": "TEST-002",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "remove_stale (lines 1157-1227)",
+    "summary": "Missing tests for file read/write failures in LSPIntegrator.remove_stale when cleaning .lsp.json or ~/.claude.json",
+    "details": "The remove_stale() method has two large try-except blocks (1185-1201 for project scope, 1207-1227 for user scope) that catch generic Exception. Tests exist for normal removal (test_removes_stale_from_project_lsp_json, test_removes_stale_from_user_claude_json), but NO tests verify the error path: what happens when the JSON file is corrupted, unreadable, or write fails. The production code should gracefully handle these without crashing, but this is not tested. Should add tests for: (1) corrupted JSON file, (2) read permission denied, (3) write permission denied.",
+    "_lens": "test-coverage"
+  },
+  {
+    "id": "TEST-003",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "collect_transitive (lines 1072-1112)",
+    "summary": "Missing tests for error handling when parsing apm.yml files in transitive collection",
+    "details": "The collect_transitive() method iterates over apm.yml files and calls APMPackage.from_apm_yml() inside a try-except block (1100-1111). If parsing fails, it silently continues with a debug log. However, there are NO tests verifying this error path. Additionally, the method doesn't verify that packages actually have LSP dependencies before trying to get them - a malformed apm.yml could cause failures. Tests should verify: (1) malformed apm.yml is skipped gracefully, (2) packages without LSP deps don't break iteration, (3) error count/logging is correct.",
+    "_lens": "test-coverage"
+  },
+  {
+    "id": "TEST-004",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "run_lsp_integration (lines 825-922)",
+    "summary": "Missing test for LSP collection error handling when collect_transitive raises exception",
+    "details": "The run_lsp_integration() function calls LSPIntegrator.collect_transitive() at line 873-876 without any error handling. If this call raises an exception (due to file I/O, JSON parse, or other errors), the entire LSP integration fails. The test file test_lsp_integration.py mocks this call, so real error paths are never tested. An integration test should verify: (1) collect_transitive errors don't crash the install, (2) partial results are still processed, (3) diagnostics capture the error.",
+    "_lens": "test-coverage"
+  },
+  {
+    "id": "TEST-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "update_lockfile (lines 1233-1265)",
+    "summary": "Missing tests for lockfile update failures and recovery",
+    "details": "The update_lockfile() method tries to read, modify, and save the lockfile (lines 1252-1259). If LockFile.read() returns None or save() fails, these are caught silently (lines 1252-1265). Tests exist for normal success path (test_persists_lsp_servers, test_persists_lsp_configs), but NO tests cover: (1) lockfile.save() throws exception, (2) lockfile doesn't exist initially, (3) lockfile is corrupted/unreadable, (4) concurrent write attempts. Should add tests for these failure modes.",
+    "_lens": "test-coverage"
+  },
+  {
+    "id": "TEST-006",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "validate (lines 1678-1733)",
+    "summary": "Missing tests for edge cases in path traversal validation in LSPDependency",
+    "details": "The validate() method uses validate_path_segments() from utils.path_security to check for '..' in command (lines 1704-1713). While test_traversal_in_command_raises exists, there are NO tests for: (1) command with multiple '..' segments (e.g., '../../bin/evil'), (2) command with '..' mixed in middle (e.g., './foo/../../../bad'), (3) empty command string, (4) command with null bytes or other path injection techniques. Should add comprehensive path traversal tests.",
+    "_lens": "test-coverage"
+  },
+  {
+    "id": "TEST-007",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "run_lsp_integration orchestration (lines 871-920)",
+    "summary": "Missing end-to-end integration test for LSP server lifecycle (add, update, remove cycle)",
+    "details": "The test file test_lsp_integration.py uses mocks for LSPIntegrator, so the real integration between orchestrator and integrator is never tested. There should be at least one end-to-end test that: (1) creates a project with .lsp.json, (2) runs install with new LSP deps, (3) verifies .lsp.json is updated correctly, (4) runs install again with fewer deps, (5) verifies stale servers are removed. This would catch integration bugs between run_lsp_integration and LSPIntegrator methods.",
+    "_lens": "test-coverage"
+  },
+  {
+    "id": "TEST-008",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_extract_lsp_servers (lines 623-668)",
+    "summary": "Missing test for plugin root substitution with special characters or edge cases",
+    "details": "The _extract_lsp_servers() function substitutes ${CLAUDE_PLUGIN_ROOT} in string values (lines 664-666). Test test_plugin_root_substitution exists, but it only tests a simple case. Missing tests for: (1) multiple ${CLAUDE_PLUGIN_ROOT} occurrences in single value, (2) ${CLAUDE_PLUGIN_ROOT} with nested paths like '${CLAUDE_PLUGIN_ROOT}/../../escape', (3) ${CLAUDE_PLUGIN_ROOT} in complex dict structures (e.g., env vars), (4) case sensitivity of the substitution placeholder.",
+    "_lens": "test-coverage"
+  },
+  {
+    "id": "TEST-009",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_read_lsp_file (lines 671-686)",
+    "summary": "Missing tests for symlink and path traversal attacks in LSP file reading",
+    "details": "The _read_lsp_file() function validates path traversal (lines 674-677) and skips symlinks (line 683). Tests exist for basic path traversal (test_path_traversal_in_string_ref_blocked) and symlinks (test_symlink_lsp_json_skipped), but missing: (1) symlink that points outside plugin root (should be skipped), (2) relative path with '..' that resolves correctly vs those that escape, (3) circular symlinks, (4) hardlinks vs symlinks distinction. Should enhance symlink/traversal tests.",
+    "_lens": "test-coverage"
+  },
+  {
+    "id": "TEST-010",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "install method - non-dict/non-object deps (lines 1300-1311)",
+    "summary": "Missing tests for install() handling of malformed dependency objects",
+    "details": "The install() method checks if deps have to_lsp_json_entry() or to_dict() methods (lines 1301-1306) or are dicts (1307-1310). Tests exist for dict deps (test_dict_deps_handled) and objects, but NO tests for: (1) dependency object with only partial attributes (e.g., has 'name' but not 'command'), (2) dict dependency missing 'name' key, (3) None in dep list, (4) non-serializable objects in dep list. These edge cases should silently skip or be handled gracefully.",
+    "_lens": "test-coverage"
+  }
+]

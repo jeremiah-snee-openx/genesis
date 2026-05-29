@@ -1,0 +1,50 @@
+[
+  {
+    "id": "STYLE-001",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "1049, 1132-1151, 1159-1238",
+    "summary": "Unnecessary use of builtins.set and builtins.dict throughout the file",
+    "details": "The file imports `builtins` and then uses `builtins.set()` and `builtins.dict` in multiple places (lines 1049, 1132, 1134, 1143, 1145, 1159, 1235, 1238, 1299). This is non-idiomatic Python and violates the principle that Python's built-in types should be used directly without the module prefix. This pattern contradicts the MCP integrator cleanup in the same PR which removes exactly these antipatterns. All 22 instances of 'builtins.set()' or 'builtins.dict' in the LSP code should be replaced with plain 'set()' and 'dict'. Example fixes: (1) Remove 'import builtins' (2) Replace 'builtins.set()' with 'set()' (3) Replace 'builtins.dict' type annotations with 'dict' (4) Replace 'builtins.dict()' with 'dict()'"
+  },
+  {
+    "id": "STYLE-002",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/_shared.py",
+    "line_anchor": "970, 983, 1005, 1011-1012, 1017",
+    "summary": "Unnecessary use of builtins.set in shared integration helpers",
+    "details": "Similar to lsp_integrator.py, this file imports `builtins` and uses `builtins.set()` and `builtins.set` type annotations. Lines affected: import builtins (970), seen_names: builtins.set = builtins.set() (983), tuple return type with builtins.set (1005), variable initialization with builtins.set (1011-1012, 1017). This shared code is used by both MCP and LSP integrators, so the antipattern affects both code paths. Replace all 'builtins.set' with 'set' and remove the unnecessary import."
+  },
+  {
+    "id": "STYLE-003",
+    "severity": "HIGH",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "816, 865-869, 883, 915",
+    "summary": "Unnecessary use of builtins.set and builtins.dict in LSP pipeline integration",
+    "details": "This file imports `builtins` at line 816 and uses `builtins.set()` and `builtins.dict` type annotations in the run_lsp_integration function. Specific lines: old_lsp_servers: builtins.set = builtins.set() (865), old_lsp_configs: builtins.dict = {} (866), reassignments with builtins.set() and builtins.dict() (868-869), new_lsp_servers: builtins.set = builtins.set() (883), builtins.set() constructor call (915). This is the third file with the same antipattern. The consistent reintroduction of these patterns across all new LSP files is a significant style regression that should be fixed uniformly."
+  },
+  {
+    "id": "STYLE-004",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "666",
+    "summary": "Call to undefined function _substitute_plugin_root",
+    "details": "Line 666 calls '_substitute_plugin_root(servers, abs_root, logger)' but this function is not defined anywhere in the plugin_parser.py additions shown in the diff. The function comment at line 663 indicates it should substitute '${CLAUDE_PLUGIN_ROOT}' in all string values, but the implementation is missing from this PR diff. Either: (1) the function already exists in the codebase and should be documented/visible, or (2) the function is genuinely missing and will cause a runtime NameError. This needs verification - if the function is not defined elsewhere, the code will fail at runtime when lspServers contains '${CLAUDE_PLUGIN_ROOT}' patterns."
+  },
+  {
+    "id": "STYLE-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "1279-1374",
+    "summary": "LSPIntegrator.install() method is complex with high cyclomatic complexity",
+    "details": "The install() method (lines 1272-1374, ~103 lines) handles multiple responsibilities: building server configs, handling both user_scope and project_scope scenarios, reading/writing JSON files, error handling, and logging. The user_scope and project_scope branches are nearly identical code (~60 lines duplicated logic). Consider extracting the JSON read/write logic into separate helper methods to reduce complexity: _write_lsp_json_user_scope() and _write_lsp_json_project_scope(). This would improve readability and maintainability."
+  },
+  {
+    "id": "STYLE-006",
+    "severity": "LOW",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "1621-1646",
+    "summary": "Repetitive if-check pattern in to_dict() method",
+    "details": "The to_dict() method (lines 1616-1646) uses a repetitive pattern of checking each field individually and conditionally adding it to the result dict: 'if self.command is not None: result[...] = self.command' repeated for 11 fields. While functionally correct, this could be more maintainable using a data-driven approach or a dict comprehension with a field mapping. For example, define a mapping of field_name -> (attr_name, camelCase_key) and iterate over it, reducing the 30 lines to ~10 lines. This would also make adding new fields less error-prone."
+  }
+]
