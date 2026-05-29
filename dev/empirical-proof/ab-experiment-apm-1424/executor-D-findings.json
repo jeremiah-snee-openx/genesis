@@ -1,0 +1,144 @@
+{
+  "arbiter": "Executor-D (Claude Sonnet 4.6 — pinned orchestrator)",
+  "handoff": "Opus-D",
+  "pr": "microsoft/apm#1424",
+  "rule": "DISSENT-WEIGHTED — every lens finding preserved verbatim; cross-lens convergence noted but NOT used to merge; single-lens HIGH/BLOCKER explicitly acknowledged",
+  "model_param_on_lens_dispatch": false,
+  "verdict": "REQUEST CHANGES",
+  "totals": {
+    "total": 52,
+    "BLOCKER": 6,
+    "HIGH": 21,
+    "MEDIUM": 21,
+    "LOW": 4,
+    "NIT": 0
+  },
+  "per_lens": {
+    "correctness": {"total": 5, "BLOCKER": 2, "HIGH": 2, "MEDIUM": 1, "LOW": 0, "NIT": 0},
+    "security":    {"total": 9, "BLOCKER": 2, "HIGH": 3, "MEDIUM": 4, "LOW": 0, "NIT": 0},
+    "performance": {"total": 6, "BLOCKER": 0, "HIGH": 2, "MEDIUM": 3, "LOW": 1, "NIT": 0},
+    "style":       {"total": 14, "BLOCKER": 0, "HIGH": 11, "MEDIUM": 2, "LOW": 0, "NIT": 0},
+    "test-coverage":{"total": 18, "BLOCKER": 2, "HIGH": 3, "MEDIUM": 10, "LOW": 3, "NIT": 0}
+  },
+  "cross_lens_convergence": [
+    {
+      "theme": "_substitute_plugin_root() undefined",
+      "lenses": ["correctness (COR-001 BLOCKER)", "security (S-001 BLOCKER)", "test-coverage (TST-001 BLOCKER)"],
+      "count": 3,
+      "note": "3/5 lenses independently raised — strongest convergence in panel. Not merged; each finding preserved separately per DISSENT-WEIGHTED rule."
+    },
+    {
+      "theme": "_surface_warning() undefined",
+      "lenses": ["correctness (COR-002 BLOCKER)", "test-coverage (TST-002 BLOCKER)"],
+      "count": 2,
+      "note": "2/5 lenses raised. Not merged; each finding preserved separately."
+    },
+    {
+      "theme": "workspace_folder path traversal / symlink escape",
+      "lenses": ["security (S-003 HIGH, S-009 MEDIUM)", "performance (PERF-006 LOW)", "test-coverage (TST-017 LOW)"],
+      "count": 3,
+      "note": "Multi-lens concern across different severity ratings. Not merged."
+    },
+    {
+      "theme": "Redundant lockfile I/O",
+      "lenses": ["performance (PERF-001 HIGH, PERF-002 HIGH, PERF-003 MEDIUM)"],
+      "count": 1,
+      "note": "Performance-only finding — no corroboration from other lenses."
+    }
+  ],
+  "dissent_acknowledgements": [
+    {
+      "finding": "S-005",
+      "lens": "security",
+      "severity": "BLOCKER",
+      "theme": "Transitive LSP dependency trust boundary",
+      "note": "SINGLE-LENS DISSENT — security lens rated BLOCKER; 0 other lenses raised. The architectural concern is real (untrusted transitive deps executed by Claude Code) but the BLOCKER rating is a security-lens-specific position. Panel is IMBALANCED on this finding. Arbiter acknowledges without upgrading: treat as HIGH architectural concern, not blocking correctness or performance."
+    },
+    {
+      "finding": "STY-001 through STY-013",
+      "lens": "style",
+      "severity": "HIGH (11 findings)",
+      "theme": "Non-idiomatic builtins.set/dict constructors and missing type annotations",
+      "note": "STYLE-LENS-EXCLUSIVE HIGH findings — 0 other lenses flagged these. The builtins.* usage is a genuine idiom violation but carries no correctness, security, or performance risk. Arbiter preserves all 11 as HIGH per DISSENT-WEIGHTED rule; reviewer may downgrade to MEDIUM at their discretion."
+    },
+    {
+      "finding": "COR-003",
+      "lens": "correctness",
+      "severity": "HIGH",
+      "theme": "get_server_configs() includes 'name' key in lockfile schema",
+      "note": "SINGLE-LENS DISSENT — correctness only. Schema contract violation with no corroboration from security or test lenses. Preserved as HIGH per DISSENT-WEIGHTED rule."
+    },
+    {
+      "finding": "COR-004",
+      "lens": "correctness",
+      "severity": "HIGH",
+      "theme": "Field mapping uses 'or' not 'is not None' (silent data loss on falsy values)",
+      "note": "SINGLE-LENS DISSENT — correctness only. Silent data-loss on legitimate falsy values (0, empty dict) is a real correctness concern; test-coverage lens partially corroborates via TST-012 (empty extensionToLanguage not tested). Preserved as HIGH."
+    }
+  ],
+  "critical_threshold_evaluation": {
+    "rule": "CRITICAL = HIGH+ AND (exploitable-RCE OR data-loss OR broken-happy-path)",
+    "findings_meeting_threshold": [
+      {"id": "COR-001", "reason": "BLOCKER + broken-happy-path: NameError crashes LSP install on any plugin with ${CLAUDE_PLUGIN_ROOT}"},
+      {"id": "COR-002", "reason": "BLOCKER + broken-happy-path: NameError crashes error-handling path for invalid LSP configs"},
+      {"id": "S-001", "reason": "BLOCKER + broken-happy-path: same as COR-001 (corroborated by security lens)"},
+      {"id": "S-002", "reason": "HIGH + exploitable-RCE: LD_PRELOAD/PATH injection via unvalidated env dict → arbitrary code execution in LSP server process"},
+      {"id": "S-003", "reason": "HIGH + exploitable-RCE/data-loss: path traversal via unvalidated workspace_folder can escape plugin sandbox"},
+      {"id": "S-006", "reason": "HIGH + exploitable-RCE: unvalidated args pass shell metacharacters to Claude Code process spawning"}
+    ]
+  },
+  "all_findings": [
+    {"id":"COR-001","lens":"correctness","severity":"BLOCKER","file":"src/apm_cli/deps/plugin_parser.py","line_range":"~L666","message":"Undefined function `_substitute_plugin_root()` — NameError on any plugin with ${CLAUDE_PLUGIN_ROOT} tokens"},
+    {"id":"COR-002","lens":"correctness","severity":"BLOCKER","file":"src/apm_cli/deps/plugin_parser.py","line_range":"~L756","message":"Undefined function `_surface_warning()` — NameError in validation error path"},
+    {"id":"COR-003","lens":"correctness","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1144-1150","message":"get_server_configs() includes 'name' key violating lockfile schema"},
+    {"id":"COR-004","lens":"correctness","severity":"HIGH","file":"src/apm_cli/models/dependency/lsp.py","line_range":"~L1603-1615","message":"from_dict() uses `or` not `is not None` — silent data loss on falsy values"},
+    {"id":"COR-005","lens":"correctness","severity":"MEDIUM","file":"src/apm_cli/commands/install.py","line_range":"~L540","message":"LSP integration gated on should_install_mcp instead of dedicated should_install_lsp flag"},
+    {"id":"S-001","lens":"security","severity":"BLOCKER","file":"src/apm_cli/deps/plugin_parser.py","line_range":"~L666","message":"Missing _substitute_plugin_root() crashes install pipeline (security lens: trust boundary break)"},
+    {"id":"S-005","lens":"security","severity":"BLOCKER","file":"src/apm_cli/install/lsp/integration.py","line_range":"~L45-50","message":"Transitive LSP dep trust boundary — all transitive deps treated as trusted without integrity verification [SINGLE-LENS DISSENT]"},
+    {"id":"S-002","lens":"security","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1565, ~L1630","message":"Unvalidated env dict — LD_PRELOAD/PATH injection vector to LSP process spawned by Claude Code"},
+    {"id":"S-003","lens":"security","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1565, ~L1635","message":"Unvalidated workspace_folder — path traversal can escape plugin directory"},
+    {"id":"S-006","lens":"security","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1597, ~L1624","message":"Unvalidated args — shell metacharacters pass to Claude Code process spawn"},
+    {"id":"S-004","lens":"security","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1565, ~L1631","message":"Unvalidated initialization_options and settings — arbitrary JSON depth without limits"},
+    {"id":"S-007","lens":"security","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1707","message":"No recursive path validation in nested initialization_options"},
+    {"id":"S-008","lens":"security","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1587-1593","message":"LSP server name allows / and : characters — path traversal risk if name used in file paths"},
+    {"id":"S-009","lens":"security","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1635","message":"No symlink detection in workspace_folder — symlink can escape plugin root"},
+    {"id":"PERF-001","lens":"performance","severity":"HIGH","file":"src/apm_cli/integration/_shared.py","line_range":"~L1015","message":"Redundant lockfile I/O: both MCP and LSP integrators read lockfile independently in same install pass"},
+    {"id":"PERF-002","lens":"performance","severity":"HIGH","file":"src/apm_cli/install/lsp/integration.py","line_range":"~L891","message":"Multiple lockfile read/write cycles: update_lockfile re-reads after resolve already read it"},
+    {"id":"PERF-003","lens":"performance","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1186-1216, ~L1322-1364","message":"Sequential .lsp.json read/write in install() then remove_stale() — 2 reads and 2 writes for one logical operation"},
+    {"id":"PERF-004","lens":"performance","severity":"MEDIUM","file":"src/apm_cli/install/lsp/integration.py","line_range":"~L876-877","message":"Redundant get_server_names/configs calls after install() already extracted same data"},
+    {"id":"PERF-005","lens":"performance","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1339, ~L1364","message":"Unconditional file writes: .lsp.json and ~/.claude.json written even when content unchanged"},
+    {"id":"PERF-006","lens":"performance","severity":"LOW","file":"src/apm_cli/deps/plugin_parser.py","line_range":"~L673-675","message":"Double path.resolve() in symlink-escape validation"},
+    {"id":"STY-001","lens":"style","severity":"HIGH","file":"src/apm_cli/integration/_shared.py","line_range":"~L25","message":"Non-idiomatic builtins.set constructor: seen_names: builtins.set = builtins.set()"},
+    {"id":"STY-002","lens":"style","severity":"HIGH","file":"src/apm_cli/integration/_shared.py","line_range":"~L42-50","message":"Systematic non-idiomatic builtins.set/dict constructors (4+ occurrences in _shared.py)"},
+    {"id":"STY-003","lens":"style","severity":"MEDIUM","file":"src/apm_cli/integration/_shared.py","line_range":"~L26","message":"Redundant bare type annotation: result: list = []"},
+    {"id":"STY-004","lens":"style","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L36","message":"Missing type annotations on optional params logger and diagnostics in collect_transitive()"},
+    {"id":"STY-005","lens":"style","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L89-100","message":"Non-idiomatic return types: -> builtins.set and -> builtins.dict"},
+    {"id":"STY-006","lens":"style","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L89, ~L100","message":"Bare list annotation without type parameter"},
+    {"id":"STY-007","lens":"style","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L114","message":"Missing type annotations on optional params in remove_stale()"},
+    {"id":"STY-008","lens":"style","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L114","message":"Non-idiomatic builtins.set for stale_names parameter"},
+    {"id":"STY-009","lens":"style","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L196","message":"Non-idiomatic builtins.set/dict in update_lockfile() parameters"},
+    {"id":"STY-010","lens":"style","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L221","message":"Missing type annotations on optional params in public method install()"},
+    {"id":"STY-011","lens":"style","severity":"HIGH","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L221","message":"Bare list annotation for lsp_deps in install()"},
+    {"id":"STY-012","lens":"style","severity":"HIGH","file":"src/apm_cli/install/lsp/integration.py","line_range":"~L52-59","message":"Non-idiomatic builtins.set/dict in run_lsp_integration() helper"},
+    {"id":"STY-013","lens":"style","severity":"HIGH","file":"src/apm_cli/install/lsp/integration.py","line_range":"~L71-72","message":"Non-idiomatic builtins.set for new_lsp_servers"},
+    {"id":"STY-014","lens":"style","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L38","message":"Bare list return type on collect_transitive()"},
+    {"id":"TST-001","lens":"test-coverage","severity":"BLOCKER","file":"src/apm_cli/deps/plugin_parser.py","line_range":"~L666","message":"_substitute_plugin_root() called but not defined — no tests possible; guaranteed NameError at runtime"},
+    {"id":"TST-002","lens":"test-coverage","severity":"BLOCKER","file":"src/apm_cli/deps/plugin_parser.py","line_range":"~L756","message":"_surface_warning() called but not defined — runtime NameError in error path"},
+    {"id":"TST-003","lens":"test-coverage","severity":"HIGH","file":"src/apm_cli/models/package/apm_package.py","line_range":"~L?","message":"get_lsp_dependencies() and get_dev_lsp_dependencies() — ZERO test coverage"},
+    {"id":"TST-004","lens":"test-coverage","severity":"HIGH","file":"src/apm_cli/lock/lockfile.py","line_range":"~L?","message":"LockFile.is_semantically_equivalent() LSP drift detection — no LSP-specific test cases"},
+    {"id":"TST-005","lens":"test-coverage","severity":"HIGH","file":"src/apm_cli/integration/_shared.py","line_range":"~L1-100","message":"deduplicate_deps() and resolve_locked_apm_yml_paths() — no dedicated unit tests"},
+    {"id":"TST-006","lens":"test-coverage","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1322-1364","message":"install() error paths not tested: write_text failures, permission errors"},
+    {"id":"TST-007","lens":"test-coverage","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1186-1216","message":"remove_stale() error paths not tested: missing .lsp.json, malformed JSON"},
+    {"id":"TST-008","lens":"test-coverage","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L196-260","message":"update_lockfile() LSP section not covered for stale/new/unchanged key mutations"},
+    {"id":"TST-009","lens":"test-coverage","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L36-88","message":"collect_transitive() error paths not tested: lockfile missing, corrupt, malformed LSP section"},
+    {"id":"TST-010","lens":"test-coverage","severity":"MEDIUM","file":"src/apm_cli/deps/plugin_parser.py","line_range":"~L640-700","message":"_read_lsp_file() exception paths (OSError, PermissionError, JSONDecodeError) not tested"},
+    {"id":"TST-011","lens":"test-coverage","severity":"MEDIUM","file":"src/apm_cli/models/dependency/lsp.py","line_range":"~L1587-1593","message":"validate() command type edge cases not tested: [], [''], None, integer"},
+    {"id":"TST-012","lens":"test-coverage","severity":"MEDIUM","file":"src/apm_cli/models/dependency/lsp.py","line_range":"~L1603-1615","message":"extensionToLanguage={} not tested — falsy value that triggers COR-004 or-fallback bug"},
+    {"id":"TST-013","lens":"test-coverage","severity":"MEDIUM","file":"src/apm_cli/deps/plugin_parser.py","line_range":"~L740-760","message":"Malformed .lsp.json with missing name or command not tested"},
+    {"id":"TST-014","lens":"test-coverage","severity":"MEDIUM","file":"tests/unit/test_run_lsp_integration.py","line_range":"~L1-50","message":"run_lsp_integration() tests all mocked to success — no failure injection or should_install=False test"},
+    {"id":"TST-015","lens":"test-coverage","severity":"MEDIUM","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1305-1339","message":"install() global-scope path (project_root=None) not tested — only project-scope fixture exercised"},
+    {"id":"TST-016","lens":"test-coverage","severity":"LOW","file":"src/apm_cli/integration/_shared.py","line_range":"~L25-50","message":"deduplicate_deps() mutation risk: input list not verified to be unmodified after call"},
+    {"id":"TST-017","lens":"test-coverage","severity":"LOW","file":"src/apm_cli/integration/lsp_integrator.py","line_range":"~L1095-1100","message":"collect_transitive() symlink boundary test missing: symlink outside plugin dir not exercised"},
+    {"id":"TST-018","lens":"test-coverage","severity":"LOW","file":"src/apm_cli/deps/plugin_parser.py","line_range":"~L1587-1593","message":"Server name regex incomplete: / and : characters not tested (relates to S-008)"}
+  ]
+}

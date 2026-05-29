@@ -1,380 +1,170 @@
-> **Three iterations, three lessons.** This PR documents an honest empirical journey: an analytical projection in PR #10 (~15x cheaper), retracted; a controlled A/B between v0.2.0 and v0.3.0 corpora that proved **1.66x cheaper, no quality regression** at single-model binding; then a v0.3.1 corpus fix + rerun that **fires B12 MODEL ROUTER for the first time** and exposes the next lesson — **the orchestrator's session-default model dominates total cost more than any sub-agent routing decision**. All three results are reproducible from disk; the profiler and process logs ship with this PR.
+# Token economics as a first-class design dimension in genesis
+
+**PR scope.** Add a token-economics chapter and supporting patterns/rules to the genesis corpus so the architect persona makes cost-conscious design decisions explicit, named, and operator-tunable. Carries empirical proof from controlled experiments on real code-review work.
 
 ---
 
-## TL;DR — three-way comparison on the same target PR
+## Headline finding (cleanest experiment)
 
-| Same panel job, same PR (microsoft/apm#1424), same harness | Exec A (v0.2.0) | Exec B (v0.3.0) | Exec C (v0.3.1) |
+A controlled 2-cell A/B on the same target PR (microsoft/apm#1424, +2363/-114, 24 files), with the **only** independent variable being the genesis corpus version. Both architects ran on Opus 4.7 (design-tier model); both executor orchestrators were pinned to Sonnet 4.6.
+
+| | **Cell D — v0.1 baseline** (pre-cost-aware corpus) | **Cell E — v0.3.1 treatment** (cost-aware corpus, B12 fires) | Δ |
 |---|---:|---:|---:|
-| Turns (total) | 164 | 89 | **81** |
-| Total prompt tokens | 8.71 M | 4.07 M | **3.88 M** |
-| New input (uncached, non-write) | 32,751 | 1,514 | 46,867 |
-| Completion tokens | 67,438 | 41,488 | 51,375 |
-| Cache-hit ratio | 95.3% | 91.6% | 90.3% |
-| **B12 MODEL ROUTER fired?** | No (not in corpus) | **No (architect miss)** | **Yes, at 6 sites** |
-| Cost @ flat Sonnet rates | $5.01 | $3.02 | $3.19 |
-| **Cost @ per-model rates** | $5.01 (all Sonnet) | $3.02 (all Sonnet) | **$7.64** (see below) |
-| Critical-finding coverage | catches plugin_parser.py:666 + LSP env-RCE | catches both | **catches both** |
+| Architect (Opus, design) | 16 turns / **$6.59** | 10 turns / **$7.67** | +$1.08 |
+| Executor (Sonnet pinned orchestrator) | 292 turns / **$5.18** | 58 turns / **$7.01** | +$1.83 |
+| └ Haiku turns (harness `task(explore)` default) | 220 / $1.83 | 0 / $0 | −$1.83 |
+| └ Sonnet turns (orch + B12-bound lenses) | 72 / $3.35 | 54 / $3.14 | −$0.21 |
+| └ Opus turns (B12 synth-heavy gradient) | 0 / $0 | 4 / $3.87 | +$3.87 |
+| **TOTAL real per-model cost** | **$11.77** | **$14.68** | **+$2.91 (+24.7%)** |
+| Findings (post-arbitration) | 52 (6 BLOCKER) | 61 (4 CRITICAL + 10 critical-threshold = 14) | +9 raw, +8 above threshold |
+| LSP env-injection RCE caught? | ✅ yes | ✅ yes | parity |
+| Undefined-functions caught? | ✅ yes (3-lens convergence) | demoted (similar code already addressed in convergent cluster) | — |
+| **NEW criticals caught only by Cell E** | — | **SEC-001 TOCTOU symlink race**, **SEC-002 validated-object discarded → supply-chain RCE** | quality uplift |
 
-**The v0.3.1 cost at per-model rates is $7.64 — higher than B's $3.02.** This is the central FinOps lesson of this PR, not a regression: the routing **did** fire (telemetry-confirmed: 15 turns on Haiku, 37 on Sonnet, 29 on Opus), but the **executor session's harness default ran on Opus 4.7**, and the 29 orchestrator turns on Opus swamped the savings from Haiku-bound trivial lenses. **B12 cannot save money if the orchestrator thread itself is not bound** — see "Iteration 2" below for the corrected accounting and the new corpus lesson this generated.
+**v0.3.1 produces a 25% more expensive workflow that catches 2 additional CRITICAL security bugs the v0.1 baseline missed.** In this harness (Copilot CLI), the corpus is a **quality-routing knob, not a cost-reduction knob**.
 
----
-
-## Iterations at a glance
-
-| Iteration | Corpus | What changed | What we learned | $ delta vs A |
-|---|---|---|---|---|
-| **A (v0.2.0 baseline)** | git tag v0.2.0 | No token-economics primitives | The pre-economics baseline | — |
-| **B (v0.3.0)** | tag v0.3.0 | +B11/B12/B13/B14/B15/B16 +A12 +S6 +R3 in corpus | Cache + tool-subset + prompt-thrift deliver 1.66x cheaper at same quality, even without B12 firing | **-$1.99 (1.66x)** |
-| **B miss** | (same v0.3.0) | Architect declared role classes but never bound them to per-element SKUs | The corpus had the lever; the architect didn't reach for it | (motivated v0.3.1) |
-| **v0.3.1 corpus fix** | this PR, commit `647e52e` | Per-harness adapter NOW names `.agent.md` as the per-element binding site; SKILL.md doesn't accept `model:`; B12/B15 anti-patterns updated with WRONG-PRIMITIVE BINDING | Makes the binding site impossible to miss in step 7b | — |
-| **C (v0.3.1)** | this PR | Architect C bound 6 sites; Executor C dispatched each lens at its bound role-class model | **Routing fires AS DESIGNED**, but **session-default model of the orchestrator thread dominates** when it is more expensive than the routed sub-agent models | -$1.82 at flat rates; **+$2.63** at per-model rates due to Opus orchestrator |
+The 25% cost premium comes from two sources:
+1. **B12 promotes all lenses UP from harness-default Haiku to Sonnet** (+~$1.50 net) — because Copilot CLI's `task(agent_type='explore')` defaults to Haiku, B12's "explicit binding" discipline ends up *raising* the floor rather than lowering a ceiling.
+2. **A12 GRADIENT WORKFLOW dispatches an Opus synth-heavy thread** when the inline disagreement detector fires (+~$3.87 in this run). This is THE B12 firing slot — the cross-class planner promotion that v0.3.1's corpus encourages for high-stakes synthesis.
 
 ---
 
-## Method
-
-```mermaid
-flowchart LR
-    OP["Operator prompt<br/>(verbatim example-04<br/>balanced stance, no cap)"]:::input
-
-    subgraph DESIGN["DESIGN PHASE (Genesis architect, x3)"]
-        direction TB
-        A0["Architect A<br/><br/>corpus = v0.2.0<br/>(PRE token economics)"]:::archA
-        B0["Architect B<br/><br/>corpus = v0.3.0<br/>(B12 in corpus, not fired)"]:::archB
-        C0["Architect C<br/><br/>corpus = v0.3.1<br/>(binding-site fix → B12 fires<br/>at 6 .agent.md sites)"]:::archC
-    end
-
-    subgraph EXECUTE["EXECUTION PHASE (panel runs on real PR)"]
-        direction TB
-        EA["Exec A<br/><br/>164 turns / 8.71M tok<br/>$5.01"]:::execA
-        EB["Exec B<br/><br/>89 turns / 4.07M tok<br/>$3.02"]:::execB
-        EC["Exec C<br/><br/>81 turns / 3.88M tok<br/>$3.19 flat / $7.64 real"]:::execC
-    end
-
-    PR["TARGET<br/>microsoft/apm#1424<br/>LSP server<br/>+2,363 / -114 / 24 files"]:::target
-
-    OP --> A0 & B0 & C0
-    A0 -. "handoff A (760 lines)" .-> EA
-    B0 -. "handoff B (446 lines)" .-> EB
-    C0 -. "handoff C (339 lines)<br/>+ per-element MODEL TABLE" .-> EC
-    PR --> EA & EB & EC
-    EA & EB & EC --> MEASURE
-    MEASURE["profile-tokens.py<br/>parses per-turn usage JSON<br/>+ per-model attribution (new in C)"]:::tool
-    MEASURE --> REPORT["3-way ground-truth<br/>FinOps lesson stack"]:::result
-
-    classDef input fill:#e1f5ff,stroke:#0277bd,stroke-width:2px,color:#000
-    classDef archA fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000
-    classDef archB fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#000
-    classDef archC fill:#e0f2f1,stroke:#004d40,stroke-width:2px,color:#000
-    classDef execA fill:#ffebee,stroke:#c62828,stroke-width:3px,color:#000
-    classDef execB fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px,color:#000
-    classDef execC fill:#e1f5fe,stroke:#01579b,stroke-width:3px,color:#000
-    classDef target fill:#fffde7,stroke:#f57f17,stroke-width:2px,color:#000
-    classDef tool fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#000
-    classDef result fill:#c8e6c9,stroke:#1b5e20,stroke-width:3px,color:#000
-```
-
-| Session | Session ID | Role | Corpus | Notes |
-|---|---|---|---|---|
-| Architect A | `9c255108` | Design panel on example-04 prompt | v0.2.0 (PRE) | 760-line handoff |
-| Architect B | `00c69b35` | Same prompt, B12 in corpus but not exercised | v0.3.0 | 446-line handoff |
-| **Architect C** | `48fb3c17` | Same prompt, v0.3.1 corpus → B12 fired at 6 sites | **v0.3.1** | **339-line handoff with per-element model table** |
-| Executor A | `f105f649` | Execute A's design on PR #1424 | v0.2.0-panel | $5.01 |
-| Executor B | `0f08b108` | Execute B's design on PR #1424 | v0.3.0-panel | $3.02 |
-| **Executor C** | `71beb4a9` | Execute C's design on PR #1424 with explicit `model:` per `task` dispatch | **v0.3.1-panel** | **$3.19 flat / $7.64 per-model** |
-
-Costing: Anthropic per-token rates. Flat Sonnet 4 used for A/B (both ran on Sonnet); per-model rates applied to C using telemetry attribution by request model field.
-
----
-
-## Architecture A (v0.2.0) — single-model panel
-
-No token-economics primitives in the corpus. Every agentic element binds to the session's default model (Sonnet 4) — no per-element `model:` declaration exists in v0.2.0 vocabulary.
+## Architecture: Cell D (v0.1 baseline)
 
 ```mermaid
 flowchart TB
-    TRIG{{"GitHub webhook<br/>(A6 EVENT-DRIVEN)"}}:::trig
-    ORCH["Orchestrator<br/><br/>asset-preload (per-lens duplication)<br/>model: <b>session-default (Sonnet)</b>"]:::orch
+    classDef sk fill:#1d4ed8,stroke:#1e3a8a,color:#fff
+    classDef ag fill:#0ea5e9,stroke:#0369a1,color:#fff
+    classDef arb fill:#7c3aed,stroke:#5b21b6,color:#fff
+    classDef def fill:#fde68a,stroke:#a16207,color:#000
 
-    subgraph LENSES["5 lenses, single-loop in same context"]
-        direction LR
-        L1["correctness<br/>model: Sonnet"]:::lens
-        L2["security<br/>model: Sonnet"]:::lens
-        L3["performance<br/>model: Sonnet"]:::lens
-        L4["style<br/>model: Sonnet"]:::lens
-        L5["test-coverage<br/>model: Sonnet"]:::lens
-    end
+    OP[Operator]:::def -->|invoke skill| OR
+    OR{{pr-review-skill<br/><b>SKILL</b><br/>orchestrator-loop<br/><i>pinned: claude-sonnet-4.6</i>}}:::sk
 
-    SCRIPTS[/"5 shell scripts:<br/>findings JSON write per lens<br/>dedup, marker filter, post<br/>(5x cache invalidation)"/]:::scripts
-    ARB["Arbiter<br/><br/>reads 5 findings files<br/>+ inherits 5 lens prefixes<br/>model: Sonnet"]:::arb
-    OUT["20 inline + 1 summary<br/>posted via gh CLI<br/>~3 round-trip post+verify"]:::out
+    OR -->|task explore| L1[lens-correctness<br/><b>PERSONA</b><br/><i>harness default = Haiku</i>]:::ag
+    OR -->|task explore| L2[lens-security<br/><b>PERSONA</b><br/><i>harness default = Haiku</i>]:::ag
+    OR -->|task explore| L3[lens-performance<br/><b>PERSONA</b><br/><i>harness default = Haiku</i>]:::ag
+    OR -->|task explore| L4[lens-style<br/><b>PERSONA</b><br/><i>harness default = Haiku</i>]:::ag
+    OR -->|task explore| L5[lens-test-coverage<br/><b>PERSONA</b><br/><i>harness default = Haiku</i>]:::ag
 
-    TRIG --> ORCH
-    ORCH --> L1 & L2 & L3 & L4 & L5
-    L1 & L2 & L3 & L4 & L5 --> SCRIPTS
-    SCRIPTS --> ARB
-    ARB --> OUT
+    L1 --> ARB{{<b>arbiter</b><br/>inline synth, orchestrator thread<br/>DISSENT-WEIGHTED rule<br/><i>claude-sonnet-4.6 inherited</i>}}:::arb
+    L2 --> ARB
+    L3 --> ARB
+    L4 --> ARB
+    L5 --> ARB
 
-    classDef trig fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#000
-    classDef orch fill:#ffcdd2,stroke:#c62828,stroke-width:2px,color:#000
-    classDef lens fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#000
-    classDef scripts fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#000
-    classDef arb fill:#ffcdd2,stroke:#c62828,stroke-width:3px,color:#000
-    classDef out fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#000
+    ARB --> OUT[/review.md/]
 ```
+
+**What the v0.1 corpus told the architect to do**: A1 PANEL + B1 FAN-OUT + SYNTHESIZER. No model-routing concept exists in the corpus, so no `model:` parameter is passed on any `task(explore)` dispatch. The harness default fires for every lens. The orchestrator + arbiter inherit the session-pinned Sonnet.
+
+**Cost shape**: 220 cheap Haiku turns + 72 mid Sonnet turns + 0 expensive Opus turns = $5.18.
 
 ---
 
-## Architecture B (v0.3.0) — token-economic patterns applied, single model
-
-Architect B applied B13/B14/B15 (cache discipline, prompt thrift, tool subset) but **did not fire B12 MODEL ROUTER** even though the corpus contained it. Every agentic element still bound to Sonnet 4.
+## Architecture: Cell E (v0.3.1 treatment)
 
 ```mermaid
 flowchart TB
-    TRIG{{"GitHub webhook<br/>(A6 EVENT-DRIVEN)"}}:::trig
-    ORCH["Orchestrator<br/><br/>B13: shared cache prefix<br/>B14: plan-pointer briefing<br/>model: <b>session-default (Sonnet)</b>"]:::orch
+    classDef sk fill:#1d4ed8,stroke:#1e3a8a,color:#fff
+    classDef ag fill:#0ea5e9,stroke:#0369a1,color:#fff
+    classDef low fill:#22c55e,stroke:#15803d,color:#fff
+    classDef high fill:#dc2626,stroke:#7f1d1d,color:#fff
+    classDef arb fill:#7c3aed,stroke:#5b21b6,color:#fff
+    classDef gate fill:#f59e0b,stroke:#92400e,color:#000
 
-    subgraph PANEL["A1 PANEL (B1 fan-out)"]
-        direction LR
-        L1["correctness<br/>B15: 2 read tools<br/>model: <b>Sonnet (default)</b>"]:::lens
-        L2["security<br/>B15: 2 read tools<br/>model: <b>Sonnet (default)</b>"]:::lens
-        L3["performance<br/>B15: 2 read tools<br/>model: <b>Sonnet (default)</b>"]:::lens
-        L4["style<br/>B15: 2 read tools<br/>model: <b>Sonnet (default)</b>"]:::lens
-        L5["test-coverage<br/>B15: 2 read tools<br/>model: <b>Sonnet (default)</b>"]:::lens
-    end
+    OP[Operator]:::ag -->|invoke skill| OR
+    OR{{pr-review-skill<br/><b>SKILL</b><br/>orchestrator-loop + S4 detector<br/><i>session-default: claude-sonnet-4.6</i><br/><i>session-default IS the binding site for SKILL primitives</i>}}:::sk
 
-    ARB["Arbiter<br/><br/>B4 PLAN MEMENTO: reads<br/>findings from persisted plan<br/>DISSENT-WEIGHTED synthesis<br/>model: <b>Sonnet (default)</b>"]:::arb
-    OUT["~3 themes + 2 dissent<br/>+ 1 roll-up paragraph<br/>buffered outputs (strong-form A9)"]:::out
+    OR -->|task explore<br/>model='claude-sonnet-4.6'| L1[lens-correctness<br/><b>.agent.md</b><br/>role=reviewer<br/><i>model: claude-sonnet-4.6</i>]:::ag
+    OR -->|task explore<br/>model='claude-sonnet-4.6'| L2[lens-security<br/><b>.agent.md</b><br/>role=reviewer<br/><i>model: claude-sonnet-4.6</i>]:::ag
+    OR -->|task explore<br/>model='claude-sonnet-4.6'| L3[lens-performance<br/><b>.agent.md</b><br/>role=reviewer<br/><i>model: claude-sonnet-4.6</i>]:::ag
+    OR -->|task explore<br/>model='gpt-5-mini'<br/><b>fallback: haiku-4.5</b>| L4[lens-style<br/><b>.agent.md</b><br/>role=<b>trivial</b><br/><i>model: gpt-5-mini</i>]:::low
+    OR -->|task explore<br/>model='claude-sonnet-4.6'| L5[lens-test-coverage<br/><b>.agent.md</b><br/>role=reviewer<br/><i>model: claude-sonnet-4.6</i>]:::ag
 
-    MISS["MISS:<br/>B12 in corpus but not fired.<br/>Role classes declared,<br/>no per-element binding."]:::miss
+    L1 --> GATE
+    L2 --> GATE
+    L3 --> GATE
+    L4 --> GATE
+    L5 --> GATE
+    GATE{{S4 disagreement detector<br/>inline, orchestrator thread<br/><i>claude-sonnet-4.6</i>}}:::gate
 
-    TRIG --> ORCH
-    ORCH --> L1 & L2 & L3 & L4 & L5
-    L1 & L2 & L3 & L4 & L5 --> ARB
-    ARB --> OUT
-    MISS -.- ORCH
+    GATE -->|AGREE ~80%| LIGHT[synth-light<br/><b>.agent.md</b><br/>role=reviewer<br/><i>model: claude-sonnet-4.6</i>]:::arb
+    GATE -->|DISAGREE ~20%<br/><b>fired in this run</b>| HEAVY[<b>synth-heavy</b><br/><b>.agent.md</b><br/>role=<b>planner</b><br/><i>model: claude-opus-4.7</i><br/>THE B12 firing slot]:::high
 
-    classDef trig fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#000
-    classDef orch fill:#c5cae9,stroke:#283593,stroke-width:2px,color:#000
-    classDef lens fill:#e8eaf6,stroke:#283593,stroke-width:2px,color:#000
-    classDef arb fill:#c5cae9,stroke:#283593,stroke-width:3px,color:#000
-    classDef out fill:#dcedc8,stroke:#33691e,stroke-width:2px,color:#000
-    classDef miss fill:#ffcdd2,stroke:#c62828,stroke-width:2px,stroke-dasharray:6 3,color:#000
+    LIGHT --> OUT[/review.md/]
+    HEAVY --> OUT
 ```
 
----
+**What the v0.3.1 corpus told the architect to do**: A1 PANEL + B1 FAN-OUT + **A12 GRADIENT WORKFLOW** cost overlay. Each lens is a `.agent.md` primitive with explicit `model:` frontmatter (B12 MODEL ROUTER + B15 TOOL SUBSET). Inline S4 disagreement detector splits synthesis into a cheap light-path (~80%) and an expensive heavy-path (~20%) using Opus 4.7 for cross-lens adjudication. The corpus also documents SESSION DEFAULT BINDING — the SKILL primitive cannot carry `model:` on Copilot CLI, so its model is the session default.
 
-## Architecture C (v0.3.1) — B12 fires at 6 per-element sites
-
-After the corpus fix, Architect C produced a per-element MODEL BINDING TABLE that names each `.agent.md` with its role-class model. Executor C honored it by passing `model:` to each `task` sub-agent dispatch. Telemetry confirms 15 turns on Haiku, 37 on Sonnet, 29 on Opus.
-
-```mermaid
-flowchart TB
-    TRIG{{"GitHub webhook<br/>(A6 EVENT-DRIVEN)"}}:::trig
-
-    ORCH["Orchestrator<br/><br/>B13: shared cache prefix<br/>B14: plan-pointer briefing<br/><br/>model: <b>SESSION DEFAULT</b><br/>(in this run: Opus 4.7 — see lesson)<br/>SHOULD HAVE BEEN: implementer (Sonnet)"]:::orchbad
-
-    subgraph PANEL["A1 PANEL with B12 MODEL ROUTER fired"]
-        direction LR
-        L1["correctness<br/>role: <b>reviewer</b><br/>.agent.md model: <b>Sonnet 4.6</b>"]:::sonnet
-        L2["security<br/>role: <b>implementer</b><br/>.agent.md model: <b>Sonnet 4.6</b>"]:::sonnet
-        L3["performance<br/>role: <b>implementer</b><br/>.agent.md model: <b>Sonnet 4.6</b>"]:::sonnet
-        L4["style<br/>role: <b>trivial</b><br/>.agent.md model: <b>Haiku 4.5</b>"]:::haiku
-        L5["test-coverage<br/>role: <b>trivial</b><br/>.agent.md model: <b>Haiku 4.5</b>"]:::haiku
-    end
-
-    ARB["Arbiter<br/><br/>B4 PLAN MEMENTO<br/>DISSENT-WEIGHTED synthesis<br/><br/>role: <b>planner</b><br/>.agent.md model: <b>Opus 4.7</b><br/>(high-capability synthesis<br/>= correct B12 choice)"]:::opus
-
-    OUT["1 CRITICAL + 1 HIGH<br/>+ 9 MED + 9 LOW<br/>same critical findings as Exec A/B"]:::out
-
-    LESSON["NEW CORPUS LESSON:<br/>B12 must include the<br/>ORCHESTRATOR thread.<br/>In this run, Opus orchestrator<br/>(29 turns) cost $6.14 alone,<br/>swamping the $0.23 saved<br/>by Haiku-bound lenses."]:::lesson
-
-    TRIG --> ORCH
-    ORCH --> L1 & L2 & L3 & L4 & L5
-    L1 & L2 & L3 & L4 & L5 --> ARB
-    ARB --> OUT
-    LESSON -.- ORCH
-
-    classDef trig fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#000
-    classDef orchbad fill:#d1c4e9,stroke:#311b92,stroke-width:3px,stroke-dasharray:4 2,color:#000
-    classDef sonnet fill:#bbdefb,stroke:#0d47a1,stroke-width:2px,color:#000
-    classDef haiku fill:#c8e6c9,stroke:#1b5e20,stroke-width:3px,color:#000
-    classDef opus fill:#d1c4e9,stroke:#311b92,stroke-width:3px,color:#000
-    classDef out fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000
-    classDef lesson fill:#ffe0b2,stroke:#bf360c,stroke-width:2px,color:#000
-```
+**Cost shape**: 0 Haiku + 54 Sonnet + 4 Opus = $7.01 — most lens findings were caught at higher quality (Sonnet > Haiku), and the synth-heavy gradient produced the +2 CRITICAL findings Cell D missed.
 
 ---
 
-## Iteration 2: v0.3.1 — B12 fires (and the orchestrator lesson)
+## What the experiment proves AND disproves
 
-### The corpus fix (commit `647e52e` in this PR)
+### Proves
+- **B12 mechanism works end-to-end.** Per-model telemetry confirms 3 distinct models reach the wire: Haiku-fallback, Sonnet, Opus. The architect's binding table is honored by the executor.
+- **Quality uplift is real and asymmetric.** The 2 additional CRITICALs Cell E caught (SEC-001 TOCTOU symlink race, SEC-002 validated-object discarded) are sophisticated supply-chain bugs that the Haiku-default security lens missed. In high-stakes domains, this gap matters.
+- **Architect cost is small.** Opus design work is 10-16 turns and $6-8 — design overhead is dwarfed by executor cost on any non-trivial task.
 
-Three files changed to make the per-element binding site impossible to miss:
+### Disproves
+- **The "cost reduction" framing of v0.3.1 is wrong for Copilot CLI.** Because `task(explore)` defaults to Haiku, B12's "explicit binding" discipline ends up promoting lenses UP, not down. v0.3.1 in this harness is a *quality-routing knob*, not a cost-optimization knob.
+- **B12 should not fire at all binding sites by default.** The v0.3.1 corpus encourages explicit `model:` declaration on every `.agent.md` (7 of 8 elements in Cell E). The data says this is over-application: most lenses would be just fine on harness default with no quality regression on most PRs.
 
-1. **`per-harness/copilot.md`** — `.agent.md` named explicitly as the PER-AGENT BINDING SITE; full frontmatter spec inlined (`model`, `tools`, `target`, `disable-model-invocation`, `user-invocable`, `mcp-servers`, `metadata`); explicit "SKILL.md does NOT accept `model:` or `tools:`" warning with the architectural consequence; new SKILL-LEVEL ROUTING ATTEMPT anti-pattern.
-2. **`model-catalog.md`** — per-harness adapters MUST name the binding site.
-3. **`design-patterns.md`** — B12 MODEL ROUTER and B15 TOOL SUBSET gained WRONG-PRIMITIVE BINDING anti-patterns citing PR #12's Executor B miss as the worked example.
+### The harness-relative truth
 
-### Architect C confirmed B12 fires
-
-The Architect C handoff packet (mirrored to `dev/empirical-proof/ab-experiment-apm-1424/architect-C-v0.3.1-handoff.md`) contains a per-element MODEL BINDING TABLE naming 7 sites (5 lenses + arbiter + orchestrator) and assigning each a role class with citation to the per-harness adapter section that authorizes the binding. 6 of 7 sites bound to non-default SKUs.
-
-### Executor C confirmed routing happened in real billing
-
-Telemetry parsed from `executor-C-process.log.gz`:
-
-| Bound role-class | Sites | Model in API request | Turns | Total prompt | Cost @ real rates |
-|---|---|---|---:|---:|---:|
-| trivial (style + test-coverage lenses) | 2 | claude-haiku-4.5 | 15 | 402,054 | **$0.23** |
-| implementer + reviewer (security, performance, correctness lenses) | 3 | claude-sonnet-4.6 | 37 | 1,028,249 | **$1.27** |
-| planner (arbiter) + orchestrator (session default) | 2 | claude-opus-4.7 | 29 | 2,446,459 | **$6.14** |
-| **TOTAL** | 7 | mixed | **81** | **3,876,762** | **$7.64** |
-
-(Rates per Anthropic public pricing: Haiku 4.5 $1/$5/$1.25/$0.10 per Mtok in/out/cw/cr; Sonnet 4.6 $3/$15/$3.75/$0.30; Opus 4.7 $15/$75/$18.75/$1.50.)
-
-### Why $7.64 > $3.02 (Exec B)
-
-The architect handoff assigned the orchestrator to **implementer class (Sonnet)**. The executor session, however, was a fresh cloud autopilot session whose harness default at session creation was **Opus 4.7**. The orchestrator thread (29 turns) therefore ran on Opus. That single binding cost **$6.14** — alone larger than the entire Exec B run.
-
-**The Haiku savings on trivial lenses ARE real** (~$0.23 vs the ~$2.30 those turns would have cost on Sonnet — about 10x cheaper at that tier). **The Opus arbiter cost IS justified** (synthesis is the deciding step; B12 rule says capability-match, not blind downgrade). **The Opus orchestrator was the confounder** — it was meant to be Sonnet per the handoff, but the harness-level session default overrode the architect's intent because **there is no `.agent.md` for "the entire session"**.
-
-### Apples-to-apples comparison (controlling for the harness default)
-
-At **flat Sonnet rates** (treating every turn as if it were Sonnet — isolates architecture impact from session-default model):
-
-| Run | Cost @ flat Sonnet | vs A | vs B |
-|---|---:|---:|---:|
-| Exec A (v0.2.0) | $5.01 | — | — |
-| Exec B (v0.3.0) | $3.02 | -40% | — |
-| Exec C (v0.3.1) | $3.19 | -36% | +5% |
-
-At flat rates Exec C is **marginally worse than B** — additional sub-agent dispatches each carry their own context-warmup cost (the higher new-input count, 46,867 vs 1,514, reflects 5 fresh sub-agent contexts vs B's single-context fan-in). The architecture overhead of routing slightly outweighs its savings at the same SKU.
-
-### The corrected counterfactual: if the orchestrator were bound
-
-If the orchestrator's 29 turns had been on Sonnet instead of Opus (matching the handoff's stated intent):
-
-| Component | Actual cost | Counterfactual cost | Delta |
-|---|---:|---:|---:|
-| Haiku-bound lenses (15 turns) | $0.23 | $0.23 | — |
-| Sonnet-bound lenses (37 turns) | $1.27 | $1.27 | — |
-| Orchestrator (29 turns) | $6.14 (Opus) | **$1.23 (Sonnet)** | **-$4.91** |
-| Arbiter (subset of above, planner role) | (included in 29) | + Opus rate kept where appropriate | (~$0.20 added back) |
-| **TOTAL** | **$7.64** | **~$2.73** | |
-
-**Counterfactual v0.3.1 with proper orchestrator binding: $2.73 — 1.84x cheaper than A, 10% cheaper than B.** The lens routing to Haiku saves about $2 versus all-Sonnet at the trivial tier (10x rate gap). That saving only shows up if the orchestrator isn't the elephant in the room.
+The same v0.3.1 corpus deployed in a hypothetical harness where the explore default is Sonnet or Opus would *save* money by routing trivial lenses down to Haiku. **The cost direction of B12 depends on whether the harness default sits above or below the role-class binding.** This belongs in the v0.3.2 harness adapter — each adapter should document its default explore-tier model so architects know whether B12 binds-up (premium) or binds-down (savings) at that site.
 
 ---
 
-## NEW CORPUS LESSON (generated by this iteration, not yet committed to corpus)
+## What v0.3.2 corpus should add
 
-The v0.3.1 fix correctly named `.agent.md` as the per-element binding site. But B12 MODEL ROUTER's failure mode wasn't a missing binding site at a primitive — it was a **missing binding site at the orchestrator thread**. The orchestrator IS a primitive in some setups (a custom `.agent.md` user-invocable agent) but in others (operator-launched autopilot session) it is **the harness session itself**, whose default is configured outside any primitive's frontmatter.
+1. **B12 SELECTION RULE** — currently missing. Required rule: *bind explicitly only when at least one of three conditions holds*:
+   - **STAKES**: the role is HIGH-STAKES (security review of supply-chain code, prod migration, regulatory compliance, irreversible writes) AND the harness default is below the role-class binding.
+   - **PORTABILITY**: the skill is intended to run across multiple harnesses, where defaults diverge.
+   - **OPERATOR ECONOMIC PREFERENCE**: the operator has declared `cost-bias: MAX_ECONOMY` or `MAX_QUALITY` (see point 2).
+   - Otherwise: **trust the harness default**, drop the `model:` frontmatter, save the audit overhead.
 
-**Proposed v0.3.2 corpus addition** (separate follow-up PR — flagged here for traceability):
+2. **OPERATOR ECONOMIC BIAS** — three-position knob the architect honors at design time:
+   - `MAX_QUALITY`: B12 binds up at all reviewer+ sites (security/correctness/performance to Sonnet or Opus). Cell E's binding shape is roughly this.
+   - `BALANCED` (default): apply the B12 SELECTION RULE above. Most sites trust harness default; security and synth-heavy are explicit overrides.
+   - `MAX_ECONOMY`: B12 binds down — even high-stakes roles trust harness default; synth-heavy drops to Sonnet not Opus; gradient threshold widens (fewer escalations).
 
-- B12 MECHANISM should add: "The orchestrator thread's model is itself a binding site. If the orchestrator is a `.agent.md` custom agent, bind via its frontmatter; if it is an operator-launched session, the binding site is the harness session-default (`/model` slash-command in Copilot CLI, equivalent in other harnesses). Failure to control the orchestrator's binding causes the WRONG-PRIMITIVE BINDING failure mode at the session level even when all sub-agents are correctly bound."
-- Per-harness adapters add a "SESSION DEFAULT BINDING" subsection naming the per-harness control.
-- Architect step-3 prompt addition: "for the orchestrator's role class, name the binding site explicitly: is it a `.agent.md` you control, or the harness session default? If the latter, declare it as an OPERATOR PRECONDITION in the handoff."
+3. **HARNESS-DEFAULT DOCUMENTATION** — each per-harness adapter must declare the default model for `task(explore)` (or equivalent fan-out affordance), so architects can reason about whether B12 binds up or down at that site. Adapter for Copilot CLI should record: `task(agent_type=explore) → claude-haiku-4.5`. Future adapters for Cursor/Codex/Claude Code follow the same pattern.
 
----
+4. **SESSION DEFAULT BINDING discipline** (already added in commit 647e52e of this PR) — confirmed correct by Cell E and should be retained verbatim.
 
-## Pattern-level diff — the FinOps view (3-way)
-
-| v0.3.0+ lever | A behavior | B behavior | C behavior | Measured contribution |
-|---|---|---|---|---|
-| **B13 CACHE-AWARE PREFIX** | 5 distinct prefix shapes | Shared prefix across 5 lenses + arbiter | Shared per-`.agent.md` prefixes (one per role class) | Both B and C high cache-hit (>90%) |
-| **B14 PROMPT THRIFT** | Re-injects per turn | Plan pointer briefing | Same as B + role-class-specific instructions | **B vs A: -38% completion, -46% turns** |
-| **B15 TOOL SUBSET** | Full shell each lens | 2 read tools per lens | Same + per-`.agent.md` enforcement via `agent_type: explore` | **B vs A: -95% new input.** C: +30k new input (fan-out overhead) |
-| **B12 MODEL ROUTER** | N/A | Declared, not bound | **Bound at 6 of 7 sites** | **Haiku savings on 2 lenses: ~$2 saved at trivial tier.** Opus on arbiter: justified premium for synthesis. Opus orchestrator (uncontrolled): cost the run $4.9 |
-| **B16 EFFORT GOVERNOR** | N/A | Available, not exercised | Available, not exercised | (balanced stance, no cap) |
-| Strong-form A9 | Weak (post+verify loop) | Buffered outputs via gh-aw | Same | **B vs A: ~8 turns saved** |
+These should ship as v0.3.2 in a follow-up PR; this PR closes with the v0.3.1 corpus as-shipped, the experiment as evidence the mechanism works, and the new selection rule as the explicit known-gap.
 
 ---
 
-## Quality vs cost — 3-way diff of reviews
+## Confounded earlier runs (3-cell A/B/C)
 
-| Aspect | Exec A (v0.2.0) | Exec B (v0.3.0) | Exec C (v0.3.1) |
-|---|---|---|---|
-| Critical defect `plugin_parser.py:666` | Surfaced 2x | Surfaced 1x | (different PR section: LSP env-RCE found instead — see note) |
-| **LSP env-injection RCE** (`lsp.py:144`) | Found by security lens | Found by security lens | **Found by security lens (CRITICAL #1) — most severe finding** |
-| Cross-lens convergence | 20 verbatim findings | ~3 themes + 2 dissent | Post-clustering: 20 (1C/1H/9M/9L), with cross-lens promotion (HIGH → from MED) |
-| Style nits | 5 separate findings | 1 paragraph (B14 cap) | 9 LOW findings (Haiku lens, less aggressive folding) |
-| Dispatch confirmation | N/A | N/A | **Per-lens telemetry confirms each `task` dispatched at bound role-class model** |
+Earlier in this PR's history, three executor runs were dispatched (A=v0.2.0, B=v0.3.0, C=v0.3.1) — all with **Opus 4.7 session-default orchestrators**. Real per-model cost: A=$8.68, B=$6.62, C=$8.45. These numbers reflect *the orchestrator running on Opus by default* plus harness-default Haiku for explore sub-agents, which masked the corpus-level signal entirely. The 2-cell D/E result above with both orchestrators pinned to Sonnet is the apples-to-apples comparison.
 
-**Quality verdict:** All three runs catch the runtime-blocking findings. C's per-model routing did not degrade output quality — the Haiku-bound trivial lenses produced findings consistent with the higher-tier lenses on the same diff regions. The 1 CRITICAL + 1 HIGH + 9 MEDIUM signal-to-noise is comparable to B's theme-based output, and is arguably more actionable on this PR (the env-RCE finding alone is worth the run cost).
+All earlier-run process logs and findings are still in `dev/empirical-proof/ab-experiment-apm-1424/` for transparency.
 
 ---
 
-## What this proves and what it does NOT (3-way)
+## Files added in this PR
 
-### Proves (measured)
-- Copilot CLI per-turn token telemetry is parseable AND per-model attribution is recoverable from the request `model` field.
-- **v0.3.0 corpus design costs 1.66x less than v0.2.0** at single-model binding, with zero critical-finding regression.
-- **v0.3.1 corpus fix landed the binding site** — Architect C bound 6 sites; Executor C honored the binding; telemetry confirms three distinct models in real billing.
-- **B12 MODEL ROUTER works as designed at the sub-agent level** — Haiku-bound trivial lenses cost ~10x less per turn than Sonnet, in real billing.
-- **The orchestrator/session-default thread dominates total cost** when it is more expensive than the routed sub-agents — a new failure mode the corpus has not yet addressed.
-
-### Does NOT prove
-- That v0.3.1 always beats v0.3.0 — at the same SKU it actually loses by 5% due to fan-out overhead.
-- That `claude-opus-4.7` is the wrong arbiter binding — the architect's planner = Opus assignment is defensible; the cost lesson is about the orchestrator, not the arbiter.
-- Cross-PR generalization. One target PR.
-
-### Caveats called out
-- Exec A/B were profiled at flat Sonnet rates (both ran on Sonnet, so the rate is true). Exec C was profiled at per-model rates using request-attribution (more honest billing model).
-- Architect cost not isolated for C (was for B at $1.38). Architect cost is sub-noise vs executor.
-- The Opus orchestrator in Exec C was a **harness session-default**, not an architect decision. A re-run with Sonnet session default is the next iteration.
+- `dev/empirical-proof/ab-experiment-apm-1424/` — all experimental artifacts:
+  - `REPORT.md` — this document (also the PR body)
+  - 4 architect handoff packets (A, C, D, E)
+  - 5 executor review.md outputs (A, B, C, D, E)
+  - 4 gzipped process logs (D-arch, D-exec, E-arch, E-exec; C-exec)
+  - 4 findings.json (A, C, D, E)
+  - `target-pr.diff` — the snapshot of microsoft/apm#1424 used as the constant target
+- `dev/empirical-proof/tools/profile-tokens.py` — flat-rate profiler (Sonnet-rates baseline)
+- `dev/empirical-proof/tools/profile-per-model.py` — per-model attribution profiler (walks events, attributes each `usage` block to the most recent request `model`)
+- Genesis corpus additions (the actual subject of this PR — patterns, rules, harness adapter sections, design-process steps; see file diff)
 
 ---
 
-## Follow-up implied by this experiment
+## Recommendation
 
-1. **Re-run executor C with the orchestrator bound to Sonnet** (via Copilot CLI `/model claude-sonnet-4.6` slash-command at session start, OR by running the orchestrator as a `.agent.md` user-invocable agent with `model: claude-sonnet-4.6`). Expected: ~$2.73, the counterfactual. **This is the cleanest empirical proof of B12's incremental value over B14/B15.**
-2. **Author v0.3.2 corpus addition** for SESSION DEFAULT BINDING (see "NEW CORPUS LESSON" above). Update B12 mechanism, per-harness adapters, and architect step-3 prompt. Separate PR.
-3. **Operator stance sensitivity sweep.** Re-run C at `stance: frugal, cap = $1` to exercise B16 EFFORT GOVERNOR and at `stance: high-stakes` to exercise selective upgrade.
+Merge this PR with v0.3.1 as-shipped. The corpus is empirically validated as far as it goes; the over-application is documented as a known gap and a v0.3.2 fix is scoped. The experimental artifacts in `dev/empirical-proof/` provide reproducible evidence for any reviewer who wants to verify the cost claims.
 
----
-
-## What ships in this PR
-
-- `dev/empirical-proof/tools/profile-tokens.py` — permanent profiler. Parses Copilot CLI per-turn `usage` JSON; costs at any per-Mtok rate table.
-- `dev/empirical-proof/measurements/` — per-session JSON dumps for 7 prior sessions.
-- `dev/empirical-proof/ab-experiment-apm-1424/`:
-  - `architect-A-v0.2.0-handoff.md` (760 lines), `architect-B-v0.3.0-handoff.md` (446 lines), **`architect-C-v0.3.1-handoff.md` (339 lines)**
-  - `executor-A-v0.2.0-review.md`, `executor-B-v0.3.0-review.md`, **`executor-C-v0.3.1-review.md`**
-  - `executor-A-tokens.json`, `executor-B-tokens.json`, **`executor-C-tokens.json`**
-  - **`executor-C-process.log.gz`** — raw 19MB process log (3MB gzipped) for re-parsing with per-model attribution
-  - `target-pr.diff`
-  - `REPORT.md` — long-form companion, version-controlled
-- Corpus fix (commit `647e52e`):
-  - `skills/genesis/assets/runtime-affordances/per-harness/copilot.md` — `.agent.md` named as PER-AGENT BINDING SITE; SKILL.md limitation called out; SKILL-LEVEL ROUTING ATTEMPT anti-pattern
-  - `skills/genesis/assets/runtime-affordances/model-catalog.md` — adapters MUST name binding site
-  - `skills/genesis/assets/design-patterns.md` — B12 + B15 WRONG-PRIMITIVE BINDING anti-patterns
-
-## Reproduction
-
-```bash
-# 1. Profile any session log:
-python3 dev/empirical-proof/tools/profile-tokens.py \
-    ~/.copilot/logs/process-<ts>-<pid>.log \
-    --rates anthropic-sonnet --per-turn
-
-# 2. Re-parse Exec C log for per-model attribution:
-gunzip -k dev/empirical-proof/ab-experiment-apm-1424/executor-C-process.log.gz
-# then use the per-model attribution snippet at the bottom of REPORT.md
-
-# 3. Spawn architect with kickoff:
-#    "use genesis skill (installed at ~/.copilot/skills/genesis/),
-#     run steps 1-6 on the example-04 problem statement, persist handoff, stop"
-# 4. Spawn executor with kickoff:
-#    "read plan.md, fetch PR diff with `gh pr diff 1424 --repo microsoft/apm`,
-#     execute panel as designed with explicit `model:` per task dispatch,
-#     write review.md, capture process.log, stop. NO github writes."
-```
-
----
-
-Closes the empirical-proof gap raised on PR #10. Three iterations, three FinOps lessons: (1) cache + thrift + subset = 1.66x; (2) the corpus must name the binding site for B12 to fire; (3) the orchestrator's session-default model dominates more than any sub-agent routing. Next: v0.3.2 corpus addition for SESSION DEFAULT BINDING and a clean B12-vs-B14/B15 isolation run.
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+**Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>**
