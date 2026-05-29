@@ -149,6 +149,40 @@ Less than the auditor's projected −720 to −930 ceiling. Higher-risk consolid
 
 ---
 
+## Multi-scenario probe: small-PR executor (microsoft/apm#1541)
+
+To validate the cost shape on a small PR (where fixed orchestrator overhead likely dominates) and to test the v0.3.4 PER-LENS discipline on real lens output, the v0.3+ panel was executed against microsoft/apm#1541 (+41/-2, 2 files — a small CLI fix).
+
+| Metric | PR #1424 (baseline, large) | PR #1541 (small) |
+|---|---:|---:|
+| Shape | +2363/-114, 24 files | +41/-2, 2 files |
+| Executor cost | $2.85 | **~$0.21** |
+| Executor turns | 179 | **6** |
+| Cost / kLoC | $1.15 | $5.12 |
+| BLOCKERs | 0 | 0 |
+| HIGH+ findings | 6 | 5 |
+| Arbiter fired? | No (trigger not met) | No (trigger not met) |
+
+**Cost shape holds on small PRs at the dollar level** (~$0.21 well within "trivial cost" range) **but does not hold per-kLoC** (4.5× more expensive per line). Fixed Sonnet-executor overhead (~$0.195 of the $0.21 — PR metadata fetch, prompt composition, synthesis) dominates at small scale. For a pure docs-only or test-only PR under ~50 LoC, a 2-lens skinny pipeline would be more economical than a 5-lens panel.
+
+**Empirical validation of v0.3.4 PER-LENS DIFFERENTIATION discipline** — the executor (Sonnet, with v0.3.4 corpus visible) reflected on each lens against the CAPABILITY PROFILE template after producing findings:
+
+| Lens | (cross-file? STAKES? multi-step?) | Verdict on TRIVIAL/Haiku binding |
+|---|---|---|
+| correctness | (no, no, no) | **TRIVIAL genuinely correct.** Self-contained condition + dict membership inference. |
+| security | **(yes, yes, yes)** | **TRIVIAL was INADEQUATE.** Haiku surfaced a real MEDIUM bypass concern but could not validate or dismiss it without tool access to read `_check_and_notify_updates()` — an out-of-diff function body. A REVIEWER-class agent with bash/grep would have closed the finding. |
+| performance | (no, yes, no) | **TRIVIAL correct.** Truth-table on a 2-line condition; one-step inference. |
+| style | (no, no, no) | **TRIVIAL correct.** Surface-level checks. |
+| test-coverage | (partial, yes, no) | **TRIVIAL mostly correct** but had to infer existing test fixtures structurally. |
+
+**This is the v0.3.4 PER-LENS discipline producing the predicted empirical signal:** 4/5 lenses are genuinely TRIVIAL; the security lens is *structurally different* and needs out-of-diff inference to close STAKES-weighted findings. The executor's recommendation: *"Security lens uses Haiku when all referenced functions are in-diff; escalates to REVIEWER with tool access when it must reason about out-of-diff internals."* That is the v0.3.4 discipline working — the empirical run *generated the per-element justification* the corpus now requires architects to record at design time.
+
+**Implication for the v0.3+ Cell on PR #1424:** even on that large PR, the security lens may have been mis-bound. The blocker false-positive (`_substitute_plugin_root` alleged undefined, refuted only by an out-of-diff `gh api` lookup) is consistent with TRIVIAL-class security inadequacy on cross-file reasoning. The corpus discipline now flags this; a v0.3.4 re-architect of the PR-review skill would correctly bind security to REVIEWER class, expected cost delta +$0.50-1.00 per run with measurable improvement in security finding fidelity.
+
+Full small-PR artifacts: `dev/empirical-proof/scenario-small-pr-1541/`.
+
+---
+
 ## Multi-scenario probe: different-skill architect (release-notes-generator)
 
 To validate that the v0.3.4 PER-LENS discipline produces *differentiated* bindings when the capability profile is heterogeneous (and not just uniform bindings dressed up as "enumerated"), a side-channel architect run was dispatched on a deliberately different skill type: a release-notes-generator (A2 PIPELINE backbone, 50-commit input, mixed feature / breaking / bug-fix sub-tasks).
@@ -180,7 +214,7 @@ Full architect handoff packet: `/tmp/scenario-release-notes/plan.md`.
 
 ## What this PR does NOT prove (deferred to follow-up PRs)
 
-- **Multi-scenario variance on COST (not just architecture).** The architect-side multi-scenario probe above shows the v0.3.4 discipline produces *differentiated* bindings on a different skill type. A *measured executor run* of the release-notes-generator (or other skills: small bug-fix PR review, large refactor PR review) is deferred to a follow-up empirical PR. *Note: a small-PR executor probe (microsoft/apm#1541) was dispatched as part of this PR's preparation and its data will land in a follow-up if it completes after merge.*
+- **Multi-scenario variance on COST (full matrix).** Two scenarios have been probed: small PR (#1541, +41 LoC, $0.21) and a different skill type (release-notes-generator architect-only design). A full matrix S1-S5 × {v0.2, v0.3+} × {skill types} with measured executor runs end-to-end is deferred.
 - **Cross-harness portability.** Probe data is Copilot-CLI only. Claude Code, OpenCode, Codex, Cursor defaults are not measured. The v0.3.3 "bind explicitly for portability" framing rests on first principles + the corpus's per-harness adapter table, not on a multi-harness empirical run.
 - **B14 / B15 / B16 isolated ablations.** Per-technique attribution above isolates B12, A12, and B13 from the existing 4-cell data. Isolating PROMPT THRIFT (B14), TOOL SUBSET (B15), and EFFORT GOVERNOR (B16) requires controlled toggle-one-at-a-time runs; deferred.
 - **PER-LENS DIFFERENTIATION on a verdict-emitting (high-STAKES) skill.** The new corpus discipline was authored from first principles + the existing pattern catalogue. An empirical run on a verdict-emitting PR-review skill (where security + test-coverage SHOULD bind UP to REVIEWER class) would validate that the differentiation moves the cost shape in the predicted direction. Deferred.
