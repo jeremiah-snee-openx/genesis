@@ -138,42 +138,13 @@ GPT-5 with extended context, Gemini Pro 2M-context tier.
 
 ## Routing axes (when a workflow uses more than one class)
 
-The architect picks role classes per module along three axes:
-
-1. **Quality ceiling**: does this step need the planner's
-   reasoning to not fail? (If yes -> planner. If no -> consider
-   cheaper.)
-2. **Output volume**: will the step emit many output tokens?
-   (If yes, cheaper class amortizes harder. If no, the rate gap
-   between classes shrinks.)
-3. **Repeat count**: will this step run many times in a fan-out
-   or wave? (If yes, cheaper class compounds. If once, optimize
-   for quality.)
-
-A workflow with one planner-class step (front), N parallel
-implementer-class steps (middle), and one reviewer-class step
-(back) is the canonical A10 GRADIENT WORKFLOW.
-
----
-
-## What this file does NOT do
-
-- It does NOT name concrete models. Models live in per-harness
-  adapters under `runtime-affordances/per-harness/<x>.md` in a
-  `model-catalog` section, with date stamps.
-- It does NOT name prices. Same reason.
-- It does NOT enumerate every routing rule. The catalogue patterns
-  (B11, B15, A10) own the rules; this file just defines the slots
-  the rules talk about.
-- It does NOT name the BINDING SITE on each harness. That is
-  harness-specific (see next section). On some harnesses the binding
-  site is per-custom-agent frontmatter (e.g. Copilot's `.agent.md`
-  `model:` field); on others it is per-skill frontmatter, per-step
-  workflow config, or session-level only. The architect MUST consult
-  the per-harness adapter at step 7b to see WHERE the per-element
-  binding lives -- otherwise B12 fires only at session level
-  (uniform binding for every agentic element, the failure mode
-  measured in PR #12's Executor B run).
+The architect picks role class per element along three axes:
+quality ceiling, output volume, repeat count. Cheapest class
+meeting capability profile; promoted only on cited STAKES.
+See `design-patterns.md` §B12 SELECTION RULE for the canonical
+rule and `design-patterns.md` WRONG-PRIMITIVE BINDING for the
+binding-site requirement (adapters MUST name the per-element
+binding site; absence breaks B12).
 
 ---
 

@@ -135,61 +135,22 @@ Patterns applied (each cited against the cost-shape matrix in
 
 ## Cost projection (step 6, both versions)
 
-Per representative run, balanced stance, Anthropic billing
-(verified 2025-11-14 against `runtime-affordances/per-harness/
-claude-code.md` model catalog):
+Concrete dollar-range mechanics live in
+`references/cost-economics-process.md` §"Step 6 -- cost projection
+in full". The qualitative contract for this re-architecture:
 
-| Version         | Calls           | Approx input tokens | Approx output tokens | Approx $/run |
-|------------------|------------------|---------------------|----------------------|--------------|
-| Cost-unconscious | 6 x planner (Opus) | ~6 x 5K = 30K     | ~6 x 1K = 6K         | ~$0.90       |
-| Cost-aware (agree path, ~80%) | 1 trivial router + 5 reviewer (Sonnet) + 1 trivial detector + 1 reviewer synth | ~7 x 4K + ~1K = 29K | ~5 x 600 + 200 + ~700 = ~3900 | ~$0.10-0.15 |
-| Cost-aware (disagree path, ~20%) | adds 1 planner arbiter on top | +~5K | +~1K | ~$0.20-0.30 |
+- Cost-unconscious: 6 planner-class calls per review.
+- Cost-aware (agree path, ~80% of traffic): 1 trivial router + 5
+  reviewer-class lenses + 1 trivial detector + 1 reviewer-class
+  synthesizer. The reduction is dominated by the role-class shift
+  on the bulk lenses (planner -> reviewer on 5 calls).
+- Cost-aware (disagree path, ~20%): adds 1 planner-class arbiter.
+  The synthesis-class split saves the planner-class arbiter call
+  on the agree-path that dominates traffic.
 
-PROVENANCE WARNING. The numbers above are arithmetic projections
-against the Anthropic API direct-billing model (the reference shape
-this example was derived from). They are NOT measured. PR #12's
-empirical A/B on Copilot CLI (Cell D v0.1 baseline through Cell G
-v0.3.2.1) measured the cost-shape WIN to materialize when the
-architect picks the cheapest role class per element AND BINDS IT
-EXPLICITLY (per the §B12 SELECTION RULE rule 3 in
-`assets/design-patterns.md`). The earlier Cell E v0.3.1 +25% cost
-delta vs v0.1 came from BIND-UP-WITHOUT-JUSTIFICATION (binding the
-5-lens fan-out at IMPLEMENTER class when REVIEWER or TRIVIAL would
-meet the role-class need), NOT from "binding model: at all". Cells F
-and G recovered the win by binding DOWN to the right class
-explicitly. On Copilot CLI specifically, `task(agent_type='explore')`
-happens to default to claude-haiku-4.5 today; relying on that
-default is fragile (changes per harness version, not portable to
-other harnesses), so the architect SHOULD declare
-`model: claude-haiku-4.5` on every trivial-class lens even on
-Copilot CLI -- predictability across runs, portability across
-harnesses, audit-trail readable end-to-end. Re-read
-`per-harness/copilot.md` section "Default role class per primitive
-type" to right-size the explicit binding, not to justify omission.
-
-Arithmetic (per `claude-code.md` Section 9, verified 2025-11-14): Opus
-$15/Mtok input, $75/Mtok output. Cost-unconscious row = 30K x $15/M +
-6K x $75/M = $0.45 + $0.45 = ~$0.90. Sonnet $3/Mtok input, $15/Mtok
-output. Cost-aware agree row = 28K x $3/M + ~3.5K x $15/M + 1K x
-$0.25/M (trivial input) ~ $0.08 + $0.05 + tiny = ~$0.13.
-
-Blended across an 80/20 agree/disagree mix: ~$0.12-0.18 per run.
-Expected reduction vs cost-unconscious: ~5-7x on blended workload,
-~6-9x on the agree path that dominates traffic. Round dollar figures
-are intentionally coarse: bands are the contract; ranges are the
-prediction.
-
-The reduction is dominated by the role-class shift on the bulk
-lenses (planner -> reviewer on 5 calls). The synthesis-class
-split (light by default, heavy on disagreement) saves the planner-
-class arbiter call on the ~80% of reviews where lenses agree.
-
-Numbers are RANGE estimates against the L scenario (full PR review,
-3-5K tokens of artifact under review). The contract is qualitative:
-"reviewer class on lens 1-3, implementer-or-reviewer on lens 4-5,
-trivial on router and detector, planner only when disagreement
-detected". Step 8 validates the contract; the dollar figure is the
-prediction.
+Step 8 validates the qualitative contract above; concrete dollar
+ranges per harness are computed at step 6 against the per-harness
+adapter pricing in effect at design time.
 
 ## What stays the same
 

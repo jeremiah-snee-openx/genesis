@@ -944,10 +944,6 @@ ANTI-PATTERNS:
   structured inputs is reviewer-class capability; planner-class
   here is bind-up for STAKES without the stakes (advisory-only
   output, no consequential side effect, no genuine planning).
-  Measured cost-without-benefit: PR #12 Cell F (v0.3.2) ran
-  a 15-turn Opus synth-heavy ($3.95) to adjudicate one TOCTOU
-  severity disagreement and downgrade three findings -- work
-  any reviewer-class model could have done at 1/4 the cost.
   Cure: leave the synthesizer at reviewer class; promote to
   planner only when the S4 gate detects a HIGH-stakes pattern
   (BLOCKER-severity disagreement among >=2 lenses, or a

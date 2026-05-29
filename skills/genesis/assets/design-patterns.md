@@ -893,20 +893,11 @@ this rule decides whether to bind at all):
      tolerable; BALANCED (default) -> bind to the CHEAPEST role
      class that meets the cited requirement.
 
-CONSEQUENCE: in a well-designed B12 application, MOST agentic
-elements carry an explicit `model:` (because PREDICTABILITY and
-PORTABILITY are default goals). The proportion of OMIT vs BIND
-is NOT the metric. The metric is "did we pick the cheapest role
-class that meets each element's required class, AND did we cite
-the rationale so a reviewer can audit it?" Two pathological
-shapes to avoid: (a) ZERO explicit bindings (the design depends
-on harness defaults; if defaults change the cost shifts silently
-and the operator has no contract); (b) ALL bindings AT or ABOVE
-session default (binding up everywhere, which is just
-BIND-UP-WITHOUT-JUSTIFICATION dressed as discipline; see anti-
-pattern below). Healthy shape: most elements bound DOWN from
-session default to the cheapest role class that meets need, a
-few bound UP only where cited STAKES require it.
+CONSEQUENCE: see anti-patterns below for shape-detection
+(ZERO explicit bindings = ZERO-EXPLICIT, all-bound-up =
+BIND-UP-WITHOUT-JUSTIFICATION). Healthy shape: most elements
+bound DOWN from session default to the cheapest role class that
+meets need, a few bound UP only where cited STAKES require it.
 
 ANTI-PATTERNS:
 - HARDCODED MODEL NAMES in the design. Models age out; the
@@ -945,27 +936,23 @@ ANTI-PATTERNS:
   (claude-sonnet-4.6) when the lens work was trivial-class
   (single-pass checklist grading over a finite diff window with
   no cross-file reasoning). Result: +25% TOTAL run cost vs the
-  v0.1 baseline with ZERO quality delta on the bound lenses (the
-  two extra CRITICALs Cell E caught came from a Sonnet binding on
-  the security lens, which IS reviewer-class work where bind-up
-  IS justified). Cure: cite the role-class requirement explicitly
-  in the handoff packet. Every BIND-UP must name the STAKES
-  (security-critical, irreversible side effect, cross-file
-  reasoning required, multi-step planning required). If the
-  cite is "to be safe" or "in case it's hard," it's bind-up
-  without justification and should be demoted.
-- CEREMONIAL BINDING (NARROWER definition) -- declaring `model:`
-  in a way that documents intent THOUGH it matches the harness
-  default IS NOT this anti-pattern; that is PREDICTABILITY
-  DISCIPLINE (see SELECTION RULE rule 3, DEFAULT == REQUIRED
-  case). The actual ceremony to avoid is COPY-PASTING a model
-  binding across many primitives WITHOUT picking it per role
-  class -- e.g. setting the same `model: claude-sonnet-4.6` on
-  every `.agent.md` in a design as a template default. Each
-  binding must be PER-ELEMENT and PER-ROLE-CLASS, with the
-  cite for that element specifically. Bulk identical bindings
-  are a smell that the architect did not actually distinguish
-  the role classes.
+  v0.1 baseline with ZERO quality delta on the bound lenses.
+  Cure: cite the role-class requirement explicitly in the handoff
+  packet. Every BIND-UP must name the STAKES (security-critical,
+  irreversible side effect, cross-file reasoning required,
+  multi-step planning required). If the cite is "to be safe" or
+  "in case it's hard," it's bind-up without justification and
+  should be demoted. VARIANT -- BULK IDENTICAL BINDING: copy-
+  pasting the same `model:` across many primitives without per-
+  element role-class distinction (e.g. setting the same
+  `model: claude-sonnet-4.6` on every `.agent.md` in a design
+  as a template default). The cure is the same: pick per-element
+  per-role-class with a cite.
+- ZERO-EXPLICIT -- the entire design carries zero `model:`
+  declarations and relies on harness defaults. Predictability
+  evaporates the moment a default shifts (across harness version
+  or across harnesses); the operator has no contract to read.
+  Cure: bind explicitly per SELECTION RULE rule 3.
 
 ---
 

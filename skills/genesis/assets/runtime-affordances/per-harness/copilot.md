@@ -188,13 +188,10 @@ without prior notice).
 
 ### Default role class per primitive type
 
-On Copilot CLI, the role class an element ACTUALLY runs at when
-`model:` is omitted depends on which PRIMITIVE TYPE carries the
-work. The harness default is NOT uniformly "the session model" --
-several subagent spawn types default to a cheaper role class than
-the session. The architect MUST consult this table at B12 step 1
-(the SELECTION RULE in `design-patterns.md` §B12) to know whether
-omitting `model:` will bind-up, bind-down, or hold the line.
+On Copilot CLI, the role class an element runs at when `model:`
+is omitted depends on the PRIMITIVE TYPE carrying the work. The
+architect MUST consult this table at B12 step 1 (see
+`design-patterns.md` §B12 SELECTION RULE).
 
 Verified on: 2025-11-14. Re-verify against the live Copilot CLI
 release notes if the date stamp is more than 90 days stale.
@@ -210,100 +207,37 @@ release notes if the date stamp is more than 90 days stale.
 | `task(agent_type='code-review')` subagent         | IMPLEMENTER              | claude-sonnet-4.6                | Tuned for code-review work. |
 | `task(agent_type='research')` subagent            | IMPLEMENTER              | claude-sonnet-4.6                | Tuned for research/grounding. |
 
-CRITICAL CONSEQUENCE for fan-out designs. A 5-lens review PANEL
-implemented as five `task(agent_type='explore')` subagents runs
-the entire fan-out at TRIVIAL class FOR FREE. The architect does
-NOT need to bind anything. The same PANEL implemented as five
-`.agent.md` custom agents with explicit `model: claude-sonnet-4.6`
-runs at IMPLEMENTER class -- a deliberate BIND-UP for stakes,
-which costs ~3-5x more per turn for ~5x more turns of work.
-
-The choice between the two implementations IS the B12 decision on
-Copilot CLI. It is NOT a question of "do we declare `model:`" --
-it is a question of "which primitive type carries the fan-out, and
-does its default role class match what the work needs?"
-
-For a checklist-bound lens (matches the trivial-class capability
-profile: rubric scoring, pattern matching, structured grader) the
-`task(agent_type='explore')` route is the correct cheap answer.
-For a lens that requires cross-file integration reasoning or
-unbounded code understanding (matches implementer or higher), the
-`.agent.md` route with explicit binding is the correct
-quality-justified answer.
+A 5-lens panel implemented as `task(agent_type='explore')` runs at
+TRIVIAL class by default; the same panel as `.agent.md` runs at
+session default. The B12 decision on Copilot CLI is BOTH primitive-
+type choice AND `model:` binding -- relying on the default without
+declaring it is fragile (changes per release; not portable to
+other harnesses); bind explicitly per §B12 SELECTION RULE rule 3.
 
 ### Cost-pattern bindings
 
-CRITICAL -- READ FIRST. The PER-AGENT BINDING SITE on Copilot is the
-`.agent.md` custom-agent frontmatter (section 1). It is the ONLY
-Copilot primitive whose frontmatter accepts `model:` and `tools:`.
-SKILL.md does NOT support these fields (see section 2). When a
-B12 / B15 / B16 binding is required, the unit of work MUST be
-expressed as a custom agent. If a skill currently holds the unit,
-either restructure it as a `.agent.md` or have the skill body
-delegate to a sibling `.agent.md` whose frontmatter carries the
-binding.
+The PER-AGENT BINDING SITE on Copilot is `.agent.md` frontmatter
+(section 1). SKILL.md does NOT support `model:` or `tools:` (see
+section 2). When a B12 / B15 / B16 binding is required, the unit
+of work MUST be expressed as a custom agent.
 
-- B12 MODEL ROUTER:
-  - BINDING SITE: `.agent.md` frontmatter `model:` field, one
-    binding per custom agent. The SELECTION RULE in
-    `design-patterns.md` §B12 decides WHETHER to populate it for
-    each element. Default-binding-by-omission means the element
-    inherits the HARNESS DEFAULT for its primitive type (see
-    "Default role class per primitive type" above) -- NOT
-    necessarily the session model. On Copilot CLI, omitting
-    `model:` on a `.agent.md` inherits the session default, but
-    expressing the same unit of work as a `task(agent_type=
-    'explore')` subagent runs it at TRIVIAL class instead. The
-    architect's lever is BOTH the primitive type choice AND the
-    `model:` field.
-  - Explicit `model:` matching the harness default is
-    PREDICTABILITY DISCIPLINE, NOT ceremony. See the §B12
-    SELECTION RULE rule 3 (DEFAULT == REQUIRED case). Reasons to
-    bind explicitly even when it matches the default:
-    PORTABILITY (the same `.agent.md` may run on a harness with
-    a different default), PREDICTABILITY (the operator can see
-    the bound class without consulting the adapter table), AUDIT
-    TRAIL (the design's cost shape is readable end-to-end without
-    cross-references). The actual anti-pattern is BIND-UP-WITHOUT-
-    JUSTIFICATION -- binding to a HIGHER role class than the
-    work requires without citing the STAKES.
-  - Session-level fallback: configure model preference per CLI
-    session or per workflow if NO per-agent override is set. Mid-
-    session switch is supported but partitions the Copilot cache
-    (B13 anti-pattern -- avoid).
-  - ANTI-PATTERN unique to Copilot: SKILL-LEVEL ROUTING ATTEMPT --
-    adding `model:` to SKILL.md frontmatter has no effect (silently
-    ignored). Symptom: architect believes B12 is firing; profiling
-    shows uniform model billing. Fix: move the unit to `.agent.md`
-    OR re-express as `task(agent_type=<x>)` subagent and let the
-    spawn-type default fire.
+| Pattern | Copilot binding site                                     |
+|---------|-----------------------------------------------------------|
+| B12     | `.agent.md` frontmatter `model:` (NOT SKILL.md)           |
+| B13     | opaque to operator; avoid mid-session edits / model switch |
+| B15     | `.agent.md` frontmatter `tools:` (NOT SKILL.md)           |
+| B16     | encoded via SKU choice on `model:` (high-effort SKU)      |
 
-- B13 CACHE-AWARE PREFIX: caching behavior is opaque to the operator
-  (handled by Copilot's backend); cache discipline still pays off
-  because the underlying providers cache. Keep persona / skill body
-  stable; avoid mid-session edits to `.github/copilot-instructions.md`.
-  Mid-session `model:` switch (see B12) also invalidates the cache --
-  bind at agent definition time, not at runtime.
+Anti-pattern unique to Copilot: SKILL-LEVEL ROUTING ATTEMPT --
+adding `model:` or `tools:` to SKILL.md frontmatter has no effect
+(silently ignored, no error). Symptom: architect believes B12 / B15
+is firing; profiling shows uniform billing. Fix: move the unit to
+`.agent.md` OR re-express as `task(agent_type=<x>)` and let the
+spawn-type default fire.
 
-- B15 TOOL SUBSET:
-  - BINDING SITE: `.agent.md` frontmatter `tools:` field, one
-    binding per custom agent. Use either a list of aliases
-    (`tools: ["read", "search"]`) or an empty list (`tools: []`) to
-    disable all tools. MCP server tools namespaced as
-    `<server>/<tool>` or `<server>/*`. Available aliases per the
-    custom-agents-configuration spec: `read`, `edit`, `search`,
-    `execute`, `agent`, `web`, `todo`.
-  - SKILL.md does NOT support `tools:`. Skill-level tool subsetting
-    has to be done via the surrounding session config or by routing
-    the work to a `.agent.md` with the scoped subset.
-  - Session-level fallback: declare per-MCP-server scoping in
-    `.copilot/config.yml` to keep the catalogue bounded for the
-    whole session.
-
-- B16 EFFORT GOVERNOR: where the model supports it, declare via the
-  model selection (a "high effort" SKU IS the effort declaration on
-  Copilot's surface). Combine with B12 binding on `.agent.md` to
-  pick a high-effort SKU only for the high-stakes agentic element.
+B15 tool aliases: `read`, `edit`, `search`, `execute`, `agent`,
+`web`, `todo`. MCP server tools namespaced as `<server>/<tool>`
+or `<server>/*`. Empty list (`tools: []`) disables all tools.
 
 ### Stance binding
 
