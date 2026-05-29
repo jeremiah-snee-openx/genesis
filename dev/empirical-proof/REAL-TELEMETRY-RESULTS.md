@@ -277,6 +277,113 @@ study; treat this page as the absolute-cost ground truth.
 
 ---
 
+## Where the architecture overhead actually goes — telemetry-grounded waste
+
+The PR claims the architecture has a fixed tool-surface overhead per
+sub-agent dispatch that no pattern in this PR addresses. That claim is
+grounded in the per-turn `usage_input_tokens` of every cell session.
+The overhead is real, real-billed, and visible in three patterns.
+
+**Pattern 1 — every dispatch pays a fixed entry tax before reading the
+prompt.** The very first `assistant.usage` event of each cell, before
+the model has done any work, shows the cost of just *being on the
+harness*: system prompt + tool catalogue + skill loading + initial
+user message. Measured first-turn input tokens, by cell:
+
+| Cell | First-turn input | What it represents |
+|---|---:|---|
+| S1-zero-sonnet, S2-zero-sonnet, S3-zero-sonnet | ~53,840 | Sonnet harness, full tool surface, no sub-agents |
+| S1-v0.2, S2-v0.2, S3-v0.2 | ~53,910 | Same harness as zero-sonnet — architecture adds nothing here |
+| S1-v0.3.6, S2-v0.3.6, S3-v0.3.6 | ~53,950 | Same harness again — patterns are advisory, not surface-changing |
+| S1-zero-opus, S2-zero-opus, S3-zero-opus | ~74,760 | Opus harness, ~21K heavier than Sonnet (different system bundle) |
+
+That's a **54K-token (Sonnet) or 75K-token (Opus) entry tax on every
+session, regardless of workload**. A one-line task pays the same surface
+cost as a multi-day refactor. The PR's "~80K" claim is the round-figure
+upper bound; the floor is 54K.
+
+**Pattern 2 — sub-agent dispatch multiplies the entry tax, but at
+different rates per agent type.** S1-v0.3.6 is the heaviest dispatch
+cell — 9 `task()` spawns (2 × explore/Haiku, 3 × general-purpose/Sonnet,
+4 × code-review). Looking at the orchestrator's full `assistant.usage`
+stream (it captures the spawned agents' first turns alongside its own),
+turns bucket cleanly by agent type:
+
+| Bucket | Turn count | Min input | Max input | Interpretation |
+|---|---:|---:|---:|---|
+| <10K | 17 | 6,224 | 9,987 | Haiku/explore agent first turns — small surface |
+| 10–30K | 17 | 10,381 | 17,230 | Haiku follow-ups |
+| 30–50K | 105 | 31,577 | 49,668 | Sonnet sub-agents (general-purpose, code-review) first turns + early follow-ups |
+| 50–70K | 62 | 50,341 | 69,956 | Orchestrator early turns and Sonnet sub-agents mid-stream |
+| 70K+ | 91 | 70,494 | 132,753 | Orchestrator mid-to-late, with rolling history |
+
+So the per-spawn entry tax in S1-v0.3.6 is **~6K for Haiku, ~35K for a
+Sonnet sub-agent, ~54K for the orchestrator itself**. Across the 9
+spawns, the pure tool-surface preamble alone — before any prompt
+content is processed — costs roughly **2 × 6K + 7 × 35K = 257K
+tokens**. That is the dispatch-overhead floor that no v0.3.6 pattern
+compresses.
+
+**Pattern 3 — naïve loops amplify the entry tax via rolling
+re-send.** S3-v0.2 is the cleanest example: the v0.2 architect designed
+a per-file `view` + `edit` loop over 20 files, totalling 105 turns. The
+per-turn input grows monotonically as conversation history accumulates:
+
+- Turn 1: 53,910 input → 219 output
+- Turn 50: ~93,000 input → 158 output
+- Turn 105: 129,862 input → 277 output
+- **Total: 9.99M input tokens for 34K output tokens — a 290-to-1
+  input-to-output ratio**
+
+By turn 50 we are paying 93K input tokens to the model to produce a
+158-token edit instruction. The marginal *useful* output of each turn
+is tiny; the marginal *paid* input is the entire growing context. This
+is not a sub-agent overhead problem — it is the same overhead pattern
+seen from a different angle: every turn, the harness re-sends the
+full conversation, and harness caching does not amortise the
+fixed-but-growing tail. The v0.3.6 cell on the same workload (S3-v0.3.6)
+runs in 41 turns with a 167-to-1 input/output ratio because its handoff
+packet collapses the per-file loop into a single `sed` script via the
+shell-bridge pattern.
+
+**For comparison across cells** (input ÷ output, lower is more
+efficient):
+
+| Cell | Turns | Total input | Total output | I/O ratio |
+|---|---:|---:|---:|---:|
+| S3-v0.2 | 105 | 9,991,916 | 34,307 | 291:1 |
+| S1-v0.3.6 | 292 | 17,035,682 | 109,438 | 156:1 |
+| S2-v0.2 | 71 | 4,225,695 | 81,204 | 52:1 |
+| S2-v0.3.6 | 38 | 2,804,063 | 23,739 | 118:1 |
+| S3-v0.3.6 | 41 | 2,979,232 | 17,856 | 167:1 |
+| S2-zero-sonnet | 20 | 1,686,292 | 24,634 | 68:1 |
+| S3-zero-sonnet | 20 | 1,328,237 | 11,541 | 115:1 |
+| S1-zero-sonnet | 34 | 2,596,638 | 10,429 | 249:1 |
+| S2-zero-opus | 17 | 1,769,013 | 26,653 | 66:1 |
+| S1-zero-opus | 11 | 1,090,954 | 6,994 | 156:1 |
+
+**What this means for the next PR.** The single highest-leverage
+optimisation surfaced by this telemetry is **not** model selection or
+prompt compression — it is **dispatch-surface compression**. Every
+`task()` spawn pays a 6–54K entry tax. Patterns that would dent it:
+
+- **Tool-surface tiering** — sub-agents that need only `grep`/`view`/`bash`
+  should not load the orchestrator's full tool catalogue (the Haiku
+  explore agent already demonstrates this with a 6K floor vs. 35K for
+  a general-purpose Sonnet agent).
+- **Dispatch coalescing** — S1-v0.3.6 paid 9 entry taxes to ask 9
+  related questions; one batched dispatch would pay one tax.
+- **Loop compression via shell-bridge** — already applied in S3-v0.3.6
+  (sed instead of per-file edit loop) and S2-v0.3.6 (monolithic
+  inline pipeline). This is the only pattern in this PR that
+  *measurably* dents the overhead, and it does so by removing the
+  loop entirely, not by shrinking the entry tax.
+
+None of these are in scope for this PR. They are the visible frontier
+for the next one.
+
+---
+
 ## What this PR does NOT prove
 
 - It does not prove the architected workflows produce *better*
