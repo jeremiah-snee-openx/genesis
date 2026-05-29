@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "cell": "A2",
+  "scenario": "s1",
+  "skill_version": "v0.3.5",
+  "design_variant": "COST-AWARE (class-split routing)",
+  "baseline_cell": "A1",
+  "baseline_cost_usd": 0.194,
+  "methodology": "SIZE-BASED estimate; per-issue batching with inline lens inference counts",
+  "optimizations_active": ["B13-cache-aware", "B14-compression", "B15-tool-subset"],
+  "lens_config": {
+    "TRIVIAL": {
+      "model": "claude-haiku-4.5",
+      "lenses_per_issue": 3,
+      "estimated_input_tokens_per_inference": 1000,
+      "estimated_output_tokens_per_inference": 100,
+      "rate_input_per_mtok_usd": 1.00,
+      "rate_output_per_mtok_usd": 5.00,
+      "b14_compression_savings_vs_baseline_pct": 13.0,
+      "baseline_input_tokens_per_issue": 3450,
+      "actual_input_tokens_per_issue": 3000
+    },
+    "REVIEWER": {
+      "model": "claude-sonnet-4.6",
+      "lenses_per_issue": 3,
+      "estimated_input_tokens_per_inference": 1800,
+      "estimated_output_tokens_per_inference": 200,
+      "rate_input_per_mtok_usd": 3.00,
+      "rate_output_per_mtok_usd": 15.00
+    },
+    "ARBITER": {
+      "model": "claude-sonnet-4.6",
+      "fired": false,
+      "reason": "No inter-lens contradictions detected across 8 issues"
+    }
+  },
+  "issue_count": 8,
+  "dispatch_count": 8,
+  "inferences_per_dispatch": 6,
+  "total_inferences": 48,
+  "token_totals": {
+    "trivial_input_tokens": 24000,
+    "trivial_output_tokens": 2400,
+    "reviewer_input_tokens": 43200,
+    "reviewer_output_tokens": 4800,
+    "total_input_tokens": 67200,
+    "total_output_tokens": 7200
+  },
+  "cost_breakdown_usd": {
+    "trivial_haiku_input":   0.024000,
+    "trivial_haiku_output":  0.012000,
+    "reviewer_sonnet_input": 0.129600,
+    "reviewer_sonnet_output":0.072000,
+    "arbiter_sonnet":        0.000000,
+    "total":                 0.237600
+  },
+  "total_cost_usd": 0.2376,
+  "budget_usd": 0.50,
+  "budget_utilization_pct": 47.52,
+  "vs_baseline": {
+    "baseline_usd": 0.194,
+    "delta_usd": 0.0436,
+    "delta_pct": 22.5,
+    "note": "v0.3.5 costs more than A1 baseline in absolute terms. The class-split routing (haiku for TRIVIAL) saves ~$0.06 vs. running all 48 inferences at sonnet rate ($0.298 equivalent), but REVIEWER sonnet token counts (1800 input vs. A1's assumed lower-cost profile) dominate. B14 compression saves 13% on TRIVIAL input (3000 vs 3450 tokens/issue). Net effect: routing saves money on trivial work; cost rise vs A1 is attributable to higher REVIEWER inference depth in v0.3.5."
+  },
+  "savings_analysis": {
+    "if_all_sonnet_usd": 0.2977,
+    "routing_saves_vs_all_sonnet_usd": 0.0601,
+    "routing_saves_pct": 20.2,
+    "description": "Class-split routing (haiku for 3 TRIVIAL lenses) saves ~20% vs. running all 6 lenses at sonnet rates"
+  },
+  "per_issue_cost_usd": {
+    "trivial_per_issue":   0.004500,
+    "reviewer_per_issue":  0.025200,
+    "combined_per_issue":  0.029700
+  },
+  "generated_at": "2025-01-01T00:00:00Z",
+  "notes": [
+    "ARBITER not fired: 0 contradictions across 48 lens inferences on 8 issues",
+    "B13 cache-aware: stable system+briefs prefix amortized across per-issue tail — not reflected in size-based estimate per A1 methodology parity",
+    "B15 tool-subset: TRIVIAL/REVIEWER lenses restricted to read-only tools; no edit/write tool overhead",
+    "Issue #4105 (RCE/CVSS-9.1) flagged P0-SECURITY; no public details disclosed in this report"
+  ]
+}

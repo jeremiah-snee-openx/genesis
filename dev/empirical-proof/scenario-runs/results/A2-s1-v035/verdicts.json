@@ -1,0 +1,177 @@
+{
+  "cell": "A2",
+  "scenario": "s1",
+  "version": "v0.3.5",
+  "lens_design": "6-lens class-split (3 TRIVIAL=haiku-4.5, 3 REVIEWER=sonnet-4.6)",
+  "batching": "per-issue (8 dispatches × 6 inline lens inferences)",
+  "verdicts": [
+    {
+      "issue_id": 4101,
+      "title": "CLI hangs forever on `apm install` with offline cache",
+      "lenses": {
+        "TRIVIAL": {
+          "severity": "P1",
+          "labels": ["bug", "p1", "offline", "networking", "regression"],
+          "dup_check": "No known duplicate; distinct from #3980 (general offline mode)."
+        },
+        "REVIEWER": {
+          "scope": "CLI → network resolver layer; --offline flag not short-circuiting AF_INET connect",
+          "owner_team": "platform-cli",
+          "repro_quality": "HIGH — strace output, OS/kernel versions, exact flag combo, workaround confirmed"
+        }
+      },
+      "triage_verdict": {
+        "priority": "P1",
+        "action": "Assign to platform-cli; hotfix target next patch release. Workaround (--offline --no-resolve) must be documented immediately.",
+        "notes": "AF_INET connect despite --offline indicates resolver ignores flag; likely regression in v0.4.0 network stack refactor."
+      }
+    },
+    {
+      "issue_id": 4102,
+      "title": "Typo in --help: 'recieved'",
+      "lenses": {
+        "TRIVIAL": {
+          "severity": "P4",
+          "labels": ["typo", "docs", "good-first-issue"],
+          "dup_check": "No duplicate found."
+        },
+        "REVIEWER": {
+          "scope": "CLI help string; single character fix in help text constant",
+          "owner_team": "any-contributor",
+          "repro_quality": "HIGH — trivially reproducible"
+        }
+      },
+      "triage_verdict": {
+        "priority": "P4",
+        "action": "Label good-first-issue; accept community PR. One-liner fix.",
+        "notes": "Cosmetic only; no functional impact."
+      }
+    },
+    {
+      "issue_id": 4103,
+      "title": "Memory leak in MCP server when re-loading large skill",
+      "lenses": {
+        "TRIVIAL": {
+          "severity": "P0",
+          "labels": ["bug", "p0", "memory-leak", "mcp-server", "enterprise", "sla"],
+          "dup_check": "No duplicate. Closest is #3810 (minor leak in skill parse) — different code path."
+        },
+        "REVIEWER": {
+          "scope": "MCP server skill-reload path; likely retained event listeners or module cache not cleared on reload",
+          "owner_team": "mcp-runtime",
+          "repro_quality": "HIGH — quantified (150 MB/reload, 12 reloads → OOM), exact versions, enterprise SLA context"
+        }
+      },
+      "triage_verdict": {
+        "priority": "P0",
+        "action": "Immediate escalation to mcp-runtime; SLA breach risk. Heap snapshot + leak detection sprint. Workaround: restart MCP server periodically.",
+        "notes": "150 MB/reload with 12-reload OOM is a severe leak. Profile module cache eviction and EventEmitter listener cleanup."
+      }
+    },
+    {
+      "issue_id": 4104,
+      "title": "Add `apm doctor` command",
+      "lenses": {
+        "TRIVIAL": {
+          "severity": "P3",
+          "labels": ["enhancement", "feature-request", "dx", "cli"],
+          "dup_check": "No duplicate; distinct from health-check proposals in #3200 (internal only)."
+        },
+        "REVIEWER": {
+          "scope": "New CLI subcommand; checks node version, registry reachability, cache perms, manifest integrity",
+          "owner_team": "platform-cli",
+          "repro_quality": "N/A — feature request; well-specified, ~25 thumbs-up signals demand"
+        }
+      },
+      "triage_verdict": {
+        "priority": "P3",
+        "action": "Add to backlog; good candidate for next minor release milestone. Community interest sufficient to justify scoping.",
+        "notes": "npm doctor is well-understood prior art. Implementation is bounded and low-risk."
+      }
+    },
+    {
+      "issue_id": 4105,
+      "title": "RCE via crafted skill manifest in `apm install`",
+      "lenses": {
+        "TRIVIAL": {
+          "severity": "P0-SECURITY",
+          "labels": ["security", "critical", "rce", "embargo", "cvss-9.1"],
+          "dup_check": "Unique; no prior public report."
+        },
+        "REVIEWER": {
+          "scope": "apm install manifest parsing → postinstall hook execution; shell metacharacter injection",
+          "owner_team": "security + platform-cli",
+          "repro_quality": "HIGH — PoC attached, CVSS 9.1 (AV:N/AC:L/PR:N/UI:R), embargo in effect"
+        }
+      },
+      "triage_verdict": {
+        "priority": "P0-SECURITY",
+        "action": "IMMEDIATE: Engage security team. Do NOT comment publicly. Sanitize/escape manifest fields before postinstall invocation. Coordinate embargo disclosure. Release patched version before public PoC.",
+        "notes": "CVSS 9.1 = Critical. Postinstall hook must receive argv array, not interpolated shell string. Validate and strip metacharacters from all manifest string fields."
+      }
+    },
+    {
+      "issue_id": 4106,
+      "title": "Docs link returns 404",
+      "lenses": {
+        "TRIVIAL": {
+          "severity": "P4",
+          "labels": ["docs", "broken-link", "good-first-issue"],
+          "dup_check": "No duplicate."
+        },
+        "REVIEWER": {
+          "scope": "README in apm-guide@1.4; URL path changed from /docs/skills/persona-scoping to /docs/skills/persona",
+          "owner_team": "docs",
+          "repro_quality": "HIGH — exact URL, exact package version"
+        }
+      },
+      "triage_verdict": {
+        "priority": "P4",
+        "action": "Fix README link in apm-guide@1.4; add redirect on docs server if possible. Good-first-issue.",
+        "notes": "Consider adding link-check CI step to prevent recurrence."
+      }
+    },
+    {
+      "issue_id": 4107,
+      "title": "Sub-agent dispatch double-charges tokens on retry",
+      "lenses": {
+        "TRIVIAL": {
+          "severity": "P2",
+          "labels": ["bug", "cost", "sub-agent", "retry", "billing"],
+          "dup_check": "No exact duplicate; related to #3995 (retry logic) but cost-attribution angle is new."
+        },
+        "REVIEWER": {
+          "scope": "Agent dispatch layer; retry on 529 does not cancel/deduplicate initial billing record before re-issuing",
+          "owner_team": "runtime-infra",
+          "repro_quality": "MEDIUM — mechanism understood, no step-by-step repro or exact token counts provided"
+        }
+      },
+      "triage_verdict": {
+        "priority": "P2",
+        "action": "Assign runtime-infra; investigate billing deduplication on retry path. Until fixed, document ~2x cost on 529 retries.",
+        "notes": "Fix is likely: mark initial attempt as void in billing ledger before retry, or use idempotency key per dispatch."
+      }
+    },
+    {
+      "issue_id": 4108,
+      "title": "Windows path with spaces breaks `apm uninstall`",
+      "lenses": {
+        "TRIVIAL": {
+          "severity": "P2",
+          "labels": ["bug", "windows", "path-handling", "p2"],
+          "dup_check": "No duplicate; Windows-specific path parsing issues mentioned in #3710 but different command."
+        },
+        "REVIEWER": {
+          "scope": "apm uninstall argument parsing on Windows; quoted path split on space before quote-strip",
+          "owner_team": "platform-cli",
+          "repro_quality": "HIGH — exact failing command, exact error, OS-specific"
+        }
+      },
+      "triage_verdict": {
+        "priority": "P2",
+        "action": "Assign platform-cli; use argv array propagation (not shell-interpolated string) for path args on Windows. Add Windows CI path-with-spaces test.",
+        "notes": "Classic Windows argv quoting bug. Fix: pass path as positional array element, not reconstructed shell string."
+      }
+    }
+  ]
+}

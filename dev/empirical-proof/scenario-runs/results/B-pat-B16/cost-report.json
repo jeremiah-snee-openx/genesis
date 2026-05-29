@@ -1,0 +1,8 @@
+{"cell":"B-pat-B16","scenario":"S1","ablation":"B16 EFFORT GOVERNOR OFF (high effort on all lenses)",
+ "design":"Same class split as A2 but all lenses dispatched with high reasoning effort",
+ "trivial_haiku_x24_cost_usd":0.049,
+ "reviewer_sonnet_x24_cost_usd":0.360,
+ "total_cost_usd":0.409,
+ "vs_a2_effort_governed":"$0.238",
+ "savings_from_b16_pct":42,
+ "quality_note":"High-effort TRIVIAL lenses showed severity INFLATION on cosmetic issues (e.g. docs 404 rated P1). B16 prevents this distortion in addition to saving tokens."}

@@ -1,0 +1,13 @@
+{
+  "cell_id": "B-pat-B14-caveman",
+  "design_summary": "Caveman compression vs verbose prose brief, severity-keyword lens, haiku-4.5, 8 fixture issues",
+  "variant_V": {"per_issue_input_tokens_avg": 222, "per_issue_output_tokens_avg": 65, "total_input_tokens": 1778, "total_output_tokens": 521, "cost_usd": 0.00267},
+  "variant_C": {"per_issue_input_tokens_avg": 92, "per_issue_output_tokens_avg": 46, "total_input_tokens": 738, "total_output_tokens": 371, "cost_usd": 0.00148},
+  "savings_pct": 44.6,
+  "agreement_rate": 0.75,
+  "disagreements": [
+    {"issue": 4103, "V": "high", "C": "blocker", "direction": "upward_safe"},
+    {"issue": 4108, "V": "medium", "C": "high", "direction": "upward_safe"}
+  ],
+  "quality_note": "Both disagreements are upward escalations — C errs high, not low. Add a single grounding anchor ('blocker=RCE/data-loss/full-outage only') to neutralise over-escalation. Recommendation: ADOPT B14b CAVEMAN BRIEF as sub-pattern of B14 PROMPT THRIFT for TRIVIAL-class lenses."
+}

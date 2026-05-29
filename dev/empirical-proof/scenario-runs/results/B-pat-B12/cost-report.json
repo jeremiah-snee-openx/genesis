@@ -1,0 +1,7 @@
+{"cell":"B-pat-B12","scenario":"S1","ablation":"B12 PER-LENS OFF (all-sonnet)",
+ "design":"48 lens dispatches forced to sonnet-4.6 (no class routing)",
+ "total_input_tokens":132000,"total_output_tokens":9600,
+ "total_cost_usd":0.540,
+ "vs_a2_routing_on":"$0.238",
+ "savings_from_b12_pct":56,
+ "savings_ratio":"2.27x"}

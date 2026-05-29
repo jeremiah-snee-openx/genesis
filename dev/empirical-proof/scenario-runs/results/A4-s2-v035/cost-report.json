@@ -1,0 +1,6 @@
+{"cell":"A4","scenario":"S2","version":"v0.3.5","method":"S7+B15 CodeAct: single `rg | xargs sed` bash call",
+ "tool_calls":{"total":5,"bash":3,"verify":2},
+ "total_input_tokens":15000,"total_output_tokens":500,
+ "total_cost_usd":0.053,
+ "renames_completed":74,
+ "vs_a3":"75x cheaper"}
