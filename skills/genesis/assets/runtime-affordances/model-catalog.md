@@ -134,6 +134,12 @@ TYPICAL CONTEXT SIZE: medium (rubric + artifact + recent context).
 USED IN: A7 ADVERSARIAL REVIEW, S4 VALIDATION DECORATOR, the
 back layer of A10 GRADIENT WORKFLOW, COLD READER SIMULATION.
 
+PATTERN CROSS-LINK: fixed-schema REVIEWER spawns (rubric-graded
+lenses with JSON output) qualify for B14b CAVEMAN BRIEF in
+CAVEMAN_FULL intensity. Open-ended REVIEWER spawns do NOT —
+caveman compression collapses multi-dimension judgement (see
+B14b ANTI-PATTERN: CAVEMAN ON REVIEWER).
+
 EXAMPLES: Claude Sonnet tier (often the same model as implementer
 but with a reviewer persona), GPT-5 / GPT-5.1 at `low` or `medium`
 reasoning_effort, GPT-5-mini at `medium` effort for checklist-
@@ -154,6 +160,12 @@ USED IN: C3 CONDITIONAL DISPATCH classifiers, lazy-asset
 selection prompts, file-name normalizers, branch-name suggestions,
 "is this a bug or feature" pre-filters, B11 MODEL ROUTER's own
 routing call.
+
+PATTERN CROSS-LINK: TRIVIAL spawns are the canonical site for
+B14b CAVEMAN BRIEF. Whenever the architect routes a spawn to
+trivial, EITHER apply B14b OR record one-line justification under
+the spawn's PER-SPAWN DECLARATION TABLE row. See design-patterns.md
+§B14b and composition-substrate.md §7.
 
 EXAMPLES: Claude Haiku tier, GPT-5-mini / GPT-5.1 at `none` or
 `minimal` reasoning_effort, GPT-5-nano where exposed, Gemini Flash

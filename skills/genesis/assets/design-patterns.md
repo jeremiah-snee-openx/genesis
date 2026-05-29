@@ -1048,40 +1048,164 @@ ANTI-PATTERNS:
   have been R1 SPLIT. The body shrinks but its single
   responsibility is still violated; the thrift just hides it.
 
-### B14b. CAVEMAN BRIEF (sub-pattern)
+### B14b. CAVEMAN BRIEF (sub-pattern of B14)
+
+CLASSICAL ANALOG: telegraphic register; signal-flag protocols;
+controlled natural language (per arXiv 2604.00025: brevity
+constraints can improve task fidelity by ~26pp on inverse-scaling
+tasks).
 
 WHEN: a TRIVIAL-class lens dispatch (see model-catalog.md) whose
-output is a fixed schema -- typically `{verdict, rationale}` or
-`{category, evidence}`. Severity classifiers, label-set pickers,
-dup-check oracles all fit.
+output is a fixed schema -- typically {verdict, rationale} or
+{category, evidence}. Severity classifiers, label-set pickers,
+dup-check oracles, missing-info gates, style-only diff scans all
+fit. Use also for any FIXED-SCHEMA REVIEWER lens whose work is
+classification-shaped (judgement compressed into the schema, not
+into the prose).
 
-MECHANISM: strip the brief to imperatives plus the output schema.
-~80 input tokens instead of ~250-400. Anchor with ONE grounding
-line for the most extreme bucket ("blocker = RCE / data-loss /
-full-outage only") to neutralize over-escalation drift.
+MECHANISM (canonical drop list + preservation contract):
 
-```
-READ ISSUE. ASSESS SEVERITY: blocker|high|medium|low.
-ANCHOR: blocker = RCE / data-loss / full-outage only.
-OUTPUT JSON: {sev, why}. NO PROSE.
-```
+DROP from briefs and receipts:
+- articles: a, an, the
+- filler: just, really, basically, actually, simply, essentially,
+  generally
+- pleasantries: sure, certainly, of course, happy to, I'd recommend
+- hedging: likely, possibly, it might be worth, you could consider,
+  it would be good to
+- connective fluff: however, furthermore, additionally, in addition
+  (when nonessential)
+- redundant phrases: "in order to" -> "to"; "make sure to" -> "ensure";
+  "the reason is because" -> "because"
 
-MEASURED EFFECT (severity-keyword lens, haiku-4.5, 8-issue
-fixture, 16 dispatches): 44.6% input-token saving, 75% verdict
-agreement with verbose brief, ZERO downward errors (both
-disagreements were upward escalations safer than the verbose
-verdict). Source: dev/empirical-proof/scenario-runs/results/
-B-pat-B14-caveman/cost-report.json.
+PREFER:
+- short synonyms: "big" over "extensive", "fix" over "implement a
+  solution for", "use" over "utilize"
+- fragments over full sentences
+- arrows for causality (X -> Y)
+- equations for state (inline_obj_prop = new_ref = re-render)
+- pattern: [thing] [action] [reason]. [next step].
 
-GATE: TRIVIAL class only. REVIEWER or higher needs the prose
-context; the caveman variant degrades on lenses that require
-chained reasoning across multiple input dimensions.
+PRESERVE EXACT (caveman MUST NOT rewrite):
+- fenced code blocks (byte-identical)
+- inline code (backtick contents)
+- file paths, URLs, command lines
+- API names, library names, protocol names, algorithm names
+- error strings (quote verbatim)
+- numbers, version numbers, dates, env vars (NODE_ENV, $HOME, ...)
+- proper nouns (project / person / company)
+- markdown structure: headings (count + order), bullet count,
+  numbering, tables, frontmatter
+- JSON / YAML / SQL / shell content (skip — caveman is for prose
+  only)
 
-ANTI-PATTERN: CAVEMAN ON REVIEWER -- compressing a brief whose
-lens must weigh trade-offs across multiple dimensions. The output
-schema may still be a tag, but the reasoning behind it is not
-classification; it is judgement. Caveman compression collapses
-that judgement into the model's prior.
+INTENSITY LEVELS (map to artifact tier):
+- LITE: drop filler/hedging/pleasantries; keep articles + grammar.
+  Use for SHORT_PROSE briefs to REVIEWER-tier sub-agents.
+- FULL: drop articles too; fragments OK; short synonyms.
+  Use for TRIVIAL-tier classifiers with single-anchor schemas.
+- ULTRA: arrows + equations + symbol-heavy; max compression.
+  Use for receipt schemas (already JSON; no further prose).
+
+ROLE-MODE PERSISTENCE: the brief MUST instruct the sub-agent to
+"RESPOND CAVEMAN until done" so receipts come back compressed.
+Without role-mode persistence, brief savings are erased by verbose
+returns.
+
+ANCHOR (mandatory): one grounding line for the highest-risk bucket
+to neutralize over-escalation drift. Example:
+"ANCHOR: blocker = RCE / data-loss / full-outage only."
+
+AUTO-CLARITY EXCEPTIONS (drop caveman, return to normal):
+- security warnings (do not telegraph "rm -rf safe")
+- irreversible operations (deletions, force-pushes, prod migrations)
+- ambiguous multi-step where omitted words risk misread
+- user-confusion risk (the receiver is human, not subagent)
+Resume caveman after the clarified part.
+
+OUTPUT MODE CONTRACT: every brief ends with the schema-only
+instruction: "OUTPUT JSON ONLY: {schema}. NO PROSE OUTSIDE JSON."
+For non-classifier lenses where prose IS the output, replace with:
+"RESPOND CAVEMAN-FRAGMENT. ONE FINDING PER LINE."
+
+MEASURED EFFECT (severity-keyword lens, haiku-4.5, 8-issue fixture,
+16 dispatches): 44.6% input-token saving, 75% verdict agreement
+with verbose brief, ZERO downward errors (both disagreements were
+upward escalations safer than the verbose verdict). Source:
+dev/empirical-proof/scenario-runs/results/B-pat-B14-caveman/
+cost-report.json.
+
+GATE: TRIVIAL or fixed-schema REVIEWER only. Open-ended REVIEWER+
+needs the prose context; caveman compression collapses
+multi-dimension judgement into the model's prior.
+
+SEE ALSO: B14c CAVEMAN CHANNEL for the orchestrator-side enforcement
+on internal traffic; composition-substrate.md §7 AUDIENCE BOUNDARY
+for the substrate concept; pattern-tradeoffs.md §11 for the
+audience matrix.
+
+ANTI-PATTERNS:
+- CAVEMAN ON REVIEWER (preserved from v0.3.6) — compressing a brief
+  whose lens must weigh trade-offs across multiple dimensions. The
+  output schema may still be a tag, but the reasoning behind it is
+  not classification; it is judgement. Caveman compression collapses
+  that judgement into the model's prior.
+- CAVEMAN ON EXTERNAL (new) — applying caveman to a user-facing
+  artifact (PR description, README, advisory). Compromises
+  readability; user is not a subagent.
+- ROGUE PROSE IN BRIEF (new) — architect copies HUMAN_RATIONALE
+  block into the spawn brief. The subagent ingests 5-15K tokens of
+  decision rationale that does not change its work. Defeats B14b
+  entirely. Cure: SPAWN_BRIEF block must be self-contained.
+- VERBOSE RECEIPT (new) — brief is caveman but no role-mode
+  instruction; subagent returns prose. Cure: every brief ends with
+  "RESPOND CAVEMAN" + schema directive.
+
+### B14c. CAVEMAN CHANNEL (sub-pattern of B14)
+
+CLASSICAL ANALOG: protocol layering — different wire format on
+internal hops vs external presentation; cf. backend-for-frontend.
+
+WHEN: a workflow spawns ≥1 task() and emits ≥1 user-facing artifact.
+B14c orchestrates the AUDIENCE BOUNDARY (composition-substrate §7)
+across the workflow: every internal hop uses caveman; the
+synthesizer decompresses to normal prose at the user-facing edge.
+
+MECHANISM:
+1. Architect splits every handoff into HUMAN_RATIONALE (kept in
+   handoff.md, never copied) + SPAWN_BRIEF (caveman, copied to
+   task() prompt).
+2. Every SPAWN_BRIEF declares a matching RECEIPT_SCHEMA.
+3. Subagents receive role-mode-caveman briefs; return caveman
+   receipts.
+4. Synthesizer (REVIEWER+ tier) ingests receipts, decompresses to
+   normal prose for the EXTERNAL artifact.
+
+DECLARATION (architect-side): every spawn in the handoff packet's
+PER-SPAWN DECLARATION TABLE names {Audience, Tier, Brief mode,
+Receipt mode, Justification}. Audience=INTERNAL with Brief
+mode=NORMAL fails review unless the Justification cites a canonical
+auto-clarity exception (security/destructive/irreversible/
+ambiguous).
+
+GATE: PANEL (A1) and PIPELINE (A3) workflows with ≥3 spawns benefit
+most. Single-spawn workflows still apply B14b on the lone brief but
+do not gain channel-level synthesis amortization.
+
+MEASURED EFFECT: projected on S1-shape (9 spawns, multi-lens
+panel): ~43K input + ~14K output tokens saved per run; ~$0.34
+uncached. See dev/empirical-proof/REAL-TELEMETRY-RESULTS.md "Flaw
+3" and v0.3.7 design plan §3.
+
+ANTI-PATTERNS:
+- AUDIENCE BLEED (cross-link to composition-substrate §7).
+- ROGUE PROSE IN BRIEF (cross-link to B14b).
+- DECOMPRESSION SKIPPED — synthesizer emits caveman to user. Cure:
+  synthesizer's external-artifact contract names "NORMAL prose,
+  full grammar".
+- CAVEMAN-WITHOUT-SCHEMA — subagent told to respond caveman but
+  given no output schema. Returns terse-but-unstructured findings
+  the synthesizer cannot parse. Cure: every brief pairs with a
+  RECEIPT_SCHEMA.
 
 ---
 

@@ -307,6 +307,38 @@ Selection rule (read top-down; first match wins):
    pattern matching the shape's PREDICTED dominant bucket (use
    the qualitative bands in `assets/token-economics.md`).
 
+| Verbose internal channel on multi-spawn workflow  | Spawn-brief variable suffix + receipt | Architect rationale leak | B14b + B14c CAVEMAN CHANNEL |
+
 Cite this matrix in the handoff packet's COST PROJECTION section.
 A cost projection that names no matrix row is anti-pattern
 COST-OPTIMIZED-BY-VIBES.
+
+---
+
+## 11. Audience matrix (composition-substrate §7 — drives caveman use)
+
+Cuts the choice between compress / preserve at every artifact emit.
+
+| Artifact                                   | Audience  | Default mode    | Justified override                |
+|--------------------------------------------|-----------|-----------------|------------------------------------|
+| Spawn brief to TRIVIAL classifier          | INTERNAL  | CAVEMAN_ULTRA   | rare: ambiguous multi-step        |
+| Spawn brief to fixed-schema REVIEWER       | INTERNAL  | CAVEMAN_FULL    | rare: judgement-without-schema    |
+| Spawn brief to open-ended REVIEWER+        | INTERNAL  | CAVEMAN_LITE    | judgement-without-schema common   |
+| Spawn brief to PLANNER/RESEARCHER          | INTERNAL  | NORMAL          | hard to justify caveman here      |
+| Receipt from TRIVIAL classifier            | INTERNAL  | JSON_RECEIPT    | none                               |
+| Receipt from fixed-schema REVIEWER         | INTERNAL  | JSON_RECEIPT    | none                               |
+| Receipt from open-ended REVIEWER           | INTERNAL  | CAVEMAN_FRAGMENT | judgement may need short prose   |
+| Cross-lens panel arbitration (synth-side)  | INTERNAL  | CAVEMAN_FRAGMENT | none                               |
+| User-facing PR description                 | EXTERNAL  | NORMAL          | none — never compress              |
+| User-facing advisory / report              | EXTERNAL  | NORMAL          | none                               |
+| Generated README / docs                    | EXTERNAL  | NORMAL          | none                               |
+| Commit message                             | EXTERNAL  | NORMAL          | none                               |
+| Code comments in emitted code              | EXTERNAL  | NORMAL          | none                               |
+| Plan / handoff HUMAN_RATIONALE             | EXTERNAL* | NORMAL          | *consumed by next architect/human  |
+
+Selection rule: pick the row matching the artifact; apply default
+mode unless override fires. Cite this matrix in the handoff
+packet's PER-SPAWN DECLARATION TABLE Justification column.
+
+A justification of "smaller tokens" is NOT sufficient for an
+EXTERNAL row override. The user is not a subagent.
