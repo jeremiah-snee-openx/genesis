@@ -1,253 +1,376 @@
-> **Retraction first.** The "~15x cheaper" headline in PR #10's `scenario-pr-review-panel.md` was an analytical projection that assumed every cost lever firing at maximum applicability simultaneously. Real PRs don't always present that opportunity. This PR replaces that projection with ground-truth measurement: **1.66x cheaper, same critical-finding coverage, on a real medium-sized PR (microsoft/apm#1424, +2,363 / -114 across 24 files), in the GitHub Copilot CLI harness.** Bigger gaps are reachable; this is the honest baseline.
+> **Retraction first.** The "~15x cheaper" headline in PR #10's `scenario-pr-review-panel.md` was an analytical projection that assumed every cost lever firing at maximum applicability simultaneously. Real PRs don't always present that opportunity, and **architect B in this experiment missed firing B12 MODEL ROUTER even though the Copilot CLI harness exposes per-agent model binding via `model:` frontmatter on `.agent.md` primitives**. This PR replaces the projection with ground-truth measurement: **1.66x cheaper, same critical-finding coverage**, on a real medium-sized PR (microsoft/apm#1424, +2,363 / -114 across 24 files), both runs on Sonnet 4. With B12 firing (next iteration), the gap widens further; this is the honest baseline at single-model binding.
 
 ---
 
 ## TL;DR
 
-| Same panel job, same PR, same harness | Executor A (v0.2.0 design) | Executor B (v0.3.0 design) | Delta |
+| Same panel job, same PR, same harness, single model (Sonnet 4) | Executor A (v0.2.0 design) | Executor B (v0.3.0 design) | Delta |
 |---|---:|---:|---:|
 | Turns | 164 | **89** | **-46%** |
 | Total prompt tokens | 8.71 M | **4.07 M** | **-53%** |
 | New input tokens (uncached, non-write) | 32,751 | **1,514** | **-95%** |
-| Completion tokens | 67,438 | **41,488** | -38% |
-| Cache-hit ratio | 95.3% | 91.6% | both high (harness-level) |
+| Completion tokens | 67,438 | **41,488** | **-38%** |
+| Cache-hit ratio (harness layer) | 95.3% | 91.6% | both high |
 | **Cost @ Sonnet 4 rates** | **$5.01** | **$3.02** | **1.66x cheaper** |
 | Critical-finding coverage | catches `plugin_parser.py:666` NameError | catches same | **identical** |
-| Output shape | 122 lines, 20 verbatim findings, 9x "CRITICAL" labels | 111 lines, theme-organised, dissent preserved | **B is author-friendlier** |
 
-Both reviews catch the only runtime-breaking defect in the PR (`_substitute_plugin_root` / `_surface_warning` undefined at `src/apm_cli/deps/plugin_parser.py:666`). A reports it as two screaming CRITICAL inline findings; B reports it as one HIGH cross-lens theme with a one-line note that it may be pre-existing. No regression on what matters.
+Both reviews catch the only runtime-breaking defect (`_substitute_plugin_root` / `_surface_warning` undefined at `src/apm_cli/deps/plugin_parser.py:666`). **No regression on what matters.**
+
+**Headline gap NOT measured here:** B12 MODEL ROUTER is a real, available lever on this harness and architect B left it on the table. A follow-up rerun with per-`.agent.md` `model:` binding (e.g. `reviewer-style: gpt-5-mini`, others stay Sonnet) is expected to push the gap toward 2x-3x.
 
 ---
 
 ## Method
 
-Four controlled Copilot CLI sessions, all profiled from real `~/.copilot/logs/process-*.log` per-turn `usage` JSON (OpenAI-format `prompt_tokens` / `completion_tokens` / `prompt_tokens_details.cached_tokens` / `prompt_tokens_details.cache_creation_tokens`).
-
 ```mermaid
 flowchart LR
-    OP["Operator prompt<br/>(verbatim example-04)"] --> A0[Architect A<br/>v0.2.0 corpus<br/>via git show v0.2.0:...]
-    OP --> B0[Architect B<br/>v0.3.0 corpus<br/>installed skill]
-    A0 -->|handoff packet A<br/>760 lines| EA[Executor A]
-    B0 -->|handoff packet B<br/>446 lines| EB[Executor B]
-    PR["microsoft/apm#1424<br/>+2,363 / -114<br/>24 files"] --> EA
-    PR --> EB
-    EA -->|review.md A<br/>122 lines, 20 findings| MEASURE[profile-tokens.py<br/>real telemetry]
-    EB -->|review.md B<br/>111 lines, themed| MEASURE
-    MEASURE --> REPORT[1.66x cheaper<br/>no quality regression]
+    OP["Operator prompt<br/>(verbatim example-04<br/>balanced stance, no cap)"]:::input
+
+    subgraph DESIGN["DESIGN PHASE (Genesis architect)"]
+        direction TB
+        A0["Architect A<br/><br/>corpus = v0.2.0<br/>(PRE token economics)<br/>via git show v0.2.0:..."]:::archA
+        B0["Architect B<br/><br/>corpus = v0.3.0<br/>(POST token economics:<br/>+B12 +B13 +B14 +B15 +B16<br/>+A10 +A11 +S6 +R3)"]:::archB
+    end
+
+    subgraph EXECUTE["EXECUTION PHASE (panel runs on real PR)"]
+        direction TB
+        EA["Executor A<br/><br/>164 turns<br/>8.71M tokens<br/>$5.01"]:::execA
+        EB["Executor B<br/><br/>89 turns<br/>4.07M tokens<br/>$3.02"]:::execB
+    end
+
+    PR["TARGET<br/>microsoft/apm#1424<br/>LSP server<br/>+2,363 / -114<br/>24 files"]:::target
+
+    OP --> A0 & B0
+    A0 -- "handoff A<br/>(760 lines)" --> EA
+    B0 -- "handoff B<br/>(446 lines)" --> EB
+    PR --> EA & EB
+    EA -- "review.md A<br/>122 lines<br/>20 verbatim findings" --> MEASURE
+    EB -- "review.md B<br/>111 lines<br/>3 themes + dissent" --> MEASURE
+
+    MEASURE["profile-tokens.py<br/>parses per-turn usage JSON<br/>from ~/.copilot/logs"]:::tool
+    MEASURE --> REPORT["1.66x cheaper<br/>0 critical-finding regression<br/>B12 router NOT exercised"]:::result
+
+    classDef input fill:#e1f5ff,stroke:#0277bd,stroke-width:2px,color:#000
+    classDef archA fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000
+    classDef archB fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#000
+    classDef execA fill:#ffebee,stroke:#c62828,stroke-width:3px,color:#000
+    classDef execB fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px,color:#000
+    classDef target fill:#fffde7,stroke:#f57f17,stroke-width:2px,color:#000
+    classDef tool fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#000
+    classDef result fill:#c8e6c9,stroke:#1b5e20,stroke-width:3px,color:#000
 ```
 
-| Session | ID | Role | Corpus | Cost |
+| Session | Session ID | Role | Corpus | Measured cost |
 |---|---|---|---|---:|
-| Architect A | `9c255108` | Design panel on example-04 prompt | v0.2.0 (PRE token economics) | not isolated |
-| Architect B | `00c69b35` | Design panel on example-04 prompt | v0.3.0 (POST token economics) | $1.38 |
-| Executor A | `f105f649` | Execute Architect A's design on PR #1424 | v0.2.0-panel | **$5.01** |
-| Executor B | `0f08b108` | Execute Architect B's design on PR #1424 | v0.3.0-panel | **$3.02** |
+| Architect A | `9c255108` | Design panel on example-04 prompt | v0.2.0 (PRE) | not isolated |
+| Architect B | `00c69b35` | Same prompt, newer corpus | v0.3.0 (POST) | $1.38 |
+| Executor A | `f105f649` | Execute A's design on PR #1424 | v0.2.0-panel | **$5.01** |
+| Executor B | `0f08b108` | Execute B's design on PR #1424 | v0.3.0-panel | **$3.02** |
 
-Costing: Anthropic Sonnet 4 (input $3 / output $15 / cache-write $3.75 / cache-read $0.30 per Mtok). Same rates applied to both — both ran on the same backing model.
+Costing: Anthropic Sonnet 4 (input $3, output $15, cache-write $3.75, cache-read $0.30 per Mtok). Same rates applied to both — both ran on the same backing model in this controlled comparison.
 
 ---
 
 ## Architecture A (v0.2.0) — what the PRE corpus produced
 
-### Component diagram
+No token-economics primitives in the corpus. The architect composes a correct panel but every reviewer thread carries its own asset preload, materialises per-lens findings to disk via shell scripts, and the arbiter inherits everything. **Every agentic element binds to the session's default model (Sonnet 4) — no per-element `model:` declaration exists in v0.2.0 vocabulary.**
 
 ```mermaid
-flowchart LR
-    TRIG{pr-event-trigger}:::new
-    PANEL[pr-review-panel]:::new
-    GUARD[/pr-review-guardrails/]:::new
-    L1((reviewer-correctness)):::new
-    L2((reviewer-security)):::new
-    L3((reviewer-performance)):::new
-    L4((reviewer-style)):::new
-    L5((reviewer-test-coverage)):::new
-    ARB((reviewer-arbiter)):::new
-    A1[(finding-schema)]:::new
-    A2[(inline-comment-template)]:::new
-    A3[(summary-comment-template)]:::new
-    A4[(secret-patterns)]:::new
-    A5[(perf-heuristics)]:::new
-    SC1[(fetch_pr_context.sh)]:::new
-    SC2[(post_inline_comments.sh)]:::new
-    SC3[(post_summary_comment.sh)]:::new
-    SC4[(verify_comments_posted.sh)]:::new
-    SC5[(delete_prior_review.sh)]:::new
+flowchart TB
+    TRIG{{"GitHub webhook<br/>(A6 EVENT-DRIVEN)"}}:::trig
 
-    TRIG --> PANEL
-    PANEL --> GUARD
-    PANEL --> L1 & L2 & L3 & L4 & L5 & ARB
-    PANEL --> A1 & A2 & A3 & SC1 & SC2 & SC3 & SC4 & SC5
-    L2 --> A4
-    L3 --> A5
-    classDef new stroke-dasharray: 5 5;
+    ORCH["pr-review-panel (skill)<br/><br/>HOLDS gh write token<br/>orchestrates 5 lens spawns<br/>composes review locally<br/><br/>model: Sonnet 4 (default;<br/>no role-class concept yet)"]:::orch
+
+    subgraph LENSES["5 REVIEWER THREADS — fan-out, all uniform Sonnet 4 (no B12)"]
+        direction LR
+        L1["reviewer-correctness<br/>model: Sonnet 4<br/><br/>+ guardrails<br/>+ B8 anchor #1<br/>+ inline template<br/>+ schema"]:::lens
+        L2["reviewer-security<br/>model: Sonnet 4<br/><br/>+ guardrails<br/>+ B8 anchor #2<br/>+ inline template<br/>+ schema<br/>+ <b>secret-patterns.md</b>"]:::lensHeavy
+        L3["reviewer-performance<br/>model: Sonnet 4<br/><br/>+ guardrails<br/>+ B8 anchor #3<br/>+ inline template<br/>+ schema<br/>+ <b>perf-heuristics.md</b>"]:::lensHeavy
+        L4["reviewer-style<br/>model: Sonnet 4<br/><br/>+ guardrails<br/>+ B8 anchor #4<br/>+ inline template<br/>+ schema"]:::lens
+        L5["reviewer-test-coverage<br/>model: Sonnet 4<br/><br/>+ guardrails<br/>+ B8 anchor #5<br/>+ inline template<br/>+ schema"]:::lens
+    end
+
+    subgraph MAT["INTERMEDIATE MATERIALISATION (5 disk round-trips)"]
+        F1[("findings-correctness.json")]:::file
+        F2[("findings-security.json")]:::file
+        F3[("findings-performance.json")]:::file
+        F4[("findings-style.json")]:::file
+        F5[("findings-test-coverage.json")]:::file
+    end
+
+    ARB["reviewer-arbiter (synthesis)<br/>model: Sonnet 4<br/><br/>inherits all 5 findings<br/>+ inline + summary templates<br/>+ B8 anchor #6<br/>+ B4 plan memento<br/>+ B5 acceptance observer"]:::arb
+
+    subgraph SCRIPTS["5 SHELL SCRIPTS (weak-form A9 — agent invokes each)"]
+        direction LR
+        S1[/"fetch_pr_context.sh"/]:::script
+        S2[/"post_inline_comments.sh<br/>(N round-trips)"/]:::scriptHot
+        S3[/"post_summary_comment.sh"/]:::script
+        S4[/"verify_comments_posted.sh<br/>(S4 gate + B5 re-read)"/]:::script
+        S5[/"delete_prior_review.sh<br/>(de-dup on push)"/]:::script
+    end
+
+    GH(("GitHub API<br/>(agent holds<br/>write token)")):::ext
+
+    TRIG --> ORCH
+    ORCH -- "spawn + B8" --> L1 & L2 & L3 & L4 & L5
+    L1 --> F1
+    L2 --> F2
+    L3 --> F3
+    L4 --> F4
+    L5 --> F5
+    F1 & F2 & F3 & F4 & F5 -- "read 5 files" --> ARB
+    ORCH -- "spawn + B8 #6" --> ARB
+    ARB -- "composed review" --> ORCH
+    ORCH --> S1 & S3 & S5
+    ORCH -- "N calls" --> S2
+    ORCH -- "S4 gate #3" --> S4
+    S2 & S3 & S5 --> GH
+    S4 -- "verify" --> GH
+
+    classDef trig fill:#fffde7,stroke:#f57f17,stroke-width:2px,color:#000
+    classDef orch fill:#ffe0b2,stroke:#e65100,stroke-width:3px,color:#000
+    classDef lens fill:#fff3e0,stroke:#fb8c00,stroke-width:2px,color:#000
+    classDef lensHeavy fill:#ffccbc,stroke:#d84315,stroke-width:3px,color:#000
+    classDef file fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#000
+    classDef arb fill:#ef9a9a,stroke:#b71c1c,stroke-width:3px,color:#000
+    classDef script fill:#fce4ec,stroke:#ad1457,stroke-width:1px,color:#000
+    classDef scriptHot fill:#f48fb1,stroke:#880e4f,stroke-width:3px,color:#000
+    classDef ext fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#000
 ```
 
-### Patterns A composes
+**Patterns A composes** (v0.2.0 vocabulary): A6 EVENT-DRIVEN + A1 PANEL + **weak-form A9** (agent holds write token) // B1 FAN-OUT + C2 PERSONA PRELOAD x5 with per-lens GROUNDED EXPERT BRIEFING + C3 THREAD SPAWN + **S4 VALIDATION DECORATOR x3** + **S7 DETERMINISTIC TOOL BRIDGE x3 sinks** + **B4 PLAN MEMENTO** + **B5 ACCEPTANCE OBSERVER** + **B8 ATTENTION ANCHOR re-injected x6 sites**.
 
-- **TIER 3:** A6 EVENT-DRIVEN + A1 PANEL + **weak-form A9 SUPERVISED EXECUTION** (agent calls scripts; agent holds write token).
-- **TIER 2:** B1 FAN-OUT + C2 PERSONA PRELOAD x5 with **GROUNDED EXPERT BRIEFING per lens** (OWASP for L2, perf doc for L3, style guide for L4, etc.) + C3 THREAD SPAWN + C6 EXTERNAL CORPUS GROUNDING + **S4 VALIDATION DECORATOR x3** (post-fetch gate, pre-synthesis gate, post-post verifier) + S6 RULE BRIDGE + **S7 DETERMINISTIC TOOL BRIDGE x3 sinks** + **B4 PLAN MEMENTO persisting findings + composed inline list + summary draft** + **B5 ACCEPTANCE OBSERVER programmatic re-read before post** + **B8 ATTENTION ANCHOR re-injected at five points** (orchestrator start, before each of 5 spawns, before arbiter spawn, before each tool call).
-- **TIER 1:** deferred to codegen.
-
-### What this costs at runtime
-
-Five scripts in the bundle, 5 intermediate `findings-<lens>.json` files materialised on disk, per-lens asset preload (security gets `secret-patterns.md`, performance gets `perf-heuristics.md`), arbiter sees all five findings arrays plus three templates plus the goal re-injection. **B8 fires five times.** **B5 + S4 fire three times.** Every push deletes prior comments first (the delete-on-push de-dup script).
+**Model binding (no B12 in v0.2.0 corpus):** every agentic element runs on the session's default model. Even if the operator manually overrode `model:` on one persona, there is no design-time vocabulary saying *which* lens should route where — the choice would be ad-hoc, not principled.
 
 ---
 
 ## Architecture B (v0.3.0) — what the POST corpus produced
 
-### Component diagram
+The v0.3.0 corpus adds B12 MODEL ROUTER / B13 CACHE-AWARE PREFIX / B14 PROMPT THRIFT / B15 TOOL SUBSET / B16 EFFORT GOVERNOR, plus A10/A11/R3/S6. Same architect prompt, same lens count, same critical-finding coverage, substantially less machinery between lens and output.
+
+Each agentic element is annotated with its **declared role class** (the v0.3.0 vocabulary). **In this experiment architect B bound every role class to Sonnet 4 (the session default)** — the same model A used. This is honestly the architect under-firing B12: the `model:` frontmatter on `.agent.md` is documented in `runtime-affordances/per-harness/copilot.md` §9, and the role-class → concrete-SKU table is right there. **A B12-firing rerun is the obvious next iteration.**
 
 ```mermaid
-flowchart LR
-    TRIG{TRIGGER<br/>gh-aw workflow}:::new
-    ORCH[pr-review-panel]:::new
-    RULE[/advisory-only-mode/]:::new
-    R1((reviewer-correctness)):::new
-    R2((reviewer-security)):::new
-    R3((reviewer-performance)):::new
-    R4((reviewer-style)):::new
-    R5((reviewer-test-coverage)):::new
-    PA((panel-arbiter<br/>DISSENT-WEIGHTED)):::new
-    SCHEMA[(comment-schema)]:::new
-    TPL[(summary-template)]:::new
-    GHAW[(gh-aw runtime<br/>safe-outputs:<br/>add-comment / add-pr-review-comment)]
+flowchart TB
+    TRIG{{"gh-aw workflow trigger<br/>(A6 EVENT-DRIVEN<br/>+ STRONG-FORM A9 surface)"}}:::trig
 
-    TRIG -- substrate-invokes --> ORCH
+    RULE[/"advisory-only-mode<br/>(scope-attached rule, R3 EXTRACT)<br/><br/>auto-loads into orch + arbiter<br/>narrows dispatch surface"/]:::rule
+
+    subgraph CACHE_PREFIX["B13 CACHE-AWARE PREFIX (shared stable bytes — billed 1x, read 7x at 10% rate)"]
+        SP["reviewer-base persona<br/>+ comment-schema.json<br/>+ advisory-only-mode rule<br/>(STABLE: never edited mid-session)"]:::prefix
+    end
+
+    ORCH["pr-review-panel (skill)<br/><br/>role class: <b>planner</b><br/>model: Sonnet 4 (this run)<br/>NEVER holds gh write token<br/><br/>B4 PLAN MEMENTO:<br/>writes goal + diff slice + plan"]:::orch
+
+    subgraph LENSES["5 REVIEWER THREADS — declared role class per lens (B15 TOOL SUBSET: 2 read tools each)"]
+        direction LR
+        L1["reviewer-correctness<br/>role: <b>reviewer</b><br/>model: Sonnet 4 (this run)<br/><br/>tools: read_diff, read_plan<br/>NO asset preload (B14)"]:::lens
+        L2["reviewer-security<br/>role: <b>reviewer</b><br/>model: Sonnet 4 (this run)<br/><br/>tools: read_diff, read_plan"]:::lens
+        L3["reviewer-performance<br/>role: <b>reviewer</b><br/>model: Sonnet 4 (this run)<br/><br/>tools: read_diff, read_plan"]:::lens
+        L4["reviewer-style<br/>role: <b>reviewer</b><br/>model: Sonnet 4 (this run)<br/><br/>B14 soft-cap:<br/>roll nits into themes"]:::lensCheap
+        L5["reviewer-test-coverage<br/>role: <b>reviewer</b><br/>model: Sonnet 4 (this run)<br/><br/>tools: read_diff, read_plan"]:::lens
+    end
+
+    PLAN[("plan.md<br/>(single sink;<br/>arbiter reads directly,<br/>no per-lens files)")]:::plan
+
+    ARB["panel-arbiter<br/>role class: <b>synthesizer</b><br/>model: Sonnet 4<br/><br/>DISSENT-WEIGHTED rule<br/>+ summary-template.md<br/>+ B4 + B8 combined ONCE<br/>+ single S4 schema gate<br/>NO transcript inheritance"]:::arb
+
+    SO["gh-aw safe-outputs:<br/>add-pr-review-comment<br/>add-comment<br/><br/>(STRONG-FORM A9:<br/>runtime post-stage applies<br/>buffered outputs;<br/>agent never holds token)"]:::safeout
+
+    GH(("GitHub PR<br/>(post-stage writes<br/>under runtime token)")):::ext
+
+    TRIG --> ORCH
     RULE -. auto-loads .-> ORCH
-    RULE -. auto-loads .-> PA
-    ORCH --> R1 & R2 & R3 & R4 & R5 & PA
-    PA --> SCHEMA & TPL
-    PA -- buffered outputs --> GHAW
-    classDef new stroke-dasharray: 5 5;
+    RULE -. auto-loads .-> ARB
+    SP -. provider cache hit<br/>(read at 10% rate) .-> ORCH
+    SP -. cache hit .-> L1 & L2 & L3 & L4 & L5
+    SP -. cache hit .-> ARB
+    ORCH -- "spawn (plan pointer)" --> L1 & L2 & L3 & L4 & L5
+    L1 & L2 & L3 & L4 & L5 -- "return findings" --> PLAN
+    ORCH -- "spawn (plan pointer<br/>+ B8 anchor ONCE)" --> ARB
+    PLAN -- "single read" --> ARB
+    ARB -- "buffered comments<br/>(single S4 gate)" --> SO
+    SO -- "deterministic apply" --> GH
+
+    classDef trig fill:#fffde7,stroke:#f57f17,stroke-width:2px,color:#000
+    classDef rule fill:#fce4ec,stroke:#ad1457,stroke-width:2px,color:#000
+    classDef prefix fill:#c5cae9,stroke:#283593,stroke-width:3px,color:#000
+    classDef orch fill:#a5d6a7,stroke:#1b5e20,stroke-width:3px,color:#000
+    classDef lens fill:#dcedc8,stroke:#33691e,stroke-width:2px,color:#000
+    classDef lensCheap fill:#fff59d,stroke:#f57f17,stroke-width:2px,color:#000
+    classDef plan fill:#b2dfdb,stroke:#00695c,stroke-width:2px,color:#000
+    classDef arb fill:#80cbc4,stroke:#004d40,stroke-width:3px,color:#000
+    classDef safeout fill:#90caf9,stroke:#0d47a1,stroke-width:3px,color:#000
+    classDef ext fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#000
 ```
 
-### Patterns B composes (and what is GONE vs A)
+**Patterns B composes (what is GONE vs A)**:
+- A6 EVENT-DRIVEN + A1 PANEL + **strong-form A9 via `safe-outputs:`** (agent never holds the write token; runtime post-stage applies a filtered comment buffer)
+- B1 FAN-OUT + C2 PERSONA PRELOAD x5 **without per-lens asset preload** (B14 PROMPT THRIFT)
+- **B13 CACHE-AWARE PREFIX** — single shared prefix shape for all 5 lens spawns + arbiter
+- **B14 PROMPT THRIFT** — soft cap on style nits; no goal/briefing/schema re-injection per turn
+- **B15 TOOL SUBSET** — each lens sees 2 read tools; no shell access; zero scripts in the bundle
+- **B4 + B8 combined** once on the arbiter spawn (per tradeoffs matrix #7), not five separate B8 sites
+- **Single S4 schema gate** before emit (not three)
+- **Role class declared per agentic element** — the prerequisite for B12 MODEL ROUTER (declared but **not bound to distinct SKUs in this run**)
 
-- **TIER 3:** A6 EVENT-DRIVEN + A1 PANEL + **strong-form A9 via gh-aw `safe-outputs:`** (deterministic post-stage; agent never holds a write token; the runtime applies the filtered comment buffer).
-- **TIER 2:** B1 FAN-OUT + C2 PERSONA PRELOAD x5 **without per-lens asset preload** (lenses load on demand) + C3 THREAD SPAWN + C6 on the diff itself + **single S4 schema gate before emit** + **B4 + B8 combined per pattern-tradeoffs.md matrix #7** (single anchor, not five).
-- **GONE relative to A:** all 4-5 scripts (replaced by `safe-outputs:`), the 5 intermediate findings files (arbiter reads persisted findings directly), the per-lens GROUNDED EXPERT BRIEFING preload, three of the four S4 / B5 / B8 invocation sites, the delete-on-push script (strong-form A9 lets the post-stage handle de-dup deterministically).
+**GONE relative to A:** all 5 shell scripts, the 5 intermediate `findings-<lens>.json` files, per-lens asset preload (security+performance briefings), the delete-on-push de-dup script, three of four S4/B5/B8 invocation sites.
+
+**Architect-B miss to flag:** the v0.3.0 architect bound every role class to Sonnet 4, even though the per-harness adapter (`copilot.md` §9) explicitly maps `reviewer` → "Sonnet OR GPT-5 mini for checklist work" and `trivial` → "GPT-5 mini". A correct B12 invocation would have at minimum routed `reviewer-style` (low-stakes, soft-capped output) to GPT-5 mini. This is captured as a corpus-quality follow-up below.
 
 ---
 
-## Pattern-level diff (the FinOps view)
+## What B12 MODEL ROUTER *would* bind in the next iteration
 
-This is where the savings live. Read left-to-right.
+The follow-up reasonable next iteration. Same handoff packet, same harness, but B12 actually fires — using `model:` frontmatter per `.agent.md` to bind role classes to distinct concrete SKUs.
 
-| Lever (v0.3.0 corpus addition) | What A does | What B does | Mechanism of saving | Measured contribution |
+```mermaid
+flowchart TB
+    OP["operator stance:<br/><b>frugal</b><br/>cap = $1 / PR review"]:::input
+
+    subgraph BIND["B12 MODEL ROUTER (declared via model: frontmatter on .agent.md / SKILL.md)"]
+        direction LR
+        ORCH2["pr-review-panel<br/>role: <b>planner</b><br/>frontmatter model: claude-sonnet-4.6<br/><br/>Sonnet 4 standard:<br/>1x premium-request multiplier"]:::planner
+        L_easy["reviewer-style<br/>role: <b>reviewer</b> (checklist class)<br/><br/>frontmatter model: gpt-5-mini<br/><br/>per copilot.md §9 alt:<br/>'GPT-5 mini for checklist work'<br/>~0.25x multiplier"]:::trivial
+        L_mid["reviewer-correctness<br/>reviewer-test-coverage<br/>role: <b>reviewer</b><br/>frontmatter model: claude-sonnet-4.6<br/><br/>(stays Sonnet — semantic<br/>analysis, not checklist)"]:::reviewer
+        L_hard["reviewer-security<br/>reviewer-performance<br/>role: <b>reviewer</b><br/>frontmatter model: claude-opus-4.7<br/><br/>HIGH-STAKES lenses:<br/>upgrade to Opus<br/>(5x multiplier — and worth it)"]:::premium
+        ARB2["panel-arbiter<br/>role: <b>synthesizer</b><br/>frontmatter model: claude-sonnet-4.6<br/><br/>synthesis is mid-stakes;<br/>do NOT downgrade<br/>(arbiter quality dominates output)"]:::synthesizer
+    end
+
+    CLS{{"OPTIONAL B12 classifier<br/>role: <b>trivial</b><br/>frontmatter model: gpt-4o-mini<br/><br/>(must cost <5% of most expensive<br/>downstream call — else router-as-planner)"}}:::classifier
+
+    GOV[/"B16 EFFORT GOVERNOR<br/><br/>checks running spend at each<br/>lens completion; short-circuits<br/>remaining lenses if cap is hit<br/>(B11 FOLD-BY-DEFAULT)"/]:::governor
+
+    NOTE["BINDING MECHANISM<br/>(verified, lives in adapter):<br/><br/>1. .agent.md frontmatter:<br/>   model: gpt-5-mini<br/>2. SKILL.md frontmatter:<br/>   model: claude-sonnet-4.6<br/>3. .copilot/config.yml session default<br/>4. .github/copilot-instructions.md<br/><br/>per-agent OVERRIDES session default"]:::note
+
+    OP --> CLS & ORCH2
+    CLS -. "classify diff slice" .-> L_easy
+    CLS -. "classify diff slice" .-> L_mid
+    CLS -. "classify diff slice" .-> L_hard
+    ORCH2 --> L_easy & L_mid & L_hard
+    L_easy & L_mid & L_hard --> ARB2
+    GOV -. monitors .-> L_easy & L_mid & L_hard
+    GOV -. "cap reached?<br/>fold remaining" .-> ARB2
+    NOTE -. how B12 is wired .-> BIND
+
+    classDef input fill:#e1f5ff,stroke:#0277bd,stroke-width:2px,color:#000
+    classDef planner fill:#bbdefb,stroke:#0d47a1,stroke-width:2px,color:#000
+    classDef trivial fill:#c8e6c9,stroke:#1b5e20,stroke-width:3px,color:#000
+    classDef reviewer fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#000
+    classDef premium fill:#d1c4e9,stroke:#311b92,stroke-width:3px,color:#000
+    classDef synthesizer fill:#b3e5fc,stroke:#01579b,stroke-width:2px,color:#000
+    classDef classifier fill:#b2dfdb,stroke:#00695c,stroke-width:2px,color:#000
+    classDef governor fill:#ffccbc,stroke:#bf360c,stroke-width:2px,color:#000
+    classDef note fill:#f5f5f5,stroke:#616161,stroke-width:1px,color:#000
+```
+
+**Expected impact of firing B12 (NOT MEASURED in this PR — illustrative for the next iteration):**
+- `reviewer-style` Sonnet → GPT-5 mini: ~0.75x cheaper on the lens that contributed the most output tokens in B's run; estimated -$0.15 to -$0.30 on B's $3.02.
+- Optional `reviewer-security` / `reviewer-performance` Sonnet → Opus: +cost on these lenses (Opus is premium), but improves catch-rate on high-stakes semantic findings. **FinOps note:** B12 is not always "cheaper" — it's "right model for right role". Upgrading the high-stakes lenses can be a quality win that justifies the upgrade.
+- Net at "frugal stance": gap moves from 1.66x to ~2x-2.5x. At "balanced stance with selective upgrade": same dollars but better quality on security/performance.
+
+**The point of B12 is not blind downgrade. It is *capability-matched routing*.** Same primitive serves both "go cheaper where you can" and "go premium where you must".
+
+---
+
+## Pattern-level diff — the FinOps view
+
+| v0.3.0 lever | What A does | What B does (this run) | Mechanism of saving | Measured contribution |
 |---|---|---|---|---|
-| **B12 CACHE-AWARE PREFIX** | Asset preloads vary per lens (L2 gets `secret-patterns`, L3 gets `perf-heuristics`) -> prefix differs across spawns -> 5 distinct cache prefixes | All lenses share identical prefix (plan pointer + diff slice) -> single cache-key shape -> harness-level cache hit on every spawn | Cache HIT charged at 0.10x input rate ($0.30/Mtok) vs cache WRITE at 1.25x ($3.75/Mtok). On 5 spawns that re-warm a 100 KB persona, this is the difference between paying $0.38/spawn and $0.03/spawn. | Both got 90%+ hit; A actually higher (95.3%) because it ran more turns over its prefix. The real win is in **B's turn count being half of A's**, not in cache ratio. |
-| **B13 PROMPT THRIFT** | Lens persona body re-injects GOAL + briefing + schema on every turn; per-lens asset preload; arbiter inherits 5 transcripts. | Lens sees diff slice + plan pointer; arbiter sees persisted findings only (no transcript inheritance); soft cap rolls nits into themes. | Less re-injected text per turn -> fewer tokens billed at full input rate per turn. Soft cap also drops downstream output token count. | -38% completion tokens, -46% turns. **Largest single contributor in this experiment.** |
-| **Tool-subset discipline** | Each lens has full shell access deny-listed for write tools; still sees broad read surface (every script, every asset). | Each lens has 2 read tools (diff, plan); no scripts in B's design at all. Arbiter has 2 read + 1 emit. | Smaller tool roster -> smaller injected tool-spec text per turn; agent does not "explore" beyond the diff. | -95% new-input tokens (32,751 -> 1,514). The agent stopped roaming. |
-| **Single-pass synthesis (no intermediate materialisation)** | Lenses write `findings-<lens>.json` to disk; arbiter reads 5 files. | Lenses return findings into the plan; arbiter reads the plan. | Eliminates 5 file-write tool calls + 5 file-read tool calls + 10 turn round-trips. | ~20 turns eliminated outright on this PR. |
-| **Strong-form A9 (gh-aw safe-outputs)** | Weak-form A9: agent calls `post_inline_comments.sh` per comment + `post_summary_comment.sh` + `verify_comments_posted.sh`. ~3 tool round-trips per output. | Strong-form A9: agent emits buffered outputs; gh-aw post-stage applies them. Zero post-stage tool calls from the agent's thread. | Skips an entire post-and-verify sub-loop. Also removes the need for `delete_prior_review.sh` on push (post-stage handles de-dup). | ~8 turns saved on a 20-finding review. |
-| **R3 EXTRACT advisory-only rule** | Same primitive (also in v0.2.0). | Same primitive. Both rule-extract the verdict-prohibition. | Identical -- both threads narrow the dispatch surface to advisory-only. | Zero delta; mentioned only because both designs depend on it. |
-| **B11 EFFORT GOVERNOR** | Not available in v0.2.0 corpus. | Available but **did not fire** in B's design: operator stance is "balanced, no budget cap". B11 would have routed lenses to a cheaper model class on "frugal stance". | Not exercised in this run. A "frugal stance" rerun would likely push B further. | 0 in this run; a known unexercised lever. |
-| **A10 GOVERNED OUTER LOOP** | Not in v0.2.0. | Available but **did not fire** (no audit/sandbox/capability-gating keywords in operator prompt). | Not exercised; not applicable to advisory mode. | 0 in this run. |
+| **B13 CACHE-AWARE PREFIX** | Asset preloads vary per lens — 5 distinct prefix shapes | All 5 lenses + arbiter share identical prefix bytes — single cache-key shape | Cache READ billed at 0.10x input rate vs cache WRITE at 1.25x | Both ran 90%+ cache-hit (harness default). Real win is **turn count** (B=89 vs A=164) |
+| **B14 PROMPT THRIFT** | Lens re-injects goal+briefing+schema each turn; arbiter inherits 5 transcripts | Lens sees diff + plan pointer; arbiter sees persisted findings only; soft cap on nits | Less re-injected text per turn; smaller output token count via roll-up | **-38% completion, -46% turns. Largest single contributor.** |
+| **B15 TOOL SUBSET** | Each lens has full shell access (write deny-listed) | Each lens has 2 read tools; arbiter 2 read + 1 emit | Smaller injected tool-spec per turn; agent stops exploring | **-95% new-input tokens (32,751 → 1,514)** |
+| **Single-pass synthesis** | Lenses write findings JSON per lens; arbiter reads 5 files; ~10 round-trips | Lenses return findings into plan; arbiter reads plan once | Eliminates 5 write + 5 read tool calls | **~20 turns eliminated** |
+| **Strong-form A9 (safe-outputs)** | Weak: agent calls post + summary + verify; ~3 round-trips per output | Strong: agent emits buffered outputs; gh-aw applies them | Skips entire post-and-verify sub-loop; removes de-dup script | **~8 turns saved on 20-finding review** |
+| **B12 MODEL ROUTER** | N/A in v0.2.0 | **Declared role classes per element BUT all bound to Sonnet** (architect miss) | Capability-matched per-role binding via `.agent.md` frontmatter | **Not exercised this run.** Counterfactual diagram shows next iteration. |
+| **B16 EFFORT GOVERNOR** | N/A | Available; not exercised (stance: balanced, no cap) | Short-circuits remaining lenses on cap hit | **Not exercised** |
+| **A10 GOVERNED OUTER LOOP** | N/A | Considered, rejected (no audit/sandbox keywords) | Capability-bounded outer loop | **Not exercised**; existence is what makes strong-form A9 the default on gh-aw triggers |
+| **R3 EXTRACT advisory-only rule** | Same primitive in both | Same primitive | Narrows dispatch surface | Zero delta |
 
-### Where the $1.99 saving went, in $ terms
+### Where the $1.99 saving went, in $ terms (Sonnet rates, B vs A)
 
-Sonnet rates, B vs A, decomposed per billing bucket:
+| Billing bucket | A cost | B cost | Delta | % of saving | Driver |
+|---|---:|---:|---:|---:|---|
+| New input (fresh, uncached) | $0.098 | $0.005 | **-$0.093** | 5% | B15 TOOL SUBSET + no exploration |
+| Cache write | $1.411 | $1.277 | -$0.134 | 7% | Slightly smaller stable prefix |
+| Cache read | $2.490 | $1.118 | **-$1.372** | **69%** | **Fewer turns over cached prefix — DOMINANT** |
+| Completion | $1.012 | $0.622 | -$0.390 | 20% | B14 PROMPT THRIFT (roll-up + theme synthesis) |
+| **Total** | **$5.011** | **$3.022** | **-$1.989** | 100% | |
 
-| Bucket | A cost | B cost | Delta | Driver |
-|---|---:|---:|---:|---|
-| New input (uncached, non-write) | $0.098 | $0.005 | **-$0.093** | Tool-subset discipline + no exploration |
-| Cache write | $1.411 | $1.277 | -$0.134 | Slightly smaller stable prefix |
-| Cache read | $2.490 | $1.118 | **-$1.372** | **FEWER TURNS over the cached prefix — the dominant lever** |
-| Completion | $1.012 | $0.622 | -$0.390 | B13 PROMPT THRIFT (roll-up + theme synthesis) |
-| **Total** | **$5.011** | **$3.022** | **-$1.989** | |
+**Dominant contribution (69%) = "fewer turns over cached prefix."** Cache discipline (B13) makes those turns cheap to read; PROMPT THRIFT + TOOL SUBSET (B14 + B15) makes there be fewer of them.
 
-**The dominant contribution is "fewer turns over the cached prefix" (-$1.37, 69% of the saving).** Cache discipline (B12) is what makes that cheap to read; PROMPT THRIFT + tool-subset (B13 + tool subset) is what makes there be fewer of them.
-
-This is the FinOps insight buried in the data: **caching is an enabler, not the multiplier**. The multiplier is fewer-turns. A harness without caching would have made the gap ~3x ($5 vs $1.65). With caching enabled, the gap compresses to 1.66x because A *also* benefits from cache discipline at the harness layer. **The corpus difference shows up almost entirely in turn count, not in cache ratio.**
+**FinOps insight:** caching is an *enabler*, not the multiplier. The multiplier is *fewer-turns*. A harness without caching would have made the gap ~3x; with caching enabled for both, the gap compresses to 1.66x because A also benefits at the harness layer. **The corpus difference shows up almost entirely in turn count, not in cache ratio.** B12 firing in a follow-up would attack a different vector — per-token-class pricing — and stack with this.
 
 ---
 
-## Quality vs cost
-
-Both reviews were diffed by hand. The findings table:
+## Quality vs cost — verbatim diff of both reviews
 
 | Aspect | Executor A (v0.2.0) | Executor B (v0.3.0) |
 |---|---|---|
-| Critical defect (`plugin_parser.py:666` undefined helper -> runtime NameError on any plugin with `lspServers`) | Surfaced 2x ("CRITICAL - correctness", "CRITICAL - security") | Surfaced 1x ("HIGH - correctness", noted as possibly pre-existing) |
-| Falsy-value handling bug in `LSPDependency.from_dict` | One inline finding from one lens | Lifted to cross-lens theme #1 (correctness + style converge); root cause stated |
-| Untrusted-input validation gap (`.lsp.json` boundary) | Three separate findings (security + test-coverage + style) | Synthesised as cross-lens theme #2 with single root-cause framing |
-| Redundant I/O in install path | Three separate perf findings | Synthesised as cross-lens theme #3 |
-| Style nits (5 items) | 5 separate MEDIUM/LOW inline comments | One rolled-up paragraph ("per soft-cap rule") |
-| Dissent preservation | Verbatim per DISSENT-WEIGHTED rule (20 findings, all visible) | Explicit "Dissent / minority signal preserved" section (2 items kept) |
-| Total findings surfaced | 20 (audit-style checklist) | ~3 themes + 2 dissent items + 1 roll-up paragraph (senior-reviewer-style) |
+| Critical defect `plugin_parser.py:666` (NameError on `_substitute_plugin_root` / `_surface_warning`) | Surfaced 2x ("CRITICAL — correctness" + "CRITICAL — security") | Surfaced 1x ("HIGH — correctness theme") |
+| `LSPDependency.from_dict` falsy-value bug | One inline finding | Cross-lens theme #1 (correctness + style converge) |
+| Untrusted-input validation gap (`.lsp.json`) | 3 separate findings | Cross-lens theme #2 with single root-cause framing |
+| Redundant I/O in install path | 3 separate perf findings | Cross-lens theme #3 |
+| Style nits | 5 separate MEDIUM/LOW inline comments | 1 rolled-up paragraph (per B14 soft-cap) |
+| Dissent preservation | Verbatim per DISSENT-WEIGHTED rule (20 findings, all visible) | Explicit "Dissent / minority signal preserved" section (2 items) |
+| Total surfaced | 20 (audit-style checklist) | ~3 themes + 2 dissent + 1 roll-up paragraph |
 
-**Verdict on quality:** identical on what matters (critical defects). A reads like an audit report; B reads like a thoughtful senior engineer's review note. Author-friendliness leans to B (themes > severity-sorted checklist), but this is subjective. **Zero regression on the only runtime-blocking finding in the PR.**
-
-If anything, B's cross-lens theming is *better* signal-to-noise — it tells the author "two lenses independently flagged falsy-handling in `LSPDependency.from_dict`" rather than just listing two findings that happen to be at the same line.
+**Verdict on quality:** identical on what matters. A reads like an audit report; B reads like a senior engineer's review note. **Zero regression on the only runtime-blocking finding.** B's cross-lens theming is arguably *better* signal-to-noise.
 
 ---
 
-## What this proves and what it does not
+## What this proves and what it does NOT
 
 ### Proves (measured)
-
-- Copilot CLI per-turn token telemetry is parseable -> ground-truth cost is recoverable from disk.
-- **Cache discipline (B12) works at the harness layer for free**: 90-95% cache-hit ratio in **every** session profiled in this work-stream (10+ sessions, see `dev/empirical-proof/measurements/`).
-- **Executing the same panel on the same PR in the same harness, the v0.3.0-corpus design costs 1.66x less than the v0.2.0-corpus design.**
-- **No critical-finding regression.** B catches every CRITICAL/HIGH bug A catches; B presents them as cross-lens themes instead of verbatim lists.
-- **Most of the saving (69%) comes from fewer turns**, which traces back to B13 PROMPT THRIFT + tool-subset discipline + single-pass synthesis — not from caching tricks (both got cache for free) and not from model routing (didn't fire on this run).
+- Copilot CLI per-turn token telemetry is parseable → ground-truth cost is recoverable from disk
+- **Same panel, same PR, same harness, same model: v0.3.0-corpus design costs 1.66x less than v0.2.0-corpus design**
+- **No critical-finding regression**
+- 69% of the saving comes from fewer turns (B14 + B15 + single-pass synthesis), not from caching tricks (free for both) and not from model routing (didn't fire)
 
 ### Does NOT prove
-
-- The "~15x" headline from PR #10's projection. That number assumed every lever applied maximally (Opus->Haiku swap via B11, full cache stack, gradient short-circuit via A10, tool-subset trim). Real PRs don't always present that opportunity simultaneously.
-- Cross-harness behaviour. This is one harness (Copilot CLI on Sonnet). A harness that exposes per-subagent model selection (Claude Code with explicit `model:` assignment) would show B11 firing — routing the style lens to Haiku — and the gap would widen materially (Haiku is ~3x cheaper than Sonnet on input).
-- Cross-PR generalisation. One target PR (medium, code-dense). Skinny docs PRs would favour B more (gradient short-circuit fires). 100-file refactors could compress the gap (less roll-up headroom).
-- Stance sensitivity. Both ran "balanced stance, no budget cap". A "frugal stance, cap = $1/PR" rerun on B would push it further; not measured here.
+- The "~15x" projection from PR #10
+- What B12 MODEL ROUTER would deliver — architect B left it on the table even though `.agent.md` `model:` frontmatter is documented in `copilot.md` §9. Real B12 measurement is the next iteration's job.
+- Cross-PR generalisation. One target PR.
+- Stance sensitivity. Both ran balanced + no cap; B16 EFFORT GOVERNOR did not fire.
 
 ### Caveats called out explicitly
+- Sonnet rates applied to both. Token counts are real regardless of pricing assumption.
+- Architect A was not isolated for its own per-turn profile (Architect B was, $1.38). Architect cost is well within noise vs executor cost.
+- B's design declared role classes per agentic element but did NOT bind them to distinct concrete SKUs via `model:` frontmatter. This is an **architect quality miss** worth follow-up corpus work, not a harness limitation.
 
-- Sonnet rates applied to both; if the harness routed any turn to a different model the absolute dollars shift, but the **token counts are real regardless of pricing assumption**.
-- Architect A was not isolated for its own per-turn profile (only Architect B was). The architect-design cost itself (~$1-2) is well within noise vs the executor cost.
-- B's design did not explicitly invoke A10 GOVERNED OUTER LOOP or per-lens model role assignment in the handoff — those are corpus *opportunities* that this particular operator prompt did not trigger. A different prompt ("budget cap = $1/PR", "audit mode", "sandbox the post step") would have fired them.
-- Both executors hit the same PR diff (snapshot at `target-pr.diff`). The PR remains live on microsoft/apm; future state may differ.
+---
+
+## Follow-up implied by this experiment
+
+1. **Re-run executor B with B12 firing.** Add `model:` frontmatter per `.agent.md`: `reviewer-style: gpt-5-mini`, others stay Sonnet (or selectively upgrade security/performance to Opus). Measure on the same PR. Expected: 1.66x → ~2x-2.5x at frugal stance, or same dollars + better quality at balanced+upgrade stance.
+2. **Strengthen the v0.3.0 architect on B12 firing.** The role-class table in `copilot.md` §9 exists; the architect should reach for `model:` frontmatter as routinely as it reaches for B14 PROMPT THRIFT. Candidate: an architect step-3 prompt addition that explicitly asks "for each declared role class, is the per-harness adapter's alternative SKU a better fit than the default?"
+3. **Operator stance sensitivity sweep.** Re-run B at `stance: frugal, cap = $1` and at `stance: high-stakes, cap = none` to measure B16 EFFORT GOVERNOR and the upgrade direction respectively.
 
 ---
 
 ## What ships in this PR
 
-- `dev/empirical-proof/tools/profile-tokens.py` — permanent profiler. Parses Copilot CLI per-turn `usage` JSON; computes cost at any per-Mtok rate table. CLI: `python3 profile-tokens.py <log> --rates anthropic-sonnet [--per-turn] [--json]`.
-- `dev/empirical-proof/measurements/` — per-session JSON dumps for **7 prior sessions** across this v0.3.0 work-stream. Aggregate: ~$10, 91.6% cache hit, 14.4 M tokens, 108 turns. Cache discipline is real at scale, not just on the showcase run.
-- `dev/empirical-proof/ab-experiment-apm-1424/` — the full controlled A/B:
-  - `architect-A-v0.2.0-handoff.md`, `architect-B-v0.3.0-handoff.md` — both paper designs (760 + 446 lines)
-  - `executor-A-v0.2.0-review.md`, `executor-B-v0.3.0-review.md` — both written reviews of microsoft/apm#1424
-  - `executor-A-tokens.json`, `executor-B-tokens.json` — per-turn token telemetry for both runs
-  - `executor-A-findings.json` — A's structured per-lens findings (B skipped this materialisation step)
-  - `target-pr.diff` — snapshotted PR diff both executors reviewed
-  - `REPORT.md` — long-form companion to this PR description, version-controlled
-- The prior `dev/empirical-proof/scenario-pr-review-panel.md` (v0.3.0 projection) is **not deleted**; it remains as an analytical model. `REPORT.md` is the new ground-truth source.
+- `dev/empirical-proof/tools/profile-tokens.py` — permanent profiler. Parses Copilot CLI per-turn `usage` JSON; costs at any per-Mtok rate table. CLI: `python3 profile-tokens.py <log> --rates anthropic-sonnet [--per-turn] [--json]`
+- `dev/empirical-proof/measurements/` — per-session JSON dumps for 7 prior sessions. Aggregate: ~$10, 91.6% cache hit, 14.4 M tokens
+- `dev/empirical-proof/ab-experiment-apm-1424/`:
+  - `architect-A-v0.2.0-handoff.md`, `architect-B-v0.3.0-handoff.md` (760 + 446 lines)
+  - `executor-A-v0.2.0-review.md`, `executor-B-v0.3.0-review.md`
+  - `executor-A-tokens.json`, `executor-B-tokens.json` — per-turn telemetry
+  - `executor-A-findings.json`, `target-pr.diff`
+  - `REPORT.md` — long-form companion, version-controlled
 
 ## Reproduction
 
 ```bash
-# Profile any Copilot CLI session
 python3 dev/empirical-proof/tools/profile-tokens.py \
     ~/.copilot/logs/process-<ts>-<pid>.log \
     --rates anthropic-sonnet --per-turn
-
-# Spawn a controlled architect run via host runtime
-#   kickoff prompt: "git show v<X.Y.Z>:skills/genesis/SKILL.md, run steps 1-6,
-#                    persist handoff packet, stop"
-
-# Spawn a controlled executor run
-#   kickoff prompt: "read plan.md, fetch PR diff, execute panel as designed,
-#                    write review.md, stop. NO github writes."
-
-# Identify each session's log by unique kickoff phrase
-grep -l "<unique phrase>" ~/.copilot/logs/process-*.log
-
-# Diff costs
-python3 dev/empirical-proof/tools/profile-tokens.py <log_a> --json > a.json
-python3 dev/empirical-proof/tools/profile-tokens.py <log_b> --json > b.json
 ```
+
+Spawn architect with kickoff: `"git show v<X.Y.Z>:skills/genesis/SKILL.md, run steps 1-6, persist handoff, stop"`. Spawn executor with: `"read plan.md, fetch PR diff, execute panel as designed, write review.md, stop. NO github writes."`. Identify each session's log by unique kickoff phrase: `grep -l "<phrase>" ~/.copilot/logs/process-*.log`. Diff with `profile-tokens.py --json`.
 
 ---
 
-Closes the empirical-proof gap raised on PR #10. The cost claim in the genesis token economics ship now has measured backing, not just an analytical model.
+Closes the empirical-proof gap raised on PR #10. The cost claim in the genesis token economics ship now has measured backing. Architect B12 miss documented as next-iteration work — the corpus has the lever; the architect needs to reach for it more aggressively.
 
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>

@@ -5,6 +5,9 @@ affordances. Load this file ONLY when a primitive declares Copilot
 as a target.
 
 Official docs cited:
+- https://docs.github.com/en/copilot/reference/custom-agents-configuration
+  (CANONICAL custom agent frontmatter spec -- `model`, `tools`, `target`,
+  `disable-model-invocation`, `user-invocable`, `mcp-servers`)
 - https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli
 - https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-hooks
 - TODO: official docs needed for agent spawning / task tool syntax
@@ -15,12 +18,40 @@ Official docs cited:
 In Copilot: Custom Agent
 - File extension: .agent.md
 - Folder: .github/agents/ (project-local) or .copilot/agents/ (CLI user-scope)
-- Frontmatter fields: name, description, model (optional)
-- Activation: loaded when user selects agent from UI, or via CLI agent invocation
-- Notes: agent name derived from filename (stem); agents at user scope
-  visible globally to user's Copilot CLI sessions; no tool restriction
-  lists (tools available per workspace/session config)
-- Source: https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli
+- Frontmatter fields (per CANONICAL spec linked above):
+  - `name` (string, optional display name)
+  - `description` (string, REQUIRED)
+  - `model` (string, optional) -- "Model to use when this custom agent
+    executes. If unset, inherits the default model." This is the
+    PER-AGENT BINDING SITE that B12 MODEL ROUTER reaches for on Copilot.
+    Concrete model identifiers come from the live Copilot models &
+    pricing page (`docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing`);
+    examples: `claude-sonnet-4.6`, `claude-opus-4.7`, `gpt-5-mini`,
+    `gpt-4o-mini`. Do NOT hardcode names in the design (B12 anti-pattern);
+    bind at codegen time from the role-class table in section 9.
+  - `tools` (list of strings or comma string, optional) -- "If unset,
+    defaults to all tools." This is the PER-AGENT BINDING SITE that
+    B15 TOOL SUBSET reaches for on Copilot. Aliases: `read`, `edit`,
+    `search`, `execute`, `agent`, `web`, `todo`. MCP server tools
+    namespaced as `<server>/<tool>` or `<server>/*`. Empty list `[]`
+    disables all tools.
+  - `target` (string, optional) -- `vscode` | `github-copilot`; if
+    unset, both. Use to scope agents that only make sense in one host.
+  - `disable-model-invocation` (bool, optional) -- when true, agent
+    must be manually selected (cloud-agent context). FORCED vs
+    DISCOVERY dispatch knob.
+  - `user-invocable` (bool, optional) -- when false, agent is
+    programmatic-only (cannot be picked by a human).
+  - `mcp-servers` (object, optional) -- per-agent MCP server config
+    (NOT used in VS Code IDE; used in cloud agent + CLI).
+  - `metadata` (object, optional) -- annotation key/value.
+- Activation: loaded when user selects agent from UI, or via CLI agent
+  invocation, or automatically by cloud agent based on task context
+  (unless `disable-model-invocation: true`).
+- Notes: agent name for deduplication derived from filename stem (minus
+  `.md` or `.agent.md`); lowest-level config wins (repo > org > enterprise).
+  Prompt body capped at 30,000 characters.
+- Source: https://docs.github.com/en/copilot/reference/custom-agents-configuration
 
 ## 2. MODULE ENTRYPOINT (SKILL)
 
@@ -28,7 +59,17 @@ In Copilot: Skill (agentskills.io standard)
 - Entrypoint file name: SKILL.md
 - Folder: .github/skills/<skill_name>/ (where <skill_name> is hyphen-case,
   max 64 chars per agentskills.io)
-- Frontmatter fields: name, description
+- Frontmatter fields: `name`, `description` ONLY (per the canonical
+  agentskills.io spec linked from `assets/primitives.md`).
+- IMPORTANT -- skill frontmatter does NOT support `model:` or `tools:`.
+  Those fields exist ONLY on `.agent.md` custom-agent profiles (section 1).
+  Architectural consequence: B12 MODEL ROUTER and B15 TOOL SUBSET CANNOT
+  be applied at the SKILL level on Copilot. To bind a model or scope
+  tools for a unit of work, you MUST express that unit as a custom agent
+  (`.agent.md`), not as a skill. If the design currently has a skill
+  that needs per-element model binding, split or relocate it: either
+  make the skill body delegate to a sibling `.agent.md`, or restructure
+  the unit as a custom agent and have the skill load it.
 - Assets folder: assets/ (arbitrary files loaded on demand from SKILL.md steps)
 - Activation: description-driven matching by Copilot when user task aligns
   with skill description; also discoverable via skill commands
@@ -147,18 +188,59 @@ without prior notice).
 
 ### Cost-pattern bindings
 
-- B12 MODEL ROUTER: configure model preference per workflow or per
-  CLI session. Mid-session switch is supported but partitions the
-  Copilot cache.
+CRITICAL -- READ FIRST. The PER-AGENT BINDING SITE on Copilot is the
+`.agent.md` custom-agent frontmatter (section 1). It is the ONLY
+Copilot primitive whose frontmatter accepts `model:` and `tools:`.
+SKILL.md does NOT support these fields (see section 2). When a
+B12 / B15 / B16 binding is required, the unit of work MUST be
+expressed as a custom agent. If a skill currently holds the unit,
+either restructure it as a `.agent.md` or have the skill body
+delegate to a sibling `.agent.md` whose frontmatter carries the
+binding.
+
+- B12 MODEL ROUTER:
+  - BINDING SITE: `.agent.md` frontmatter `model:` field, one
+    binding per custom agent. Each fan-out lens / arbiter / classifier
+    is its OWN `.agent.md` with its OWN `model:` line, picked from
+    the role-class table above. Default-binding-by-omission is
+    "inherit the session model" -- that is single-model uniform
+    binding, which is what fired (or rather, did NOT fire) in PR #12's
+    Executor B run. To actually fire B12, populate `model:` per agent.
+  - Session-level fallback: configure model preference per CLI
+    session or per workflow if NO per-agent override is set. Mid-
+    session switch is supported but partitions the Copilot cache
+    (B13 anti-pattern -- avoid).
+  - ANTI-PATTERN unique to Copilot: SKILL-LEVEL ROUTING ATTEMPT --
+    adding `model:` to SKILL.md frontmatter has no effect (silently
+    ignored). Symptom: architect believes B12 is firing; profiling
+    shows uniform model billing. Fix: move the unit to `.agent.md`.
+
 - B13 CACHE-AWARE PREFIX: caching behavior is opaque to the operator
   (handled by Copilot's backend); cache discipline still pays off
   because the underlying providers cache. Keep persona / skill body
   stable; avoid mid-session edits to `.github/copilot-instructions.md`.
-- B15 TOOL SUBSET: declare per-MCP-server scoping in
-  `.copilot/config.yml` to keep the catalogue bounded.
+  Mid-session `model:` switch (see B12) also invalidates the cache --
+  bind at agent definition time, not at runtime.
+
+- B15 TOOL SUBSET:
+  - BINDING SITE: `.agent.md` frontmatter `tools:` field, one
+    binding per custom agent. Use either a list of aliases
+    (`tools: ["read", "search"]`) or an empty list (`tools: []`) to
+    disable all tools. MCP server tools namespaced as
+    `<server>/<tool>` or `<server>/*`. Available aliases per the
+    custom-agents-configuration spec: `read`, `edit`, `search`,
+    `execute`, `agent`, `web`, `todo`.
+  - SKILL.md does NOT support `tools:`. Skill-level tool subsetting
+    has to be done via the surrounding session config or by routing
+    the work to a `.agent.md` with the scoped subset.
+  - Session-level fallback: declare per-MCP-server scoping in
+    `.copilot/config.yml` to keep the catalogue bounded for the
+    whole session.
+
 - B16 EFFORT GOVERNOR: where the model supports it, declare via the
   model selection (a "high effort" SKU IS the effort declaration on
-  Copilot's surface).
+  Copilot's surface). Combine with B12 binding on `.agent.md` to
+  pick a high-effort SKU only for the high-stakes agentic element.
 
 ### Stance binding
 

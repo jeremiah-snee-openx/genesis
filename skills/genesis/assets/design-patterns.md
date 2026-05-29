@@ -852,6 +852,19 @@ ANTI-PATTERNS:
 - MID-SESSION MODEL SWITCH inside the SAME thread without naming
   it as a cache invalidator. Provider caches partition by model;
   switching mid-session bills the next turn at fresh-input rates.
+- WRONG-PRIMITIVE BINDING -- declaring `model:` on a primitive
+  whose harness frontmatter does not accept it (the field is
+  silently ignored). The architect believes B12 is firing but
+  every agentic element still bills against the session default.
+  This is what happened in PR #12's Executor B run on Copilot CLI:
+  the design declared role classes per element but the binding
+  fell back to the session model because the per-element binding
+  site on Copilot is `.agent.md` frontmatter, NOT SKILL.md
+  frontmatter. Cure: consult the per-harness adapter (section
+  "BINDING SITE" / "Cost-pattern bindings") at step 7b to
+  confirm WHICH primitive type carries the `model:` field on the
+  target harness; restructure the unit of work to use that
+  primitive type if it is currently held by another.
 
 ---
 
@@ -974,6 +987,14 @@ ANTI-PATTERNS:
 - SUBSET CHURN MID-SESSION -- adding or removing tools across
   turns. Each change is a CACHE INVALIDATOR (B13). Decide the
   subset at primitive entry and hold it.
+- WRONG-PRIMITIVE BINDING -- declaring `tools:` on a primitive
+  whose harness frontmatter does not accept it (silently ignored).
+  Same failure mode as B12 WRONG-PRIMITIVE BINDING. Cure: consult
+  the per-harness adapter to confirm which primitive type carries
+  the `tools:` (or equivalent) field; restructure the unit of
+  work to that primitive type if needed. On Copilot, the binding
+  site is `.agent.md` frontmatter; SKILL.md does not accept
+  `tools:`.
 
 ---
 

@@ -165,6 +165,15 @@ implementer-class steps (middle), and one reviewer-class step
 - It does NOT enumerate every routing rule. The catalogue patterns
   (B11, B15, A10) own the rules; this file just defines the slots
   the rules talk about.
+- It does NOT name the BINDING SITE on each harness. That is
+  harness-specific (see next section). On some harnesses the binding
+  site is per-custom-agent frontmatter (e.g. Copilot's `.agent.md`
+  `model:` field); on others it is per-skill frontmatter, per-step
+  workflow config, or session-level only. The architect MUST consult
+  the per-harness adapter at step 7b to see WHERE the per-element
+  binding lives -- otherwise B12 fires only at session level
+  (uniform binding for every agentic element, the failure mode
+  measured in PR #12's Executor B run).
 
 ---
 
@@ -180,6 +189,12 @@ include a `model-catalog` section that:
 - Records a "verified on YYYY-MM-DD" date stamp.
 - Footnotes the published price page so the operator can
   re-verify when the date stamp is stale (more than 90 days).
+- NAMES THE PER-ELEMENT BINDING SITE explicitly: which primitive
+  type (custom agent / skill / workflow step / etc.) accepts a
+  `model:`-equivalent field, and which primitive types do NOT.
+  Without this, B12 MODEL ROUTER cannot be applied per agentic
+  element on that harness -- the architect will at best bind once
+  at the session level.
 
 Adapters MAY omit a role class if the harness genuinely does not
 offer one (e.g. a harness with no trivial tier). The architect
