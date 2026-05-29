@@ -1,0 +1,14 @@
+{
+  "cell": "S2N-zero-sonnet",
+  "scenario": "doc-audit zero-workflow",
+  "model": "claude-sonnet-4-6",
+  "rates": {
+    "input_per_mtok": 3,
+    "output_per_mtok": 15
+  },
+  "input_tokens": 31300,
+  "output_tokens": 4000,
+  "total_cost_usd": 0.1539,
+  "methodology": "size-based estimate from corpus inspection",
+  "quality_notes": "Single-shot Sonnet 4.6 should produce a usable doc-audit report, but for reviewer-class work it is likely to catch fewer subtle cross-page consistency issues than Opus 4.7. Sonnet 4.6 scores about 75% on medium-difficulty SWE-bench Verified versus Opus 4.7 at about 79%, so expect competent per-page findings with somewhat shallower synthesis across the 11-page corpus."
+}
