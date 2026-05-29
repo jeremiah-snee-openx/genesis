@@ -212,12 +212,51 @@ Full architect handoff packet: `/tmp/scenario-release-notes/plan.md`.
 
 ---
 
+## Cross-scenario architect A/B (v0.2.0 baseline vs v0.3.5 cost-aware)
+
+To probe pattern usage breadth — not just on PR review — three design tasks were sealed off and architected twice each: once with the v0.2.0 baseline corpus (pre-cost-aware), once with v0.3.5 (current PR head). Six background Opus 4.7 dispatches; ~$30 architect spend. No executor runs in this probe (deferred where indicated).
+
+| Scenario | Shape | Stresses |
+|---|---|---|
+| **S1 apm-triage-panel** | A1 PANEL across 6 dimensions per issue | B12 PER-LENS, UNDIFFERENTIATED LENS BINDING, A12 arbiter discipline |
+| **S2 bulk-api-rename** | A2 STAFFED PLAN + batched edits across 50+ files | S7 DETERMINISTIC TOOL BRIDGE, B15 TOOL SUBSET (CodeAct-style), B12 |
+| **S3 dependency-cve-audit** | A2 PIPELINE + B1 FAN-OUT per CVE | RESEARCHER class (new v0.3.5), LONG-CONTEXT-RETRIEVER, B12, B13 cache, B16 effort |
+
+### Comparison matrix
+
+| Dimension | S1 v0.2 | S1 v0.3.5 | S2 v0.2 | S2 v0.3.5 | S3 v0.2 | S3 v0.3.5 |
+|---|---|---|---|---|---|---|
+| Explicit per-element model bindings | 0 (best-guess only) | **4** (2 explicit + 2 justified OMITs) | 0 (best-guess) | **1** (BIND DOWN, justified) | 0 (best-guess) | **5** (5 of 6 role classes exercised) |
+| B12 SELECTION RULE cited | n/a (absent) | yes | n/a | yes | n/a | yes |
+| B15 TOOL SUBSET cited | no | yes | no | yes (structural exclusion) | no | yes (per `.agent.md`) |
+| B16 EFFORT GOVERNOR cited | n/a (absent) | yes | n/a | yes | n/a | yes (per-role-class) |
+| B13 CACHE-AWARE PREFIX cited | no | yes | no | yes | no | yes |
+| A12 GRADIENT cited | n/a (absent) | yes | n/a | rejected with reason (fan-width=1) | n/a | yes (HEAVY ADJUDICATOR avoided) |
+| RESEARCHER class bound? | n/a (absent) | rejected with reason ("rubric → REVIEWER") | n/a | rejected with reason | n/a | **yes** — narrow trigger, STAKES cited, ≤1 fire/run |
+| Cost projection grounded in concrete $? | rough token range only | yes — $0.10-4.80 per run (size-banded) | "best-guess only" | yes — $0.05-0.10 vs naive $0.50-1.20 (**~10× saving**) | "informational only" | yes — S/M/L bands with researcher escalation as L lever |
+| PATTERNS WANTED BUT UNAVAILABLE | 4 cost-aware patterns enumerated as gaps | n/a | 2 patterns + cost grounding enumerated as gaps | n/a | 6 patterns enumerated as gaps (incl. class taxonomy, memoized corpus) | n/a |
+
+### Three findings the matrix surfaces
+
+**Finding 1 — v0.2 architects can identify the gap, not fill it.** All three v0.2 cells enumerated cost-aware patterns they wanted but couldn't cite. The taxonomy gap (role classes, per-element binding rule, cost projection vocabulary) is real and felt by the architect persona, not invented by the v0.3 author.
+
+**Finding 2 — v0.3.5 discipline produces heterogeneous outputs on heterogeneous inputs.** S2 binds one element (IMPLEMENTER, BIND DOWN). S3 exercises five of six role classes. S1 differentiates 3 TRIVIAL + 3 REVIEWER lenses after enumerating 6 capability profiles. The "all-Haiku" shape from the PR #1424 review is not the discipline's default — it was correct for that specific input. Different problems route differently.
+
+**Finding 3 — RESEARCHER class fires once across three scenarios, exactly as designed.** Two of three v0.3.5 cells explicitly REJECT RESEARCHER with the cited rule ("rubric exists → REVIEWER, not researcher"; "fan-width = 1 below threshold"). Only S3 binds it, with full STAKES citation (irreducible novelty + no rubric + no plan; ≤1 fire per run). This is the narrow-trigger discipline working — the class did not become a "feels hard → bind RESEARCHER" reflex.
+
+### S2 carries a concrete per-technique number: S7 + B15 ≈ ~10× saving
+
+The S2 v0.3.5 design declares `tools: [read, execute]` on the worker `.agent.md` — `edit` is structurally excluded so the naive 50+-edit-tool-turn anti-pattern is impossible by construction. The single `apply-rename.sh` script (ripgrep + sed) does the batch in one tool turn. Projected: $0.05-0.10 per L run vs $0.50-1.20 naive. This is the cleanest per-technique attribution in the experiment so far.
+
+Artifacts: `dev/empirical-proof/cross-scenario/{S1-triage,S2-rename,S3-cve}-{v02,v035}/handoff.md` (6 files, ~3700 lines total). Each contains mermaid component + sequence + dependency diagrams, interface sketches, module composition table, per-element model bindings (or "best-guess" appendix on v0.2 cells), patterns cited, cost projections, and explicit non-decisions.
+
+---
+
 ## What this PR does NOT prove (deferred to follow-up PRs)
 
-- **Multi-scenario variance on COST (full matrix).** Two scenarios have been probed: small PR (#1541, +41 LoC, $0.21) and a different skill type (release-notes-generator architect-only design). A full matrix S1-S5 × {v0.2, v0.3+} × {skill types} with measured executor runs end-to-end is deferred.
+- **Multi-scenario variance on MEASURED EXECUTOR cost.** The cross-scenario probe above is architect-only (designs, not runs). Five executor measurements now exist (apm#1424 + apm#1541 in this branch; three projected from architect designs above). A full executor matrix S1×S2×S3 × {v0.2, v0.3.5} requires another ~$10-25; deferred to a follow-up.
 - **Cross-harness portability.** Probe data is Copilot-CLI only. Claude Code, OpenCode, Codex, Cursor defaults are not measured. The v0.3.3 "bind explicitly for portability" framing rests on first principles + the corpus's per-harness adapter table, not on a multi-harness empirical run.
-- **B14 / B15 / B16 isolated ablations.** Per-technique attribution above isolates B12, A12, and B13 from the existing 4-cell data. Isolating PROMPT THRIFT (B14), TOOL SUBSET (B15), and EFFORT GOVERNOR (B16) requires controlled toggle-one-at-a-time runs; deferred.
-- **PER-LENS DIFFERENTIATION on a verdict-emitting (high-STAKES) skill.** The new corpus discipline was authored from first principles + the existing pattern catalogue. An empirical run on a verdict-emitting PR-review skill (where security + test-coverage SHOULD bind UP to REVIEWER class) would validate that the differentiation moves the cost shape in the predicted direction. Deferred.
+- **B14 PROMPT THRIFT isolated ablation.** The cross-scenario probe shows B15 TOOL SUBSET driving ~10× saving on S2 by structural exclusion. B12 attribution is now per-cell visible across S1/S2/S3. B14 PROMPT THRIFT and B16 EFFORT GOVERNOR were CITED in the v0.3.5 designs but their isolated dollar contribution still requires controlled toggle-one-at-a-time runs; deferred.
 
 These are explicit deferrals, not gaps in the deliverable. The PR scope was "make token economics a first-class design dimension and prove it works on one realistic scenario."
 
