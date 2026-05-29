@@ -75,6 +75,25 @@ ANTI-PATTERNS:
 - IMBALANCED PANEL -- N-1 lenses agree, 1 dissents, the synthesis
   follows the majority without examining the dissent. The dissenting
   lens is usually the highest-information signal.
+- UNDIFFERENTIATED LENS BINDING -- all N lenses bound to the SAME
+  role class (whether all-trivial / all-reviewer / all-planner)
+  without per-lens CAPABILITY PROFILE enumeration. May be the right
+  answer (e.g. 5 lenses genuinely doing checklist grading over a
+  finite diff window with no cross-file reasoning) or may be slap-
+  binding by analogy ("they're all lenses, so they get the same
+  model"). The architect MUST enumerate per lens BEFORE binding:
+  (a) does this lens need CROSS-FILE / MULTI-FILE REASONING? (b)
+  does this lens emit findings whose downstream consequences are
+  STAKES-WEIGHTED (e.g. security CVEs gated against, vs style
+  suggestions)? (c) does this lens require MULTI-STEP PROOF chains
+  (e.g. taint-flow analysis) rather than pattern matching? Lenses
+  with different CAPABILITY PROFILE answers SHOULD bind to
+  different role classes (e.g. style + correctness at TRIVIAL,
+  security + test-coverage at REVIEWER). If after the enumeration
+  the result IS uniform binding, the architect records the per-
+  lens justification in the handoff packet -- not just the bound
+  class. See B12 BULK IDENTICAL BINDING anti-pattern for the cure
+  template.
 
 ---
 

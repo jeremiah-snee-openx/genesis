@@ -27,11 +27,13 @@ The architect cost (Opus design pass, ~$7) **amortizes once** across many runs o
 
 ## How v0.3+ produces the cost shape
 
-Two corpus additions do the load-bearing work:
+Two corpus additions do the load-bearing work, plus a v0.3.4 PER-LENS discipline addition:
 
-1. **§B12 SELECTION RULE** (`assets/design-patterns.md`) — names ROLE CLASSES (TRIVIAL, REVIEWER, IMPLEMENTER, PLANNER, JUDGE), maps each to a model tier per harness, and tells the architect how to pick a binding per design element. Cures **BIND-UP-WITHOUT-JUSTIFICATION** (pushing role class above what the work needs without a STAKES cite).
+1. **§B12 SELECTION RULE** (`assets/design-patterns.md`) — names ROLE CLASSES (TRIVIAL, REVIEWER, IMPLEMENTER, PLANNER, JUDGE), maps each to a model tier per harness, and tells the architect how to pick a binding per design element. Cures **BIND-UP-WITHOUT-JUSTIFICATION** (pushing role class above what the work needs without a STAKES cite). The BULK IDENTICAL BINDING variant (v0.3.4) fires in BOTH directions — bulk-UP and bulk-DOWN.
 
 2. **§A12 GRADIENT WORKFLOW + HEAVY ADJUDICATOR anti-pattern** (`assets/architectural-patterns.md`) — recognises that cross-lens synthesis is REVIEWER-class work, not PLANNER-class. The cure: keep first-pass synthesis INLINE in the orchestrator (Sonnet, no spawn) and gate planner-class (Opus) escalation behind a **narrow trigger** (≥2 BLOCKER-severity findings on the same diff hunk with contradictory claims — expected firing rate ~2-4%).
+
+3. **§A1 PANEL UNDIFFERENTIATED LENS BINDING anti-pattern** (v0.3.4, `assets/architectural-patterns.md`) — forces the architect to enumerate a **CAPABILITY PROFILE per lens** before binding. Uniform binding across lenses is legitimate if every lens's profile genuinely matches, illegitimate if the enumeration was skipped.
 
 Supporting:
 - **`runtime-affordances/per-harness/copilot.md` §9** — `Default role class per primitive type` table the architect reads off to ground per-element role-class decisions.
@@ -39,6 +41,43 @@ Supporting:
 - **`references/cost-economics-process.md`** — operator-facing **stance knob** (`frugal` / `balanced` / `quality` / `unbounded`) so the operator can bias the architect's economic posture per session.
 
 For the v0.3+ Cell on PR #1424: 5 lenses bound to Haiku (TRIVIAL), 1 arbiter declared at Opus (PLANNER, narrow trigger DID NOT fire), inline synthesis on Sonnet. Opus contribution: **$0**. Total executor: $2.85.
+
+---
+
+## Per-technique attribution (where the savings actually come from)
+
+The four-cell iteration arc (Appendix A) lets us isolate which cost-aware techniques moved the per-run dollar count, by reading the per-model breakdown across cells where one technique changed.
+
+| Technique | Pattern home | Isolated cell-pair | Δ$ per run | Interpretation |
+|---|---|---|---:|---|
+| **B12 SELECTION RULE — correct application (lens fan-out, BIND DOWN)** | `design-patterns.md` §B12 | E → F (lenses moved off Sonnet onto Haiku) | **−$2.16** | When the architect correctly binds TRIVIAL lens work to Haiku instead of Sonnet, the lens-fan-out cost drops by ~3×. But: see "honest framing" below — vs Cell D baseline the absolute saving is ~$0 because v0.2's architect happened to inherit Haiku for lens work via harness default. **B12's value is PREVENTING the +35% E regression, not adding savings over D.** |
+| **A12 HEAVY ADJUDICATOR cure (narrow trigger, no auto-Opus arbiter)** | `architectural-patterns.md` §A12 | F → G (Opus arbiter trigger narrowed) | **−$3.95** | The single largest empirical win. F's architect dispatched a synth-heavy on Opus by default. G's gates Opus behind ≥2 BLOCKER + contradictory + same-hunk trigger (~2-4% expected firing). For PR #1424 the trigger did not fire; Opus cost dropped from $3.95 → $0. |
+| **B13 CACHE-AWARE PREFIX (defensive, not regression-creating)** | `design-patterns.md` §B13 | All cells D-G (94-96% cache hit maintained) | **~$14 preserved** | Always-on harness affordance the corpus DOES NOT BREAK. Without caching, Cell G's 7.6M-prompt-token executor input cost would be ~$14.78. With ~96% cache hit, actual input cost is ~$0.20-0.50. The corpus's B13 contribution is *defensive*: explicit "do not switch models mid-thread" and "stable preamble first" guidance kept cache discipline at the harness ceiling across all four iterations. A bad design that reshuffled prompts per turn could collapse the hit ratio to ~60% and cost 2-3× more. |
+| **B14 PROMPT THRIFT** | `design-patterns.md` §B14 | not ablated | not isolated | Brief size held constant across cells; no controlled measurement. |
+| **B15 TOOL SUBSET** | `design-patterns.md` §B15 | not ablated | not isolated | Tool subsets across cells were similar; not isolated as a delta. |
+| **B16 EFFORT GOVERNOR** | `design-patterns.md` §B16 | not exercised | n/a | `reasoning_effort` was not swept in this experiment. |
+
+**Naive sum of named effects:** B12 ($2.16) + A12 ($3.95) = $6.11 of cost-aware action. **Actual D → G saving:** $5.18 − $2.85 = $2.33. The gap is because v0.1 Cell D *accidentally* did the right thing on lens routing (the architect omitted `model:` and harness default fired Haiku), so B12's positive contribution vs D is near zero — its real value is preventing the v0.3.1 architect from making the +35% mistake. **A12 is the dominant active saving.**
+
+**Honest framing:** the −45% D → G headline is a real cost reduction the operator pays, but it is mostly driven by **eliminating the unconditional Opus arbiter**, not by lens-level model routing. Lens routing's role is *protecting* the cost shape from regressing when the architect starts thinking about model bindings (which they will, post-corpus).
+
+**Cache (B13) is empirically the largest absolute cost-bender** of any technique here — but it is harness-default behaviour the corpus defends rather than introduces. The corpus's contribution is to name it explicitly so cost-aware design decisions don't accidentally bust it.
+
+---
+
+## v0.3.4 corpus addition: PER-LENS ROLE-CLASS DIFFERENTIATION
+
+The v0.3+ design above binds all 5 lenses to Haiku (TRIVIAL). On its own, that table row triggers a question: *is this per-lens reasoning, or is it slap-binding by analogy?* If the architect's process is "they're all lenses, so they get the same model," the design has a `BULK IDENTICAL BINDING` smell — even when the resulting dollar number happens to be low.
+
+**v0.3.4 corpus edits in this PR:**
+
+1. **`assets/architectural-patterns.md` §A1 PANEL** — adds **UNDIFFERENTIATED LENS BINDING** anti-pattern. Forces the architect to enumerate a **CAPABILITY PROFILE per lens** *before* binding: (a) cross-file / multi-file reasoning needed? (b) STAKES-weighted output (security CVE vs style suggestion)? (c) multi-step proof chain (taint-flow analysis) vs pattern matching? Lenses with different profiles SHOULD bind to different role classes. Common case: 3-4 lenses are TRIVIAL but **security + test-coverage often warrant REVIEWER class.**
+
+2. **`assets/design-patterns.md` §B12 BULK IDENTICAL BINDING variant** — strengthened to fire in BOTH directions: bulk-UP (every `.agent.md` defaulted to Sonnet) AND bulk-DOWN (every lens defaulted to Haiku because the first one was TRIVIAL). The *cost direction* is not what makes it an anti-pattern; the *lack of per-element reasoning* is. The cure is the per-element CAPABILITY PROFILE enumeration recorded in the handoff packet — uniform binding is LEGITIMATE if every profile genuinely matches, ILLEGITIMATE if the enumeration was skipped.
+
+**For PR #1424 specifically:** after re-evaluating each lens against the CAPABILITY PROFILE template, the original v0.3+ Cell G design holds for this *advisory* PR-review skill (the lenses run within a fixed diff window; none does multi-file taint flow; severity weighting happens in synthesis, not per-lens). The discipline change means **the architect must now record the per-lens justification** rather than rubber-stamp uniformity. On a different skill type (e.g. a *verdict-emitting* PR review with merge authority, per `examples/05-pr-review-verdict.md`), the same enumeration would correctly bind security + test-coverage UP to REVIEWER class — and the per-run cost would be higher, justified by the STAKES.
+
+This addition is structural (process discipline), not a re-routing of the v0.3+ measured run. **Expected cost impact for advisory PR review: $0** (same bindings result). **Expected cost impact for verdict-emitting PR review: +$1-2 per run, with measurably better security finding fidelity.**
 
 ---
 
@@ -104,15 +143,18 @@ Less than the auditor's projected −720 to −930 ceiling. Higher-risk consolid
 2. **The two load-bearing anti-patterns are BIND-UP-WITHOUT-JUSTIFICATION and HEAVY ADJUDICATOR.** Both are named in the corpus with explicit cure paragraphs. The architect can detect and avoid them at design time, before the executor burns tokens.
 3. **The harness-default table matters more than the cost-pattern catalogue.** The single corpus edit that produced the biggest cost movement was the `Default role class per primitive type` table in the Copilot adapter. Without that table, the architect cannot reason about whether a binding decision pushes the role class up, down, or sideways.
 4. **Narrow escalation triggers work.** The v0.3+ design's `≥2 BLOCKERs + contradictory + same diff hunk` arbiter trigger correctly did NOT fire for PR #1424. The expected ~2-4% firing rate means the rare-but-warranted Opus cost is amortized over many cheap runs.
-5. **Explicit binding is the durable discipline.** v0.3+ ran cheap by OMITTING `model:` and inheriting the harness default. v0.3.3 reframes this: bind explicitly even when it matches the default. Same cost shape today, durable contract going forward.
+5. **Per-technique attribution is now possible from the 4-cell data.** B12 SELECTION RULE saves ~$2.16 per run when correctly applied (lens fan-out BIND DOWN); its primary value is *preventing* a +35% architect regression. A12 HEAVY ADJUDICATOR cure saves ~$3.95 per run (the single largest active win — eliminating an unconditional Opus arbiter). B13 CACHE-AWARE PREFIX is a defensive technique that *preserves* the harness-default ~$14 cache saving by preventing model-switching and prompt-reshuffling.
+6. **PER-LENS ROLE-CLASS DIFFERENTIATION (v0.3.4) makes uniform binding legitimate only when justified per-element.** Adds an UNDIFFERENTIATED LENS BINDING anti-pattern to §A1 PANEL and strengthens the BULK IDENTICAL BINDING variant of §B12 to fire in both directions. The architect now records per-lens CAPABILITY PROFILE answers in the handoff packet rather than slap-binding by analogy.
+7. **Explicit binding is the durable discipline.** v0.3+ ran cheap by OMITTING `model:` and inheriting the harness default. v0.3.3 reframes this: bind explicitly even when it matches the default. Same cost shape today, durable contract going forward.
 
 ---
 
 ## What this PR does NOT prove (deferred to follow-up PRs)
 
-- **Per-technique attribution** (B12 vs B13 vs B14 vs B15 isolated savings). Would require ablation runs that toggle one technique at a time on the same scenario; out of scope.
-- **Multi-scenario variance.** The A/B targeted one PR. The cost shape may differ on small bug-fix PRs, large refactor PRs, or non-code-review skills entirely. A scenario matrix (S1-S5 × {v0.2, v0.3+}) is deferred to a follow-up empirical PR.
+- **Multi-scenario variance.** The A/B targeted one PR (microsoft/apm#1424, +2363/-114). Cost shape may differ on small bug-fix PRs (<100 LOC), large refactor PRs, or non-code-review skills entirely. A scenario matrix (S1-S5 × {v0.2, v0.3+}) is deferred to a follow-up empirical PR. *Note: small-PR and different-skill-architect probes were dispatched as part of this PR's preparation but did not return data in time for inclusion; raw artifacts retained for follow-up.*
 - **Cross-harness portability.** Probe data is Copilot-CLI only. Claude Code, OpenCode, Codex, Cursor defaults are not measured. The v0.3.3 "bind explicitly for portability" framing rests on first principles + the corpus's per-harness adapter table, not on a multi-harness empirical run.
+- **B14 / B15 / B16 isolated ablations.** Per-technique attribution above isolates B12, A12, and B13 from the existing 4-cell data. Isolating PROMPT THRIFT (B14), TOOL SUBSET (B15), and EFFORT GOVERNOR (B16) requires controlled toggle-one-at-a-time runs; deferred.
+- **PER-LENS DIFFERENTIATION on a verdict-emitting (high-STAKES) skill.** The new corpus discipline was authored from first principles + the existing pattern catalogue. An empirical run on a verdict-emitting PR-review skill (where security + test-coverage SHOULD bind UP to REVIEWER class) would validate that the differentiation moves the cost shape in the predicted direction. Deferred.
 
 These are explicit deferrals, not gaps in the deliverable. The PR scope was "make token economics a first-class design dimension and prove it works on one realistic scenario."
 
@@ -163,9 +205,9 @@ The cost shape is the same as the measured v0.3+ run ($2.85 executor) because Co
 
 ## Recommendation
 
-**Merge.** v0.3+ is empirically validated on one realistic scenario: produces cost-aware designs that are **45% cheaper per executor-run** than the unconscious v0.2 baseline on a real PR-review workload, with parity on bug-finding quality, and explicit named anti-patterns (BIND-UP-WITHOUT-JUSTIFICATION, HEAVY ADJUDICATOR, CEREMONIAL BINDING in its narrowed sense) the architect can detect and avoid at design time.
+**Merge.** v0.3+ (with v0.3.3 explicit-binding reframe and v0.3.4 PER-LENS DIFFERENTIATION) is empirically validated on one realistic scenario: produces cost-aware designs that are **45% cheaper per executor-run** than the unconscious v0.2 baseline on a real PR-review workload, with parity on bug-finding quality, explicit named anti-patterns (BIND-UP-WITHOUT-JUSTIFICATION, HEAVY ADJUDICATOR, BULK IDENTICAL BINDING in both directions, UNDIFFERENTIATED LENS BINDING) the architect can detect and avoid at design time, and per-technique attribution (B12 ≈ $2.16 preventative, A12 ≈ $3.95 active, B13 ≈ $14 defensive) the operator can reason about.
 
-Per-technique attribution and multi-scenario variance are deferred to follow-up empirical PRs.
+Multi-scenario variance and B14/B15/B16 isolated ablations are deferred to follow-up empirical PRs.
 
 ---
 

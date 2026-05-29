@@ -944,10 +944,26 @@ ANTI-PATTERNS:
   "in case it's hard," it's bind-up without justification and
   should be demoted. VARIANT -- BULK IDENTICAL BINDING: copy-
   pasting the same `model:` across many primitives without per-
-  element role-class distinction (e.g. setting the same
-  `model: claude-sonnet-4.6` on every `.agent.md` in a design
-  as a template default). The cure is the same: pick per-element
-  per-role-class with a cite.
+  element role-class distinction. The pattern fires in BOTH
+  directions: bulk-UP (every `.agent.md` gets `claude-sonnet-4.6`
+  as a template default) AND bulk-DOWN (every panel lens gets
+  `claude-haiku-4.5` because the first lens warranted trivial-
+  class so "they're all trivial"). The cost-direction does not
+  determine whether it is an anti-pattern; the LACK of per-element
+  reasoning does. The cure is the PER-ELEMENT CAPABILITY PROFILE
+  enumeration: for each primitive, name (a) does the work need
+  cross-file / multi-file reasoning? (b) does the output carry
+  STAKES (consequential write, security finding, irreversible
+  side effect)? (c) does the work require multi-step proof rather
+  than pattern matching? Record the answers in the handoff packet
+  next to the bound class. Identical bindings are LEGITIMATE if
+  every element's profile genuinely matches; ILLEGITIMATE if the
+  enumeration was skipped. Common case in PANEL fan-outs: 3-4
+  lenses are TRIVIAL (style, lint-grep-class correctness, basic
+  test-coverage parse) but security and depth-of-coverage often
+  warrant REVIEWER class. See architectural-patterns.md §A1
+  PANEL UNDIFFERENTIATED LENS BINDING for the panel-specific
+  enumeration step.
 - ZERO-EXPLICIT -- the entire design carries zero `model:`
   declarations and relies on harness defaults. Predictability
   evaporates the moment a default shifts (across harness version
