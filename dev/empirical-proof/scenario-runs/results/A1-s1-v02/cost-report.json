@@ -1,0 +1,12 @@
+{
+  "cell_id": "A1-s1-v02",
+  "design": "v0.2 baseline PANEL: 8 sub-agents (one per issue), each runs 6 lenses inline on sonnet-4.6, no compression",
+  "sub_agents": 8,
+  "all_models": "claude-sonnet-4.6 (harness default, no per-lens routing)",
+  "per_agent_input_tokens": 3450,
+  "per_agent_output_tokens": 415,
+  "total_input_tokens": 35600,
+  "total_output_tokens": 5810,
+  "total_cost_usd": 0.194,
+  "method_note": "Cost is a SIZE-BASED ESTIMATE: agent reasoned through the triage task, sized its dispatches against $3/$15 sonnet rates. Verdicts were produced by actual reasoning. Token counts are MODELED, not harness-reported."
+}

@@ -1,0 +1,20 @@
+{
+  "rates": "anthropic-sonnet",
+  "rates_table": {
+    "input": 3.0,
+    "output": 15.0,
+    "cache_write": 3.75,
+    "cache_read": 0.3
+  },
+  "totals": {
+    "turns": 19,
+    "prompt_tokens": 2750494,
+    "completion_tokens": 21637,
+    "cached_tokens": 2540112,
+    "cache_creation_tokens": 209053,
+    "new_input_tokens": 1329,
+    "total_cost_usd": 1.8745243500000002,
+    "cache_hit_ratio": 0.9235111947162946
+  },
+  "turns": null
+}

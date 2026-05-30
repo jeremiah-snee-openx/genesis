@@ -1,0 +1,31 @@
+{
+  "cell": "S2N-v02",
+  "scenario": "doc-audit v0.2 generic panel",
+  "architecture": "1 architect + 11 page sub-agents + 1 synthesizer, all sonnet-4.6",
+  "subagents_spawned": 13,
+  "models_used": [
+    "claude-sonnet-4-6"
+  ],
+  "per_subagent_breakdown": {
+    "architect": {
+      "input": 3000,
+      "output": 1500,
+      "cost": 0.0315
+    },
+    "page_subagents_x11": {
+      "input_each": 6500,
+      "output_each": 1500,
+      "cost_total": 0.462
+    },
+    "synthesizer": {
+      "input": 18500,
+      "output": 3000,
+      "cost": 0.1005
+    }
+  },
+  "total_input_tokens": 93000,
+  "total_output_tokens": 21000,
+  "total_cost_usd": 0.594,
+  "methodology": "size-based estimate based on v0.2 panel architecture",
+  "quality_notes": "Sampled quickstart, authentication, and manifest schema pages show uneven density, including long schema/reference content, so the 6.5K input tokens per page-sub-agent is a conservative generic-panel average. Because v0.2 lacks model routing, cache-aware structuring, compression, and effort governance, this estimate prices all architect, audit, and synthesis work at Sonnet 4.6 rates with verbose per-page verdicts."
+}

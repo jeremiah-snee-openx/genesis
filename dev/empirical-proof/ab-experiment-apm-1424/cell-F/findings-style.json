@@ -1,0 +1,74 @@
+[
+  {
+    "id": "STYLE-001",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1049, 1132-1135, 1143-1145, 1159, 1235, 1299",
+    "summary": "Non-idiomatic excessive use of builtins module for set/dict types",
+    "details": "Code uses `builtins.set()` and `builtins.dict` in type annotations and initialization throughout the file. This is not idiomatic Python. Should use plain `set()` and `dict()`. The PR removes identical patterns from mcp_integrator.py while adding them to the new LSP code, indicating a regression."
+  },
+  {
+    "id": "STYLE-002",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "lines 828-829 (run_lsp_integration)",
+    "summary": "Missing type annotations on function parameters",
+    "details": "Parameters `logger` and `diagnostics` lack type annotations, inconsistent with other parameters. Should be annotated with proper types."
+  },
+  {
+    "id": "STYLE-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1078, 1119, 1132, 1143",
+    "summary": "Missing type parameters in generic return types",
+    "details": "Functions return bare `list` or `builtins.set`/`builtins.dict` without type parameters. Should specify element types: `-> list[LSPDependency]` instead of `-> list`. Reduces type safety and IDE support."
+  },
+  {
+    "id": "STYLE-004",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1272-1374 (install method)",
+    "summary": "Overly long function (103 lines) should be refactored",
+    "details": "The `install()` method handles multiple concerns: building server config dict, writing to project scope, writing to user scope, logging, and error handling. Should be split into helper methods."
+  },
+  {
+    "id": "STYLE-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1158-1227 (remove_stale method)",
+    "summary": "Long function with duplicated logic for project and user scope cleanup",
+    "details": "The `remove_stale()` method duplicates logic for project scope and user scope cases. Should extract common logic into a helper function."
+  },
+  {
+    "id": "STYLE-006",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1105-1111, 1197-1201, 1224-1227, 1344-1347, 1369-1372",
+    "summary": "Broad bare Exception catches may hide bugs",
+    "details": "Multiple methods use `except Exception:` which is too broad and can hide unexpected errors. Should catch specific exception types like `json.JSONDecodeError`, `IOError`, etc."
+  },
+  {
+    "id": "STYLE-007",
+    "severity": "LOW",
+    "file": "src/apm_cli/integration/_shared.py",
+    "line_anchor": "lines 983, 1005, 1011-1012, 1017",
+    "summary": "Non-idiomatic use of builtins module for set type",
+    "details": "Uses `builtins.set()` and `builtins.set | None` in type hints. Should use plain `set()` and `set | None`."
+  },
+  {
+    "id": "STYLE-008",
+    "severity": "LOW",
+    "file": "src/apm_cli/models/apm_package.py",
+    "line_anchor": "line 154",
+    "summary": "Incomplete type annotation on variable",
+    "details": "Variable `parsed_lsp: list = []` should specify type parameter: `parsed_lsp: list[LSPDependency] = []`."
+  },
+  {
+    "id": "STYLE-009",
+    "severity": "LOW",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "line 1049",
+    "summary": "Unnecessary import of builtins module",
+    "details": "The `import builtins` statement is only used for the non-idiomatic `builtins.set` and `builtins.dict` usage. Once those are fixed, this import can be removed."
+  }
+]

@@ -173,16 +173,3 @@ per-harness adapters, with a "verified on YYYY-MM-DD" date stamp.
 The cost layer does not replace any of these; it interlocks with
 them as the seventh axis the architect reasons about.
 
----
-
-## What this file does NOT do
-
-- It does NOT list current prices. Prices belong in per-harness
-  adapters with date stamps; they age out.
-- It does NOT prescribe model choices. Choices belong in
-  `model-catalog.md` (role classes) and in per-harness adapters
-  (concrete mappings).
-- It does NOT define the cost stance knob or the budget cap. Those
-  belong in `SKILL.md` (process surface).
-- It does NOT run a live token meter. That is a runtime affordance
-  outside the design discipline.

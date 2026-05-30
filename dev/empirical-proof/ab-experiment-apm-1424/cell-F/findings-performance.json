@@ -1,0 +1,26 @@
+[
+  {
+    "id": "PERFORMANCE-001",
+    "severity": "HIGH",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "run_lsp_integration, lines 886-902",
+    "summary": "Redundant file I/O: install() followed by remove_stale() both read and write the same .lsp.json or ~/.claude.json file",
+    "details": "In run_lsp_integration(), when stale LSP servers need to be removed:\n1. LSPIntegrator.install() (line 886) reads .lsp.json or ~/.claude.json and writes the new server configs\n2. LSPIntegrator.remove_stale() (line 898) immediately reads the same file again and writes it with stale servers removed\n\nThis results in 2 reads + 2 writes of the same file, when it could be done in 1 read + 1 write by combining the operations.\n\nProposed fix: Pass the stale_lsp set to the install() method, or create a single unified method that handles both installation and stale cleanup together in one I/O cycle."
+  },
+  {
+    "id": "PERFORMANCE-002",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_extract_lsp_servers, line 660",
+    "summary": "Multiple stat() syscalls for single file: exists() and is_file() and is_symlink() are separate operations",
+    "details": "Line 660: `if candidate.exists() and candidate.is_file() and not candidate.is_symlink():`\n\nThis performs 3 separate stat() syscalls on the same file:\n1. exists() - calls stat()\n2. is_file() - calls stat()\n3. is_symlink() - calls lstat() or stat()\n\nA more efficient approach would be to use Path.stat() once and check the result, or use a try/except with symlink detection combined.\n\nSimilarly, lines 680-683 perform 3 more stat calls on the same file path.\n\nNote: This is minor since it only occurs during plugin discovery (not on every install), but it's an inefficiency worth noting."
+  },
+  {
+    "id": "PERFORMANCE-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/_shared.py",
+    "line_anchor": "resolve_locked_apm_yml_paths, line 1030",
+    "summary": "Sequential stat() calls for all locked paths: .exists() is called for each path after filtering from lockfile",
+    "details": "Line 1030: `resolved = [path for path in sorted(locked_paths) if path.exists()]`\n\nThis calls .exists() (stat syscall) for every resolved apm.yml path from the lockfile. In a project with many dependencies (e.g., 100+ packages), this could result in 100+ stat syscalls just for existence checking.\n\nWhile this is a safety fallback (to avoid using paths that were deleted), it could be optimized by:\n1. Batching stat calls if using os.scandir or similar\n2. Only checking existence if truly necessary (current lockfile entries should generally exist)\n3. Falling back to rglob only if lockfile paths are found to be stale\n\nNote: This issue exists but follows the same pattern as the MCP integrator, suggesting it may be intentional for safety. However, it's worth considering for large projects."
+  }
+]

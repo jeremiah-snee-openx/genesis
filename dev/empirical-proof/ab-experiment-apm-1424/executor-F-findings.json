@@ -1,0 +1,266 @@
+[
+  {
+    "id": "CORRECTNESS-001",
+    "severity": "BLOCKER",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "line 666",
+    "summary": "Undefined function _substitute_plugin_root called",
+    "details": "The _extract_lsp_servers function calls _substitute_plugin_root(servers, abs_root, logger) at line 666, but this function is never defined in the codebase. This will cause a NameError at runtime when any LSP servers are extracted from a plugin with non-empty lspServers configuration. The function should recursively replace ${CLAUDE_PLUGIN_ROOT} placeholders in string values within the servers dict."
+  },
+  {
+    "id": "CORRECTNESS-002",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "lines 873-877, 886-891, 898-902, 910-913",
+    "summary": "Missing logger parameter in LSPIntegrator method calls",
+    "details": "The run_lsp_integration function receives a logger parameter (line 834) but does not pass it to most LSPIntegrator methods (collect_transitive, install, remove_stale). While these methods have optional logger=None parameters that default to NullCommandLogger, the remove_stale method uses logger.progress() at lines 1196 and 1220 to provide user-facing feedback. Not passing the logger means user messages won't appear during LSP stale server cleanup."
+  },
+  {
+    "id": "CORRECTNESS-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/commands/install.py",
+    "line_anchor": "line 540",
+    "summary": "LSP integration uses MCP installation flag instead of dedicated LSP flag",
+    "details": "At line 540, run_lsp_integration is called with should_install=should_install_mcp. This reuses the MCP installation decision gate for LSP integration. While the comment at run_lsp_integration line 853 states 'same gate as MCP', this creates confusion and potential for bugs if LSP and MCP installation logic should ever diverge. The parameter should ideally be named should_install_lsp for clarity, or the gate decision should be explicitly unified in a comment/design doc. If LSP should actually use the same gate as MCP by design, this code is correct but the naming is misleading."
+  },
+  {
+    "id": "SECURITY-001",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "install() method, lines ~1305-1330 and remove_stale() method, lines ~1135-1185",
+    "summary": "TOCTOU race condition in LSP config file updates",
+    "details": "The install() and remove_stale() methods read, modify in memory, and write back .lsp.json (or ~/.claude.json) without atomic operations or file locking. Between the read and write operations, another concurrent 'apm install' process could modify the file, leading to lost updates or unintended configuration changes. This is a classic time-of-check-to-time-of-use (TOCTOU) vulnerability. While the race window is relatively small, the impact is significant for users running concurrent installations or build scripts. Example: Process A reads .lsp.json, Process B reads the same file, Process A writes updates, Process B writes its updates (losing A's changes). Mitigation would require atomic file operations (e.g., write-to-temp-then-rename) or file locking."
+  },
+  {
+    "id": "SECURITY-002",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "collect_transitive() method, lines ~1063-1099",
+    "summary": "Transitive LSP server dependencies lack explicit trust verification",
+    "details": "The PR allows any installed transitive dependency to inject arbitrary LSP server configurations via .lsp.json files or lspServers in plugin.json. While the documentation states 'LSP servers from installed packages are treated as trusted', there is no explicit mechanism to verify or validate the intent of these transitive dependencies. A supply-chain attack is possible where a deeply nested or seemingly unrelated transitive dependency maliciously injects LSP servers that could be used to:  1) Execute arbitrary commands when Claude Code loads and starts the LSP server, 2) Inject environment variables that modify the LSP server's behavior, 3) Point to external/malicious LSP servers that send sensitive code data to attacker-controlled endpoints. The only validation is format-level (through LSPDependency.from_dict()) which does not verify legitimacy. Mitigation would require: 1) explicit user opt-in for transitive LSP deps, 2) warning when transitive deps are installed, 3) provenance tracking or signatures."
+  },
+  {
+    "id": "SECURITY-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "LSPDependency class, env field definition and to_dict() method",
+    "summary": "Unvalidated environment variable injection through env field",
+    "details": "The env field in LSPDependency is stored as an arbitrary dict without validation of keys or values. A malicious plugin can inject environment variables into the LSP server's execution context. Examples of dangerous values: {\"PATH\": \"/malicious/bin:$PATH\"} to hijack command execution, {\"LD_PRELOAD\": \"/malicious/lib.so\"} to inject code, {\"PYTHONPATH\": \"/malicious\"} to modify Python's import path, or {\"CLAUDE_TOKEN\": \"attacker-controlled-value\"} to leak or override authentication tokens. While Claude Code is responsible for safe env var handling at runtime, APM should validate environment variable names against a whitelist to prevent known dangerous variables (PATH, LD_PRELOAD, DYLD_*, etc.). Current behavior: any env dict is accepted and stored as-is in .lsp.json."
+  },
+  {
+    "id": "SECURITY-004",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "args field definition and validation, to_dict() method",
+    "summary": "Command injection risk through unescaped args field",
+    "details": "The args field is stored as a list of strings in .lsp.json without validation. If Claude Code constructs shell commands by concatenating these args without proper escaping, command injection is possible. Example attack: a malicious plugin sets args to [\"server\", \"; rm -rf /\"] which could execute arbitrary shell commands if Claude Code does `exec(\" \".join(args))` instead of using execvp() with an array. While APM passes args as a list (which is safer), the PR provides no guidance on how Claude Code should process these args, and the tests do not verify safe execution. The validation in LSPDependency.validate() does not check for shell metacharacters in args elements. Mitigation: 1) Document that args must be used as array (execvp-style) not shell string, 2) validate args entries in APM to reject common shell metacharacters, 3) test end-to-end with Claude Code to ensure safe arg handling."
+  },
+  {
+    "id": "SECURITY-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_extract_lsp_servers() function and _substitute_plugin_root() replacement logic",
+    "summary": "Unsafe string substitution of ${CLAUDE_PLUGIN_ROOT} in LSP configs",
+    "details": "The _substitute_plugin_root() function recursively replaces ${CLAUDE_PLUGIN_ROOT} placeholders with the absolute plugin path using simple string.replace(). If the plugin path contains special characters or if the substitution happens in fields like 'command' before path validation, an attacker could craft a plugin path to inject shell metacharacters. Example: plugin at /tmp/plugin$(malicious)/ would result in command=\"/tmp/plugin$(malicious)/lsp-server\". Although the command field is later validated by validate_path_segments(), the substitution happens first, and validation only checks for .. traversal, not for shell metacharacters. Additionally, if substitution happens in the 'env' dict values, an attacker could inject ${CLAUDE_PLUGIN_ROOT}/../../../etc/passwd or similar paths. Mitigation: 1) perform string substitution only on fields known to need it, 2) validate the plugin path itself to reject special characters, 3) apply substitution after path validation."
+  },
+  {
+    "id": "SECURITY-006",
+    "severity": "LOW",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_read_lsp_file() function, path validation logic",
+    "summary": "Path traversal check uses relative_to() which can be bypassed on case-insensitive filesystems",
+    "details": "The _read_lsp_file() function validates that a relative path stays within plugin_root by resolving both paths and using relative_to(). While generally correct, on case-insensitive filesystems (macOS, Windows) an attacker could use mixed-case symlinks or case-variant paths to bypass the check in edge cases. However, the code also checks for symlinks and skips them, which provides defense-in-depth. The vulnerability is low-severity because: 1) symlinks are rejected, 2) resolve() follows symlinks to their targets, 3) relative_to() properly handles path comparison. This is a theoretical issue that would require very specific OS and filesystem conditions."
+  },
+  {
+    "id": "PERFORMANCE-001",
+    "severity": "HIGH",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "run_lsp_integration, lines 886-902",
+    "summary": "Redundant file I/O: install() followed by remove_stale() both read and write the same .lsp.json or ~/.claude.json file",
+    "details": "In run_lsp_integration(), when stale LSP servers need to be removed:\n1. LSPIntegrator.install() (line 886) reads .lsp.json or ~/.claude.json and writes the new server configs\n2. LSPIntegrator.remove_stale() (line 898) immediately reads the same file again and writes it with stale servers removed\n\nThis results in 2 reads + 2 writes of the same file, when it could be done in 1 read + 1 write by combining the operations.\n\nProposed fix: Pass the stale_lsp set to the install() method, or create a single unified method that handles both installation and stale cleanup together in one I/O cycle."
+  },
+  {
+    "id": "PERFORMANCE-002",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_extract_lsp_servers, line 660",
+    "summary": "Multiple stat() syscalls for single file: exists() and is_file() and is_symlink() are separate operations",
+    "details": "Line 660: `if candidate.exists() and candidate.is_file() and not candidate.is_symlink():`\n\nThis performs 3 separate stat() syscalls on the same file:\n1. exists() - calls stat()\n2. is_file() - calls stat()\n3. is_symlink() - calls lstat() or stat()\n\nA more efficient approach would be to use Path.stat() once and check the result, or use a try/except with symlink detection combined.\n\nSimilarly, lines 680-683 perform 3 more stat calls on the same file path.\n\nNote: This is minor since it only occurs during plugin discovery (not on every install), but it's an inefficiency worth noting."
+  },
+  {
+    "id": "PERFORMANCE-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/_shared.py",
+    "line_anchor": "resolve_locked_apm_yml_paths, line 1030",
+    "summary": "Sequential stat() calls for all locked paths: .exists() is called for each path after filtering from lockfile",
+    "details": "Line 1030: `resolved = [path for path in sorted(locked_paths) if path.exists()]`\n\nThis calls .exists() (stat syscall) for every resolved apm.yml path from the lockfile. In a project with many dependencies (e.g., 100+ packages), this could result in 100+ stat syscalls just for existence checking.\n\nWhile this is a safety fallback (to avoid using paths that were deleted), it could be optimized by:\n1. Batching stat calls if using os.scandir or similar\n2. Only checking existence if truly necessary (current lockfile entries should generally exist)\n3. Falling back to rglob only if lockfile paths are found to be stale\n\nNote: This issue exists but follows the same pattern as the MCP integrator, suggesting it may be intentional for safety. However, it's worth considering for large projects."
+  },
+  {
+    "id": "STYLE-001",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1049, 1132-1135, 1143-1145, 1159, 1235, 1299",
+    "summary": "Non-idiomatic excessive use of builtins module for set/dict types",
+    "details": "Code uses `builtins.set()` and `builtins.dict` in type annotations and initialization throughout the file. This is not idiomatic Python. Should use plain `set()` and `dict()`. The PR removes identical patterns from mcp_integrator.py while adding them to the new LSP code, indicating a regression."
+  },
+  {
+    "id": "STYLE-002",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "lines 828-829 (run_lsp_integration)",
+    "summary": "Missing type annotations on function parameters",
+    "details": "Parameters `logger` and `diagnostics` lack type annotations, inconsistent with other parameters. Should be annotated with proper types."
+  },
+  {
+    "id": "STYLE-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1078, 1119, 1132, 1143",
+    "summary": "Missing type parameters in generic return types",
+    "details": "Functions return bare `list` or `builtins.set`/`builtins.dict` without type parameters. Should specify element types: `-> list[LSPDependency]` instead of `-> list`. Reduces type safety and IDE support."
+  },
+  {
+    "id": "STYLE-004",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1272-1374 (install method)",
+    "summary": "Overly long function (103 lines) should be refactored",
+    "details": "The `install()` method handles multiple concerns: building server config dict, writing to project scope, writing to user scope, logging, and error handling. Should be split into helper methods."
+  },
+  {
+    "id": "STYLE-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1158-1227 (remove_stale method)",
+    "summary": "Long function with duplicated logic for project and user scope cleanup",
+    "details": "The `remove_stale()` method duplicates logic for project scope and user scope cases. Should extract common logic into a helper function."
+  },
+  {
+    "id": "STYLE-006",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1105-1111, 1197-1201, 1224-1227, 1344-1347, 1369-1372",
+    "summary": "Broad bare Exception catches may hide bugs",
+    "details": "Multiple methods use `except Exception:` which is too broad and can hide unexpected errors. Should catch specific exception types like `json.JSONDecodeError`, `IOError`, etc."
+  },
+  {
+    "id": "STYLE-007",
+    "severity": "LOW",
+    "file": "src/apm_cli/integration/_shared.py",
+    "line_anchor": "lines 983, 1005, 1011-1012, 1017",
+    "summary": "Non-idiomatic use of builtins module for set type",
+    "details": "Uses `builtins.set()` and `builtins.set | None` in type hints. Should use plain `set()` and `set | None`."
+  },
+  {
+    "id": "STYLE-008",
+    "severity": "LOW",
+    "file": "src/apm_cli/models/apm_package.py",
+    "line_anchor": "line 154",
+    "summary": "Incomplete type annotation on variable",
+    "details": "Variable `parsed_lsp: list = []` should specify type parameter: `parsed_lsp: list[LSPDependency] = []`."
+  },
+  {
+    "id": "STYLE-009",
+    "severity": "LOW",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "line 1049",
+    "summary": "Unnecessary import of builtins module",
+    "details": "The `import builtins` statement is only used for the non-idiomatic `builtins.set` and `builtins.dict` usage. Once those are fixed, this import can be removed."
+  },
+  {
+    "id": "TEST-001",
+    "severity": "HIGH",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_extract_lsp_servers, line ~666",
+    "summary": "Missing implementation of `_substitute_plugin_root` called in LSP extraction \u2014 confirmed BLOCKER from correctness lens",
+    "details": "The function `_extract_lsp_servers` calls `_substitute_plugin_root(servers, abs_root, logger)` but this function is NOT defined anywhere in the codebase. Will fail at runtime with NameError when plugins declare LSP servers using ${CLAUDE_PLUGIN_ROOT} placeholders. Corroborates CORRECTNESS-001."
+  },
+  {
+    "id": "TEST-002",
+    "severity": "HIGH",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_read_lsp_file, line ~671-688",
+    "summary": "No test for symlink pointing outside plugin root after path validation passes (TOCTOU)",
+    "details": "The path traversal check uses `relative_to()` but symlink check only blocks symlinks at the candidate path itself. An attacker could create a symlink AFTER validation but BEFORE the file read. No test verifies this case. Corroborates SECURITY-006."
+  },
+  {
+    "id": "TEST-003",
+    "severity": "HIGH",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "collect_transitive, line ~50-75",
+    "summary": "No test for exception handling when APMPackage parsing fails during transitive LSP collection",
+    "details": "The `collect_transitive` method catches exceptions but only logs them. No tests verify partial collection is still usable, that error counts are reported, or that collection continues with remaining valid packages after a failure."
+  },
+  {
+    "id": "TEST-004",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "install, line ~290-320",
+    "summary": "No tests for JSON write failure scenarios (permission denied, read-only files)",
+    "details": "The `install` method has try/except blocks for JSON write failures but tests only cover success paths. No tests verify behavior when .lsp.json write fails, or that partial writes don't corrupt existing configs."
+  },
+  {
+    "id": "TEST-005",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "get_server_configs, line ~103-113",
+    "summary": "No test for LSPDependency objects lacking to_dict() or name attribute",
+    "details": "The `get_server_configs` method assumes LSPDependency objects have both `to_dict` and `name` attributes. No tests for malformed dependency objects, which could silently drop server configurations."
+  },
+  {
+    "id": "TEST-006",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "update_lockfile, line ~213-227",
+    "summary": "No test for corrupted YAML lockfile or type mismatches during lockfile update",
+    "details": "Tests don't cover: corrupted YAML in existing lockfile, lsp_servers as list vs set type mismatch, or whether clearing to empty set properly removes old configurations."
+  },
+  {
+    "id": "TEST-007",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "remove_stale, line ~124-185",
+    "summary": "No test for JSON parsing errors when removing stale LSP servers",
+    "details": "Tests only cover valid JSON files. No tests verify behavior when .lsp.json contains invalid JSON, or that partial corruption isn't written back to disk."
+  },
+  {
+    "id": "TEST-008",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_lsp_servers_to_apm_deps, line ~705-760",
+    "summary": "No test verifying warning logs are generated for skipped invalid servers",
+    "details": "The function skips invalid servers with logging but tests don't verify that warning logs are actually generated or that a mix of valid and invalid servers is handled correctly."
+  },
+  {
+    "id": "TEST-009",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "_read_lsp_json, line ~689-704",
+    "summary": "No test for non-dict JSON top-level structures in .lsp.json",
+    "details": "No tests verify that array-or-null top-level JSON is safely rejected. A plugin with a malicious .lsp.json could exploit incomplete validation."
+  },
+  {
+    "id": "TEST-010",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "run_lsp_integration",
+    "summary": "No end-to-end test for direct_lsp_deps + collected_lsp_deps merge and deduplication",
+    "details": "Tests for run_lsp_integration use mocks. No test verifies that direct and transitive LSP dependencies are properly merged before deduplication in a real code path."
+  },
+  {
+    "id": "TEST-011",
+    "severity": "LOW",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line_anchor": "validate, line ~145-185",
+    "summary": "Missing edge cases in path traversal validation for command field",
+    "details": "Tests check basic invalid names but not comprehensive boundary cases: commands with spaces, absolute vs relative paths, empty string, or None with strict=False."
+  },
+  {
+    "id": "TEST-012",
+    "severity": "LOW",
+    "file": "src/apm_cli/models/apm_package.py",
+    "line_anchor": "get_lsp_dependencies / get_dev_lsp_dependencies",
+    "summary": "No test for malformed lsp entries in dependencies dict",
+    "details": "No tests for behavior when dependencies['lsp'] contains mixed types, is None, or is not a list. No test verifying get_lsp_dependencies and get_dev_lsp_dependencies don't overlap."
+  }
+]

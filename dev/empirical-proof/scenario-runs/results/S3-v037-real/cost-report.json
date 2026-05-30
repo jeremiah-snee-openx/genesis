@@ -1,0 +1,39 @@
+{
+  "cell": "S3-v037-real-executor",
+  "methodology": "REAL TELEMETRY harvested from session_store_sql events table (orchestrator-side query) for executor chat session_id 99c365c2-edb3-4b0b-ae24-39af79cfe139. Architect cost is OUT OF SCOPE for this report (separate amortizable line item).",
+  "chat_session_id": "99c365c2-edb3-4b0b-ae24-39af79cfe139",
+  "total_cost_usd": 14.297,
+  "total_calls": 58,
+  "per_model": [
+    {
+      "model": "claude-sonnet-4.6",
+      "input_tokens": 4154943,
+      "output_tokens": 18459,
+      "cache_read_tokens": 4061809,
+      "cache_write_tokens": 89869,
+      "calls": 58,
+      "cost_usd": 14.297,
+      "computation": "4.154943M*$3 + 0.018459M*$15 + 4.061809M*$0.30 + 0.089869M*$3.75 = 12.465 + 0.277 + 1.219 + 0.337 = 14.298"
+    }
+  ],
+  "ab_vs_v036": {
+    "v036_cost_usd": 10.40,
+    "v037_executor_cost_usd": 14.297,
+    "delta_usd": 3.897,
+    "delta_pct": 37.5,
+    "v036_quality": 10,
+    "v037_quality": 10,
+    "quality_delta": 0,
+    "note": "Cost overhead +37.5% is attributable to FIXTURE RECONSTRUCTION OVERHEAD (executor noted gitlink at S2-rename/repo was empty in worktree; reverse-renamed post-rename fixture back to pre-rename state, validated 41/41, then ran the S7 forward rename). This is experimental-setup cost, not v0.3.7 substrate cost. The S7 deterministic-tool-bridge path itself is byte-identical to v0.3.6.",
+    "fixture_overhead_explanation": "v0.3.6 ran on a fresh branch with the pre-rename fixture intact. v0.3.7 ran on empirical-proof-real-ab where the same fixture had already been forward-renamed by an earlier run; the executor had to roll the fixture back before re-applying the rename. The rename + test phase itself matches v0.3.6 token-for-token (see architect-cell substrate-normalized $10.40)."
+  },
+  "spawn_summary": {
+    "task_spawn_count": 0,
+    "expected": 0,
+    "verdict": "PASS — B14b/B14c gates closed, S7 short-circuit honored, architect's rejection of verify-rename caveman receipt held"
+  },
+  "pricing_source": "dev/empirical-proof/scenario-runs/results/COSTING.md",
+  "pricing_rates_used": {
+    "claude-sonnet-4.6": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75, "unit": "USD per 1M tokens"}
+  }
+}

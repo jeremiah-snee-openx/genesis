@@ -1,0 +1,15 @@
+{
+  "cell": "S2N-zero-opus",
+  "scenario": "doc-audit zero-workflow",
+  "model": "claude-opus-4-7",
+  "rates": {
+    "input_per_mtok": 15,
+    "output_per_mtok": 75
+  },
+  "input_tokens": 31300,
+  "output_tokens": 6000,
+  "thinking_tokens": 3000,
+  "total_cost_usd": 1.1445,
+  "methodology": "size-based estimate from corpus inspection",
+  "quality_notes": "Inspected quickstart, compile, and manifest-schema pages plus corpus stats: 11 files, 2,978 lines, ~139.6K characters, and command-heavy Markdown with tables/code blocks. A single-shot Opus call should produce a credible high-level audit at this size, but coverage will likely be uneven on precise cross-page drift because it must hold the command set, 11 pages, inconsistencies, and edit proposals in one pass without iterative checking."
+}

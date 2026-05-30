@@ -274,6 +274,41 @@ ANTI-PATTERNS:
 
 ---
 
+## R6. AUDIENCE-BOUNDARY ENFORCE (port v0.2/v0.3.x → v0.3.7)
+
+PROBLEM: an existing handoff packet predates v0.3.7. It bundles
+HUMAN_RATIONALE and SPAWN_BRIEF as a single 5-15K-token blob; every
+spawn ingests architect's reasoning unchanged. Subagents return
+verbose prose; synthesizer re-ingests heavy receipts.
+
+TRIGGERS (any one fires):
+- handoff packet has ≥1 task() spawn AND no PER-SPAWN DECLARATION
+  TABLE block.
+- spawn-brief char count >2K and Tier=TRIVIAL.
+- subagent return prose >1K tokens for a fixed-schema lens.
+- handoff text was authored before composition-substrate §7
+  AUDIENCE BOUNDARY existed.
+
+PROCEDURE (checklist):
+1. Inventory every artifact the workflow emits. Tag each
+   INTERNAL or EXTERNAL.
+2. For every INTERNAL artifact whose mode is currently NORMAL prose,
+   pick caveman intensity (LITE / FULL / ULTRA) per the audience
+   matrix (pattern-tradeoffs.md §11).
+3. Split the existing handoff into HUMAN_RATIONALE (full prose,
+   stays in handoff.md) and SPAWN_BRIEFS (caveman, schema-paired).
+4. Author RECEIPT_SCHEMAS for every SPAWN_BRIEF.
+5. Confirm synthesizer's EXTERNAL_ARTIFACT_SPEC declares NORMAL.
+6. Re-run any content evals associated with the workflow. If
+   quality degrades on any cell, revert that cell to NORMAL and
+   record the exception in Justification.
+
+ANTI-PATTERN (OVER-PORTING): forcing caveman onto a workflow whose
+spawns are PLANNER/RESEARCHER tier. Caveman degrades open-ended
+reasoning; the audit's GATE rule is binding.
+
+---
+
 ## How refactor patterns relate
 
 ```

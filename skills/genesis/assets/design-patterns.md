@@ -837,6 +837,68 @@ The router itself MUST be lightweight: planner-class routers eat
 the savings. The typical break-even is a router that costs less
 than 5% of the most expensive downstream call.
 
+SELECTION RULE (apply BEFORE writing any concrete `model:` field;
+this rule decides whether to bind at all):
+
+1. Identify the HARNESS DEFAULT role class for the primitive type
+   that will carry the work. Consult the adapter's "default role
+   class per primitive type" table (e.g. `per-harness/copilot.md`
+   section "Default role class per primitive type"). The harness
+   default is NOT always the session model -- on some harnesses,
+   subagent spawn types (e.g. Copilot CLI's `task(agent_type=
+   'explore')`) default to a CHEAPER role class than the session
+   model. Without this lookup the architect cannot reason about
+   binding direction.
+
+2. Identify the REQUIRED role class for this work (planner /
+   researcher / implementer / reviewer / trivial / long-context-
+   retriever / safety) per the rubric in `model-catalog.md`.
+
+3. Decide binding action. The default is BIND EXPLICITLY -- it
+   gives PREDICTABILITY, PORTABILITY, and AUDIT TRAIL. OMIT is
+   the exception, not the rule.
+
+   - DEFAULT < REQUIRED   -> BIND UP for STAKES. Declare the
+     higher role class explicitly. Cost increase is justified
+     by the quality requirement. Cite the stakes in the handoff.
+   - DEFAULT == REQUIRED  -> BIND EXPLICITLY at the matching
+     role class. Two reasons this is the right move even though
+     the cost is identical to OMIT:
+       (a) PORTABILITY -- the same design will route differently
+       on harnesses where defaults diverge; explicit binding
+       insulates the design from default drift.
+       (b) PREDICTABILITY -- the operator can read off "this lens
+       will run at trivial class" from the design alone, without
+       cross-referencing the harness adapter's default table.
+       Profiling and capacity planning become possible at design
+       time, not after the first run.
+     OMIT is only acceptable when (i) the primitive type CANNOT
+     carry `model:` on the target harness (e.g. SKILL.md on
+     Copilot CLI inherits session default by spec; see WRONG-
+     PRIMITIVE BINDING anti-pattern), or (ii) the skill is
+     declared single-harness AND has no audit / portability
+     requirements AND the operator accepts default drift as a
+     known risk.
+   - DEFAULT > REQUIRED   -> BIND DOWN for ECONOMY. Declare the
+     cheaper role class explicitly. Cost reduction IS the
+     benefit. This is the most common B12 use case in practice
+     (because reviewer/planner-class session defaults are
+     common while most fan-out work is trivial-class).
+   - PORTABILITY required across harnesses with different
+     defaults -> BIND explicitly so the choice survives
+     adapter swap.
+   - OPERATOR ECONOMIC BIAS = MAX_QUALITY -> tolerate more
+     binding-up where role-class need is uncertain; MAX_ECONOMY
+     -> bind down aggressively where the failure mode is
+     tolerable; BALANCED (default) -> bind to the CHEAPEST role
+     class that meets the cited requirement.
+
+CONSEQUENCE: see anti-patterns below for shape-detection
+(ZERO explicit bindings = ZERO-EXPLICIT, all-bound-up =
+BIND-UP-WITHOUT-JUSTIFICATION). Healthy shape: most elements
+bound DOWN from session default to the cheapest role class that
+meets need, a few bound UP only where cited STAKES require it.
+
 ANTI-PATTERNS:
 - HARDCODED MODEL NAMES in the design. Models age out; the
   catalogue should reference role classes only. (Concrete names
@@ -852,6 +914,61 @@ ANTI-PATTERNS:
 - MID-SESSION MODEL SWITCH inside the SAME thread without naming
   it as a cache invalidator. Provider caches partition by model;
   switching mid-session bills the next turn at fresh-input rates.
+- WRONG-PRIMITIVE BINDING -- declaring `model:` on a primitive
+  whose harness frontmatter does not accept it (the field is
+  silently ignored). The architect believes B12 is firing but
+  every agentic element still bills against the session default.
+  This is what happened in PR #12's Executor B run on Copilot CLI:
+  the design declared role classes per element but the binding
+  fell back to the session model because the per-element binding
+  site on Copilot is `.agent.md` frontmatter, NOT SKILL.md
+  frontmatter. Cure: consult the per-harness adapter (section
+  "BINDING SITE" / "Cost-pattern bindings") at step 7b to
+  confirm WHICH primitive type carries the `model:` field on the
+  target harness; restructure the unit of work to use that
+  primitive type if it is currently held by another.
+- BIND-UP-WITHOUT-JUSTIFICATION -- declaring `model:` at a HIGHER
+  role class than the work requires, without citing a STAKES
+  reason. The architect believes "more capable model = safer
+  design"; in practice this is just paying more for capability
+  that the work cannot use. PR #12's empirical A/B (Cell E v0.3.1)
+  measured this directly: 4 lens agents bound to reviewer-class
+  (claude-sonnet-4.6) when the lens work was trivial-class
+  (single-pass checklist grading over a finite diff window with
+  no cross-file reasoning). Result: +25% TOTAL run cost vs the
+  v0.1 baseline with ZERO quality delta on the bound lenses.
+  Cure: cite the role-class requirement explicitly in the handoff
+  packet. Every BIND-UP must name the STAKES (security-critical,
+  irreversible side effect, cross-file reasoning required,
+  multi-step planning required). If the cite is "to be safe" or
+  "in case it's hard," it's bind-up without justification and
+  should be demoted. VARIANT -- BULK IDENTICAL BINDING: copy-
+  pasting the same `model:` across many primitives without per-
+  element role-class distinction. The pattern fires in BOTH
+  directions: bulk-UP (every `.agent.md` gets `claude-sonnet-4.6`
+  as a template default) AND bulk-DOWN (every panel lens gets
+  `claude-haiku-4.5` because the first lens warranted trivial-
+  class so "they're all trivial"). The cost-direction does not
+  determine whether it is an anti-pattern; the LACK of per-element
+  reasoning does. The cure is the PER-ELEMENT CAPABILITY PROFILE
+  enumeration: for each primitive, name (a) does the work need
+  cross-file / multi-file reasoning? (b) does the output carry
+  STAKES (consequential write, security finding, irreversible
+  side effect)? (c) does the work require multi-step proof rather
+  than pattern matching? Record the answers in the handoff packet
+  next to the bound class. Identical bindings are LEGITIMATE if
+  every element's profile genuinely matches; ILLEGITIMATE if the
+  enumeration was skipped. Common case in PANEL fan-outs: 3-4
+  lenses are TRIVIAL (style, lint-grep-class correctness, basic
+  test-coverage parse) but security and depth-of-coverage often
+  warrant REVIEWER class. See architectural-patterns.md §A1
+  PANEL UNDIFFERENTIATED LENS BINDING for the panel-specific
+  enumeration step.
+- ZERO-EXPLICIT -- the entire design carries zero `model:`
+  declarations and relies on harness defaults. Predictability
+  evaporates the moment a default shifts (across harness version
+  or across harnesses); the operator has no contract to read.
+  Cure: bind explicitly per SELECTION RULE rule 3.
 
 ---
 
@@ -931,6 +1048,165 @@ ANTI-PATTERNS:
   have been R1 SPLIT. The body shrinks but its single
   responsibility is still violated; the thrift just hides it.
 
+### B14b. CAVEMAN BRIEF (sub-pattern of B14)
+
+CLASSICAL ANALOG: telegraphic register; signal-flag protocols;
+controlled natural language (per arXiv 2604.00025: brevity
+constraints can improve task fidelity by ~26pp on inverse-scaling
+tasks).
+
+WHEN: a TRIVIAL-class lens dispatch (see model-catalog.md) whose
+output is a fixed schema -- typically {verdict, rationale} or
+{category, evidence}. Severity classifiers, label-set pickers,
+dup-check oracles, missing-info gates, style-only diff scans all
+fit. Use also for any FIXED-SCHEMA REVIEWER lens whose work is
+classification-shaped (judgement compressed into the schema, not
+into the prose).
+
+MECHANISM (canonical drop list + preservation contract):
+
+DROP from briefs and receipts:
+- articles: a, an, the
+- filler: just, really, basically, actually, simply, essentially,
+  generally
+- pleasantries: sure, certainly, of course, happy to, I'd recommend
+- hedging: likely, possibly, it might be worth, you could consider,
+  it would be good to
+- connective fluff: however, furthermore, additionally, in addition
+  (when nonessential)
+- redundant phrases: "in order to" -> "to"; "make sure to" -> "ensure";
+  "the reason is because" -> "because"
+
+PREFER:
+- short synonyms: "big" over "extensive", "fix" over "implement a
+  solution for", "use" over "utilize"
+- fragments over full sentences
+- arrows for causality (X -> Y)
+- equations for state (inline_obj_prop = new_ref = re-render)
+- pattern: [thing] [action] [reason]. [next step].
+
+PRESERVE EXACT (caveman MUST NOT rewrite):
+- fenced code blocks (byte-identical)
+- inline code (backtick contents)
+- file paths, URLs, command lines
+- API names, library names, protocol names, algorithm names
+- error strings (quote verbatim)
+- numbers, version numbers, dates, env vars (NODE_ENV, $HOME, ...)
+- proper nouns (project / person / company)
+- markdown structure: headings (count + order), bullet count,
+  numbering, tables, frontmatter
+- JSON / YAML / SQL / shell content (skip — caveman is for prose
+  only)
+
+INTENSITY LEVELS (map to artifact tier):
+- LITE: drop filler/hedging/pleasantries; keep articles + grammar.
+  Use for SHORT_PROSE briefs to REVIEWER-tier sub-agents.
+- FULL: drop articles too; fragments OK; short synonyms.
+  Use for TRIVIAL-tier classifiers with single-anchor schemas.
+- ULTRA: arrows + equations + symbol-heavy; max compression.
+  Use for receipt schemas (already JSON; no further prose).
+
+ROLE-MODE PERSISTENCE: the brief MUST instruct the sub-agent to
+"RESPOND CAVEMAN until done" so receipts come back compressed.
+Without role-mode persistence, brief savings are erased by verbose
+returns.
+
+ANCHOR (mandatory): one grounding line for the highest-risk bucket
+to neutralize over-escalation drift. Example:
+"ANCHOR: blocker = RCE / data-loss / full-outage only."
+
+AUTO-CLARITY EXCEPTIONS (drop caveman, return to normal):
+- security warnings (do not telegraph "rm -rf safe")
+- irreversible operations (deletions, force-pushes, prod migrations)
+- ambiguous multi-step where omitted words risk misread
+- user-confusion risk (the receiver is human, not subagent)
+Resume caveman after the clarified part.
+
+OUTPUT MODE CONTRACT: every brief ends with the schema-only
+instruction: "OUTPUT JSON ONLY: {schema}. NO PROSE OUTSIDE JSON."
+For non-classifier lenses where prose IS the output, replace with:
+"RESPOND CAVEMAN-FRAGMENT. ONE FINDING PER LINE."
+
+MEASURED EFFECT (severity-keyword lens, haiku-4.5, 8-issue fixture,
+16 dispatches): 44.6% input-token saving, 75% verdict agreement
+with verbose brief, ZERO downward errors (both disagreements were
+upward escalations safer than the verbose verdict). Source:
+dev/empirical-proof/scenario-runs/results/B-pat-B14-caveman/
+cost-report.json.
+
+GATE: TRIVIAL or fixed-schema REVIEWER only. Open-ended REVIEWER+
+needs the prose context; caveman compression collapses
+multi-dimension judgement into the model's prior.
+
+SEE ALSO: B14c CAVEMAN CHANNEL for the orchestrator-side enforcement
+on internal traffic; composition-substrate.md §7 AUDIENCE BOUNDARY
+for the substrate concept; pattern-tradeoffs.md §11 for the
+audience matrix.
+
+ANTI-PATTERNS:
+- CAVEMAN ON REVIEWER (preserved from v0.3.6) — compressing a brief
+  whose lens must weigh trade-offs across multiple dimensions. The
+  output schema may still be a tag, but the reasoning behind it is
+  not classification; it is judgement. Caveman compression collapses
+  that judgement into the model's prior.
+- CAVEMAN ON EXTERNAL (new) — applying caveman to a user-facing
+  artifact (PR description, README, advisory). Compromises
+  readability; user is not a subagent.
+- ROGUE PROSE IN BRIEF (new) — architect copies HUMAN_RATIONALE
+  block into the spawn brief. The subagent ingests 5-15K tokens of
+  decision rationale that does not change its work. Defeats B14b
+  entirely. Cure: SPAWN_BRIEF block must be self-contained.
+- VERBOSE RECEIPT (new) — brief is caveman but no role-mode
+  instruction; subagent returns prose. Cure: every brief ends with
+  "RESPOND CAVEMAN" + schema directive.
+
+### B14c. CAVEMAN CHANNEL (sub-pattern of B14)
+
+CLASSICAL ANALOG: protocol layering — different wire format on
+internal hops vs external presentation; cf. backend-for-frontend.
+
+WHEN: a workflow spawns ≥1 task() and emits ≥1 user-facing artifact.
+B14c orchestrates the AUDIENCE BOUNDARY (composition-substrate §7)
+across the workflow: every internal hop uses caveman; the
+synthesizer decompresses to normal prose at the user-facing edge.
+
+MECHANISM:
+1. Architect splits every handoff into HUMAN_RATIONALE (kept in
+   handoff.md, never copied) + SPAWN_BRIEF (caveman, copied to
+   task() prompt).
+2. Every SPAWN_BRIEF declares a matching RECEIPT_SCHEMA.
+3. Subagents receive role-mode-caveman briefs; return caveman
+   receipts.
+4. Synthesizer (REVIEWER+ tier) ingests receipts, decompresses to
+   normal prose for the EXTERNAL artifact.
+
+DECLARATION (architect-side): every spawn in the handoff packet's
+PER-SPAWN DECLARATION TABLE names {Audience, Tier, Brief mode,
+Receipt mode, Justification}. Audience=INTERNAL with Brief
+mode=NORMAL fails review unless the Justification cites a canonical
+auto-clarity exception (security/destructive/irreversible/
+ambiguous).
+
+GATE: PANEL (A1) and PIPELINE (A3) workflows with ≥3 spawns benefit
+most. Single-spawn workflows still apply B14b on the lone brief but
+do not gain channel-level synthesis amortization.
+
+MEASURED EFFECT: projected on S1-shape (9 spawns, multi-lens
+panel): ~43K input + ~14K output tokens saved per run; ~$0.34
+uncached. See dev/empirical-proof/REAL-TELEMETRY-RESULTS.md "Flaw
+3" and v0.3.7 design plan §3.
+
+ANTI-PATTERNS:
+- AUDIENCE BLEED (cross-link to composition-substrate §7).
+- ROGUE PROSE IN BRIEF (cross-link to B14b).
+- DECOMPRESSION SKIPPED — synthesizer emits caveman to user. Cure:
+  synthesizer's external-artifact contract names "NORMAL prose,
+  full grammar".
+- CAVEMAN-WITHOUT-SCHEMA — subagent told to respond caveman but
+  given no output schema. Returns terse-but-unstructured findings
+  the synthesizer cannot parse. Cure: every brief pairs with a
+  RECEIPT_SCHEMA.
+
 ---
 
 ## B15. TOOL SUBSET
@@ -974,6 +1250,14 @@ ANTI-PATTERNS:
 - SUBSET CHURN MID-SESSION -- adding or removing tools across
   turns. Each change is a CACHE INVALIDATOR (B13). Decide the
   subset at primitive entry and hold it.
+- WRONG-PRIMITIVE BINDING -- declaring `tools:` on a primitive
+  whose harness frontmatter does not accept it (silently ignored).
+  Same failure mode as B12 WRONG-PRIMITIVE BINDING. Cure: consult
+  the per-harness adapter to confirm which primitive type carries
+  the `tools:` (or equivalent) field; restructure the unit of
+  work to that primitive type if needed. On Copilot, the binding
+  site is `.agent.md` frontmatter; SKILL.md does not accept
+  `tools:`.
 
 ---
 
@@ -993,10 +1277,16 @@ budget.
 MECHANISM: at the primitive's design surface, declare the
 expected effort level per role class:
 - trivial role class -> minimum or none.
-- implementer role class -> low to medium.
-- planner role class -> medium to maximum, depending on the
-  decision's blast radius.
 - reviewer role class -> low (the rubric does the heavy lifting).
+- implementer role class -> low to medium.
+- long-context-retriever role class -> low (retrieval, not
+  reasoning).
+- planner role class -> medium to high, depending on the
+  decision's blast radius.
+- researcher role class -> high to xhigh. Researcher's defining
+  capability IS open-ended reasoning; effort suppression defeats
+  the binding. Reserve for the narrow trigger where the work
+  genuinely lacks a rubric and lacks a plan.
 
 The per-harness adapter binds the abstract level to the
 provider's concrete knob (e.g. `reasoning_effort=low`,

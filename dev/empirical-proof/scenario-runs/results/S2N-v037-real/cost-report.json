@@ -1,0 +1,38 @@
+{
+  "cell": "S2N-v037-real-executor",
+  "methodology": "REAL TELEMETRY harvested from session_store_sql events table (orchestrator-side query) for executor chat session_id 41405aae-57ae-4e92-ae2b-39bc8d21fcc7. Architect cost is OUT OF SCOPE for this report (separate amortizable line item).",
+  "chat_session_id": "41405aae-57ae-4e92-ae2b-39bc8d21fcc7",
+  "total_cost_usd": 7.103,
+  "total_calls": 19,
+  "per_model": [
+    {
+      "model": "claude-sonnet-4.6",
+      "input_tokens": 1908098,
+      "output_tokens": 22626,
+      "cache_read_tokens": 1758468,
+      "cache_write_tokens": 137899,
+      "calls": 19,
+      "cost_usd": 7.103,
+      "computation": "1.908098M*$3 + 0.022626M*$15 + 1.758468M*$0.30 + 0.137899M*$3.75 = 5.724 + 0.339 + 0.528 + 0.517 = 7.108"
+    }
+  ],
+  "ab_vs_v036": {
+    "v036_cost_usd": 9.7956,
+    "v037_executor_cost_usd": 7.103,
+    "delta_usd": -2.693,
+    "delta_pct": -27.5,
+    "v036_quality": 8,
+    "v037_quality": 8,
+    "quality_delta": 0,
+    "note": "v0.3.7 produces ~28% raw cost reduction at quality parity. Monolithic A9+A7 executor (0 task() spawns, AUDIENCE BOUNDARY refusal validated) avoided the orchestration tax v0.3.6 paid via redundant fan-out."
+  },
+  "spawn_summary": {
+    "task_spawn_count": 0,
+    "expected": 0,
+    "verdict": "PASS — B14b/B14c gates closed as designed (REVIEWER-tier open-ended audit, no fixed-schema lens fit)"
+  },
+  "pricing_source": "dev/empirical-proof/scenario-runs/results/COSTING.md",
+  "pricing_rates_used": {
+    "claude-sonnet-4.6": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75, "unit": "USD per 1M tokens"}
+  }
+}

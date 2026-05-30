@@ -1,0 +1,51 @@
+{
+  "cell": "S1-v037-real-executor",
+  "methodology": "REAL TELEMETRY harvested from session_store_sql events table (orchestrator-side query) for executor chat session_id 82be8bfe-3d44-48cc-a5f8-dd2336589261. Architect cost is OUT OF SCOPE for this report (separate amortizable line item).",
+  "chat_session_id": "82be8bfe-3d44-48cc-a5f8-dd2336589261",
+  "total_cost_usd": 18.531,
+  "total_calls": 130,
+  "per_model": [
+    {
+      "model": "claude-sonnet-4.6",
+      "input_tokens": 4107265,
+      "output_tokens": 30501,
+      "cache_read_tokens": 3757543,
+      "cache_write_tokens": 340234,
+      "calls": 58,
+      "cost_usd": 15.187,
+      "computation": "4.107265M*$3 + 0.030501M*$15 + 3.757543M*$0.30 + 0.340234M*$3.75 = 12.322 + 0.458 + 1.127 + 1.276 = 15.183"
+    },
+    {
+      "model": "claude-haiku-4.5",
+      "input_tokens": 2821683,
+      "output_tokens": 18936,
+      "cache_read_tokens": 2694031,
+      "cache_write_tokens": 127462,
+      "calls": 72,
+      "cost_usd": 3.344,
+      "computation": "2.821683M*$1 + 0.018936M*$5 + 2.694031M*$0.10 + 0.127462M*$1.25 = 2.822 + 0.095 + 0.269 + 0.159 = 3.345"
+    }
+  ],
+  "ab_vs_v036": {
+    "v036_cost_usd": 24.59,
+    "v037_executor_cost_usd": 18.531,
+    "delta_usd": -6.059,
+    "delta_pct": -24.6,
+    "v036_quality": 9,
+    "v037_quality": 8,
+    "quality_delta": -1,
+    "note": "v0.3.7 executor produces ~25% raw cost reduction at near-quality parity (Gate B partial miss = -1). Caveman compression of spawn briefs (5/5 CAVEMAN_FULL on the wire vs v0.3.6's 0/9 PROSE_LEAK) is the primary cost driver."
+  },
+  "caveman_fidelity": {
+    "spawn_count": 5,
+    "caveman_full_count": 5,
+    "fidelity_pct": 100.0,
+    "evidence_query": "SELECT name, arguments_json FROM tool_requests WHERE session_id='82be8bfe-3d44-48cc-a5f8-dd2336589261' AND name='task'",
+    "verdict": "PASS — load-bearing v0.3.7 substrate validation"
+  },
+  "pricing_source": "dev/empirical-proof/scenario-runs/results/COSTING.md",
+  "pricing_rates_used": {
+    "claude-sonnet-4.6": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75, "unit": "USD per 1M tokens"},
+    "claude-haiku-4.5":  {"input": 1.00, "output": 5.00,  "cache_read": 0.10, "cache_write": 1.25, "unit": "USD per 1M tokens"}
+  }
+}

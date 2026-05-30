@@ -1,0 +1,34 @@
+[
+  {
+    "id": "PERF-001",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "lines 878-880",
+    "summary": "Redundant LSP dependency collection and deduplication on every install",
+    "details": "When transitive LSP deps are collected, they are immediately deduplicated via LSPIntegrator.deduplicate(lsp_deps + transitive_lsp). This O(n+m) concatenation followed by O(n*log(n)) deduplication happens for every install with transitive dependencies. The transitive collection already scans all apm.yml files via rglob (expensive I/O), and then the list is rebuilt. For large monorepos with many transitive LSP servers, this causes unnecessary list allocations and repeated name lookups."
+  },
+  {
+    "id": "PERF-002",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1184-1217",
+    "summary": "Repeated full JSON read/write cycle during stale server cleanup",
+    "details": "In remove_stale(), the entire .lsp.json or ~/.claude.json file is read into memory, parsed, modified, and written back. This happens even when removing a single stale server from a potentially large config file. For multiple stale servers being removed in batch, this should be a single read-parse-modify-write cycle, not one per file access."
+  },
+  {
+    "id": "PERF-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line_anchor": "lines 1333-1339 and 1359-1364",
+    "summary": "Inefficient config comparison on every write in install()",
+    "details": "In LSPIntegrator.install(), dict comparison existing[name] != cfg is performed for every server to increment a count variable used only for logging. Dict equality uses deep comparison O(size of dict). For servers with large initializationOptions or settings dicts this becomes expensive."
+  },
+  {
+    "id": "PERF-004",
+    "severity": "LOW",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "lines 735-750",
+    "summary": "Linear scan of hardcoded field list per LSP server during plugin extraction",
+    "details": "In _lsp_servers_to_apm_deps(), a hardcoded tuple of 12 field names is iterated for every server config with if key in cfg checks. A more efficient approach would use dict.get() or copy specific keys at once. Impact is negligible given the small field list."
+  }
+]

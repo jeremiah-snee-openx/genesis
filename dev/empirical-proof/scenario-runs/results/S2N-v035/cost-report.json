@@ -1,0 +1,48 @@
+{
+  "cell": "S2N-v035",
+  "scenario": "doc-audit v0.3.5 class-routed panel with B12/B13/B14b/B16",
+  "architecture": "1 architect + 44 lens dispatches (22 haiku TRIVIAL + 22 sonnet REVIEWER) + 1 synthesizer",
+  "subagents_spawned": 46,
+  "models_used": [
+    "claude-haiku-4-5",
+    "claude-sonnet-4-6"
+  ],
+  "per_lens_breakdown": {
+    "lensA_haiku_caveman_x11": {
+      "input_each": 4171,
+      "output_each": 100,
+      "cost_total": 0.05138
+    },
+    "lensB_haiku_caveman_x11": {
+      "input_each": 3980,
+      "output_each": 100,
+      "cost_total": 0.04928
+    },
+    "lensC_sonnet_verbose_x11": {
+      "input_each": 4300,
+      "output_each": 600,
+      "cost_total": 0.2409
+    },
+    "lensD_sonnet_verbose_x11": {
+      "input_each": 4300,
+      "output_each": 800,
+      "cost_total": 0.2739
+    },
+    "synthesizer": {
+      "input": 18000,
+      "output": 3000,
+      "cost": 0.099
+    },
+    "architect": {
+      "input": 3500,
+      "output": 1800,
+      "cost": 0.0375
+    }
+  },
+  "cache_modeling": "first dispatch pays full corpus; 43 subsequent at 0.3\u00d7 cache_read rate",
+  "total_input_tokens_effective": 205760,
+  "total_output_tokens": 22400,
+  "total_cost_usd": 0.75196,
+  "methodology": "size-based estimate with B13 cache modeled at Anthropic published rate",
+  "quality_notes": "Sampled docs show dense command examples, cross-links, and schema/prose claims, so splitting keyword/link extraction from reasoning keeps cheap lenses deterministic while reserving Sonnet for judgment. This is higher-quality than a v0.2 generic panel because separate REVIEWER Lens C dedicates full Sonnet reasoning to drift detection, while Lens D independently drafts edit diffs instead of doing three lenses inline in one prose pass."
+}

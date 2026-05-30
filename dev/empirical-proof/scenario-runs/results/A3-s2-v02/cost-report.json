@@ -1,0 +1,5 @@
+{"cell":"A3","scenario":"S2","version":"v0.2","method":"NAIVE per-file edits, sonnet-4.6 only",
+ "tool_calls":{"bash":4,"view":19,"edit":74,"total":97},
+ "total_input_tokens":1241600,"total_output_tokens":15950,
+ "total_cost_usd":3.97,
+ "note":"Cumulative context growth: input ≈ 3000 + 200N over 97 turns."}

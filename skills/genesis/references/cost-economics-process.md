@@ -19,64 +19,42 @@ It does NOT cap the size of the design. Four values; default
 
 ### frugal
 
-Posture: minimize spend; accept up to ~15-20% quality risk on
+Posture: minimize spend; accept ~15-20% quality risk on
 non-blast-radius decisions.
-
-Pattern mandates:
-- B12 MODEL ROUTER on any module with heterogeneous sub-tasks.
-- B15 TOOL SUBSET on any module against a tool surface >10 tools.
-- B16 EFFORT GOVERNOR declared on every module (default minimum
-  unless capability profile demands otherwise).
-- A12 GRADIENT WORKFLOW preferred over flat panels when fan-out
-  width >= 3.
-- Default to the cheapest role class that meets capability profile.
-- Forbid mid-session model switch (B13 invalidator).
+Pattern mandates: B12, B15, B16 declared; A12 preferred over flat
+panels at fan-out >= 3; cheapest role class meeting capability
+profile; forbid mid-session model switch.
 
 ### balanced (default)
 
 Posture: best $/quality per primitive. The posture genesis ships
-as default; equivalent to running the catalogue without explicit
-stance.
-
-Pattern mandates:
-- B13 CACHE-AWARE PREFIX enforced (always; this is the largest
-  lever and has no quality tradeoff).
-- Role class chosen per slot (no class-uniform graphs unless the
-  graph is genuinely uniform-need).
-- B14 PROMPT THRIFT at validation time on any module within 80%
-  of its size budget.
+as default.
+Pattern mandates: B13 always (largest lever, no quality tradeoff);
+role class chosen per slot; B14 PROMPT THRIFT at validation when
+within 80% of size budget.
 
 ### quality
 
 Posture: optimize for capability ceiling; pay for it.
-
-Pattern mandates:
-- Planner-class for planner/critic slots even when implementer-
-  class would meet capability profile.
-- B14 PROMPT THRIFT still on (prose bloat is not a quality lever).
-- B15 TOOL SUBSET considered when MCP catalog > 20 tools (full
-  catalog every turn distracts even the planner class).
-- A12 GRADIENT WORKFLOW considered when the bulk-execution stage
-  runs >10x per workflow (the savings still meaningful).
+Pattern mandates: planner-class for planner/critic slots even
+when implementer-class meets capability; B14 still on (prose bloat
+isn't a quality lever); B15 considered at >20 tools; A12 considered
+when bulk-execution stage runs >10x.
 
 ### unbounded
 
-Posture: research / capability-ceiling work where the architect
-explicitly wants the model not to self-limit.
-
-Pattern mandates: none. The persona warns once per design that
-unbounded stance is in effect, then proceeds. Cost projection is
-STILL recorded (operator sees the prediction; predictability
-without prescription).
+Posture: research / capability-ceiling work; architect explicitly
+opts out of self-limiting.
+Pattern mandates: none. Persona warns once that unbounded is in
+effect, then proceeds. Cost projection STILL recorded
+(predictability without prescription).
 
 ### How operator declares stance
 
-- In the first prompt: "design this in frugal mode" / "let's go
-  unbounded on this one".
+- First prompt: "design this in frugal mode" / "go unbounded".
 - Per harness convention: see `runtime-affordances/per-harness/<x>.md`
-  section on stance binding.
-- Session-scoped config file (genesis reads `stance:` from the
-  plan store if the operator wrote it there).
+  stance binding section.
+- Session-scoped config (genesis reads `stance:` from plan store).
 
 If none declared, default `balanced`.
 
@@ -111,81 +89,31 @@ is a gate.
 
 ## Step 3.2 - cost check in full
 
-Load `assets/token-economics.md` and
-`assets/runtime-affordances/model-catalog.md`. For each module in
-the component diagram:
+Load `assets/token-economics.md` (substrate vocabulary) and
+`assets/runtime-affordances/model-catalog.md` (role classes). For
+each module in the component diagram:
 
-### Role class
-
-Pick the cheapest class that meets the capability profile. Promote
-a class only when the failure mode of getting it wrong is "wrong
-plan", not "minor edit miss". The five classes
-(planner / implementer / reviewer / trivial /
-long-context-retriever) are defined in
-`runtime-affordances/model-catalog.md` with capability and cost
-profiles.
-
-### Prefix shape
-
-Identify:
-- STABLE bytes: persona body, skill body, project rule files,
-  tool catalogue (if held stable).
-- VARIABLE suffix: per-turn user input, tool results, scratchpad.
-
-Audit for cache invalidators:
-- Timestamp in any stable byte.
-- Tool catalogue that mutates mid-session (MCP server addition,
-  per-step tool subsetting that changes the catalogue).
-- Mid-session model switch (B12 should route AT WORKFLOW ENTRY,
-  not mid-thread).
-- Mid-session effort change (B16 should declare per-thread, not
-  per-turn).
-- Edits to project rule files mid-session.
-
-If any invalidator named, apply B13 CACHE-AWARE PREFIX (move
-the invalidator to the variable suffix, or hold the prefix
-stable through the session even at small redundancy cost).
-
-### Output volume
-
-Estimate qualitative band per module per
-`assets/token-economics.md`:
-- S: under 500 tokens (verdicts, classifications, short summaries).
-- M: 500-3K tokens (typical implementer outputs, structured
-  plans).
-- L: over 3K tokens (full file generation, long synthesis).
-
-Steps emitting L output in a loop or fan-out are R5 COST PRUNE
-triggers. Consider splitting (R1) so the bulk generation moves to
-an implementer-class slot, OR delegating generation to a
-deterministic tool (S7).
-
-### Tool surface
-
-If the primitive runs against more than 20 available tools and
-uses fewer than 5 per invocation, apply B15 TOOL SUBSET. If the
-tool sequence is deterministic (always same N tools in same
-order), prefer S7 DETERMINISTIC TOOL BRIDGE (one tool that does
-the work).
-
-### Workflow shape
-
-If the design contains heterogeneous-cost stages (one planner-
-class step, N implementer-class steps, one reviewer-class step),
-name A12 GRADIENT WORKFLOW.
-
-### Apply stance
-
-- `frugal`: mandates B12, B15, B16, A12 wherever applicable.
-- `balanced`: mandates B13 plus per-stage role-class choice.
-- `quality`: promotes planner/critic slots but keeps B14 and B13.
-- `unbounded`: skips the gate but still records the projection.
-
-### Tradeoffs
-
-If two cost patterns fit the same slot, load the cost-shape matrix
-in `assets/pattern-tradeoffs.md` (section "10. Cost-shape") and
-cite the row chosen in the step 6 handoff packet.
+1. **Role class.** Cheapest class meeting capability profile.
+   Role-class definitions and selection axes live in
+   `model-catalog.md`; the binding decision rule lives in
+   `design-patterns.md` §B12 SELECTION RULE.
+2. **Prefix shape.** Audit STABLE bytes vs VARIABLE suffix. If any
+   B13 invalidator names itself (timestamps in stable bytes,
+   mid-session catalogue mutation, mid-session model switch, mid-
+   session effort change, edits to project rule files), apply
+   B13 CACHE-AWARE PREFIX. Invalidator list canonical in
+   `token-economics.md` §5 CACHE INVALIDATOR.
+3. **Output volume.** Estimate S / M / L band per
+   `token-economics.md` "Cost-shape vocabulary". L-in-loop triggers
+   R5 COST PRUNE (consider R1 split or S7 delegation).
+4. **Tool surface.** If primitive sees >20 tools and uses <5 per
+   call, apply B15 TOOL SUBSET. Deterministic sequence -> S7.
+5. **Workflow shape.** Heterogeneous-cost stages -> name A12
+   GRADIENT WORKFLOW.
+6. **Apply stance.** Stance mandates above (frugal / balanced /
+   quality / unbounded).
+7. **Tradeoffs.** Two cost patterns fitting one slot -> load
+   `pattern-tradeoffs.md` §10 Cost-shape and cite the row.
 
 ### Output of step 3.2
 
@@ -291,15 +219,3 @@ After the emitted modules pass structural lint, verify:
 Failures are HIGH severity. They do not block ship outright (the
 operator may accept a regression knowingly), but they MUST be
 surfaced in the validation report so the operator decides.
-
----
-
-## When this file is NOT loaded
-
-- Stance is `unbounded` AND operator declined cost recording.
-- The design is purely structural (no role-class decisions, e.g.
-  a pure documentation refactor).
-- The design is small enough that the SKILL.md body's summary
-  suffices and step 3.2 is trivially satisfied.
-
-In any other case, load this file at step 3.2.

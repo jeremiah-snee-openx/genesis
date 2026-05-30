@@ -1,0 +1,26 @@
+[
+  {
+    "id": "CORRECTNESS-001",
+    "severity": "BLOCKER",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line_anchor": "line 666",
+    "summary": "Undefined function _substitute_plugin_root called",
+    "details": "The _extract_lsp_servers function calls _substitute_plugin_root(servers, abs_root, logger) at line 666, but this function is never defined in the codebase. This will cause a NameError at runtime when any LSP servers are extracted from a plugin with non-empty lspServers configuration. The function should recursively replace ${CLAUDE_PLUGIN_ROOT} placeholders in string values within the servers dict."
+  },
+  {
+    "id": "CORRECTNESS-002",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line_anchor": "lines 873-877, 886-891, 898-902, 910-913",
+    "summary": "Missing logger parameter in LSPIntegrator method calls",
+    "details": "The run_lsp_integration function receives a logger parameter (line 834) but does not pass it to most LSPIntegrator methods (collect_transitive, install, remove_stale). While these methods have optional logger=None parameters that default to NullCommandLogger, the remove_stale method uses logger.progress() at lines 1196 and 1220 to provide user-facing feedback. Not passing the logger means user messages won't appear during LSP stale server cleanup."
+  },
+  {
+    "id": "CORRECTNESS-003",
+    "severity": "MEDIUM",
+    "file": "src/apm_cli/commands/install.py",
+    "line_anchor": "line 540",
+    "summary": "LSP integration uses MCP installation flag instead of dedicated LSP flag",
+    "details": "At line 540, run_lsp_integration is called with should_install=should_install_mcp. This reuses the MCP installation decision gate for LSP integration. While the comment at run_lsp_integration line 853 states 'same gate as MCP', this creates confusion and potential for bugs if LSP and MCP installation logic should ever diverge. The parameter should ideally be named should_install_lsp for clarity, or the gate decision should be explicitly unified in a comment/design doc. If LSP should actually use the same gate as MCP by design, this code is correct but the naming is misleading."
+  }
+]

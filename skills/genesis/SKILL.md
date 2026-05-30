@@ -202,6 +202,11 @@ same slot, cite the cost-shape matrix row in
 `references/cost-economics-process.md`. Skip step 3.2 ONLY when
 stance is `unbounded` AND operator declined cost recording.
 
+For every task() spawn planned, fill the PER-SPAWN DECLARATION
+TABLE (Audience/Tier/Brief mode/Receipt mode/Justification) per
+`references/audience-boundary.md`. Default INTERNAL = caveman
+per B14b/B14c.
+
 ### Step 3.5 - composition decision
 
 Load `assets/composition-substrate.md`. For EACH box in the
@@ -227,6 +232,10 @@ rationale:
 Then sketch a `flowchart LR` DEPENDENCY GRAPH showing this module
 plus its declared external modules and any transitive closure
 edges you can name. Mark each edge with the composition mode.
+
+For every artifact emitted, name audience per composition-substrate
+§7 AUDIENCE BOUNDARY. INTERNAL → caveman (B14b/B14c); EXTERNAL →
+normal prose; synthesizers decompress at the boundary.
 
 If any external module is declared, two things follow. (1) The
 handoff packet MUST list it under "external modules required" so
@@ -323,6 +332,10 @@ Produce a single artifact containing:
 - Any compliance findings still open (with severity).
 - A todo list (one entry per module to draft, plus validation),
   with dependencies between entries where they exist.
+- A PER-SPAWN DECLARATION TABLE, SPAWN_BRIEFS, RECEIPT_SCHEMAS, and
+  EXTERNAL_ARTIFACT_SPEC per `references/audience-boundary.md` template.
+- A HUMAN_RATIONALE section with full prose; flagged as NEVER
+  copied into any SPAWN_BRIEF.
 - An EVALS PLAN (canonical spec for MODULE ENTRYPOINT primitive
   evaluating-skills + optimizing-descriptions; see
   `assets/primitives.md`). At minimum:
@@ -478,6 +491,9 @@ better than against prose description.
   promotions); cap still holds. Failures are HIGH severity but do
   not block ship -- they surface so the operator can accept or
   redesign. Full procedure in `references/cost-economics-process.md`.
+- AUDIENCE BOUNDARY: PER-SPAWN DECLARATION TABLE present; INTERNAL
+  rows use caveman brief or justified exception; SPAWN_BRIEFs
+  paired with RECEIPT_SCHEMAs; EXTERNAL specs declare NORMAL prose.
 - REAL-TASK REFINEMENT: after structural lint passes, run the
   skill on at least one real task, capture the trace, and revise
   from what actually happened (not what you expected). One-shot
@@ -498,6 +514,9 @@ in any one thread:
 See `assets/design-patterns.md` for the design-pattern catalogue (GoF
 axes) and `assets/architectural-patterns.md` for the architectural
 patterns (system-topology shapes).
+
+Load `references/audience-boundary.md` before drafting handoff
+packet step 6 if the design includes ≥1 task() spawn.
 
 ## Worked examples
 

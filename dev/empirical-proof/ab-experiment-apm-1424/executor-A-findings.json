@@ -1,0 +1,172 @@
+[
+  {
+    "lens": "correctness",
+    "severity": "critical",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line": 666,
+    "message": "Call to undefined function '_substitute_plugin_root'. This function is invoked but is never defined in the PR, which will cause a NameError at runtime when LSP servers with ${CLAUDE_PLUGIN_ROOT} placeholders are encountered in plugin manifests.",
+    "suggestion": "Define the _substitute_plugin_root function to recursively substitute ${CLAUDE_PLUGIN_ROOT} placeholders in string values throughout the server configuration dictionary."
+  },
+  {
+    "lens": "correctness",
+    "severity": "critical",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line": 756,
+    "message": "Call to undefined function '_surface_warning'. This function is invoked in the new LSP validation logic but is never defined in the PR, which will cause a NameError at runtime when invalid LSP server configurations are encountered.",
+    "suggestion": "Define the _surface_warning function to handle warning messaging, or replace calls with logger.warning() if the helper is not needed."
+  },
+  {
+    "lens": "security",
+    "severity": "critical",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line": 666,
+    "message": "Call to undefined function `_substitute_plugin_root`. This function is invoked to replace ${CLAUDE_PLUGIN_ROOT} tokens in LSP server configs but is never defined in this PR. Will cause NameError at runtime. If this function performs string substitution without proper path validation, it could enable path injection attacks.",
+    "citation": "OWASP A03:2021 — Injection (Path Traversal variant)",
+    "suggestion": "Define `_substitute_plugin_root(servers, abs_root, logger)` function that safely replaces ${CLAUDE_PLUGIN_ROOT} tokens using str.replace() without allowing path traversal, or import it if it exists elsewhere."
+  },
+  {
+    "lens": "performance",
+    "severity": "high",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line": 1015,
+    "line_end": 1027,
+    "message": "Lockfile is read twice during install pipeline: once in collect_transitive() and again in update_lockfile(). Both load entire lockfile into memory and iterate through package dependencies. Consider caching the parsed lockfile or refactoring to read once and pass the result.",
+    "suggestion": "Pass parsed lockfile object through the call chain to avoid duplicate LockFile.read() calls"
+  },
+  {
+    "lens": "performance",
+    "severity": "high",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line": 1352,
+    "line_end": 1364,
+    "message": "JSON file is fully loaded into memory to merge a few LSP server configs. With many servers, the dict comparison (existing[name] != cfg) at line 1360 becomes O(n * m) where n=server count and m=config size. For large initializationOptions/settings, this adds overhead per server.",
+    "suggestion": "Consider tracking dirty flags instead of full dict comparison, or use shallow change detection on config keys only"
+  },
+  {
+    "lens": "performance",
+    "severity": "medium",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line": 1099,
+    "message": "Each apm.yml file is parsed via APMPackage.from_apm_yml() to extract LSP dependencies. If collect_transitive() is called on a large dependency tree with many packages, this becomes an O(p) disk I/O + parsing cost per package. No batching or incremental parsing.",
+    "suggestion": "Cache parsed APMPackage objects if they're accessed multiple times, or consider lazy parsing for LSP extraction only"
+  },
+  {
+    "lens": "performance",
+    "severity": "medium",
+    "file": "src/apm_cli/integration/_shared.py",
+    "line": 1030,
+    "message": "Path.exists() is called for each package in the lockfile (O(n) filesystem checks). If lock contains 100+ packages, this adds multiple sync filesystem operations on a hot path. Lockfile is already canonical; stale paths should be handled differently.",
+    "suggestion": "Trust lockfile entries without redundant exists() checks, or batch filesystem checks with os.stat() in a single pass"
+  },
+  {
+    "lens": "performance",
+    "severity": "low",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line": 664,
+    "message": "Plugin root substitution traverses all string values in the LSP servers dict recursively via _substitute_plugin_root(). For plugins with deeply nested initializationOptions or settings, this could be inefficient. The traversal pattern is not visible in diff but likely walks the entire tree.",
+    "suggestion": "Limit substitution to known top-level string fields only (command, workspaceFolder) rather than recursive traversal of all values"
+  },
+  {
+    "lens": "style",
+    "severity": "medium",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line": 865,
+    "message": "Explicit use of builtins.set() instead of idiomatic set() is inconsistent with Python conventions. Surrounding code uses standard set() elsewhere (e.g., lockfile.py line 594 uses set operations directly).",
+    "suggestion": "Change 'builtins.set()' to 'set()' unless there's a specific namespace collision concern documented."
+  },
+  {
+    "lens": "style",
+    "severity": "medium",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line": 866,
+    "message": "Explicit use of builtins.dict() instead of idiomatic dict() is inconsistent with Python conventions. Surrounding code uses standard dict() operations elsewhere.",
+    "suggestion": "Change 'builtins.dict()' to 'dict()' unless there's a specific namespace collision concern documented."
+  },
+  {
+    "lens": "style",
+    "severity": "low",
+    "file": "src/apm_cli/models/dependency/lsp.py",
+    "line": 1688,
+    "message": "Error message ends with a period, but surrounding ValueError messages (line 1695, 1712, etc.) also contain periods. Inconsistent punctuation in error messages would be flagged by a linter, but the formatting inconsistency around line 1689-1691 spans multiple lines without clear convention.",
+    "suggestion": "Verify consistent error message formatting across the module; this appears acceptable as-is."
+  },
+  {
+    "lens": "style",
+    "severity": "low",
+    "file": "src/apm_cli/integration/lsp_integrator.py",
+    "line": 1058,
+    "message": "Module-level logger named '_log' (underscore-prefixed) diverges from MCP integrator pattern. MCP likely uses 'logger = logging.getLogger(__name__)' without the underscore (see mcp_integrator.py refactored imports).",
+    "suggestion": "Rename '_log' to 'logger' to align with standard project naming convention, or verify this is intentional private naming."
+  },
+  {
+    "lens": "style",
+    "severity": "medium",
+    "file": "src/apm_cli/install/pipeline.py",
+    "line": 932,
+    "message": "Comment 'Populate direct LSP deps from the manifest for LSP integration.' duplicates the code's self-documenting name. The field assignment is clear without the comment, and the pattern mirrors the MCP comment above it (line 928).",
+    "suggestion": "Either remove the comment or make it more specific (e.g., 'used by LSP policy gates' if applicable)."
+  },
+  {
+    "lens": "test-coverage",
+    "severity": "high",
+    "file": "src/apm_cli/integration/_shared.py",
+    "line": 1002,
+    "line_end": 1033,
+    "message": "resolve_locked_apm_yml_paths() has no test coverage. This function resolves locked apm.yml paths from lockfile but is untested.",
+    "suggestion": "Add tests for lockfile path resolution edge cases: lockfile missing, empty dependencies, multiple depths."
+  },
+  {
+    "lens": "test-coverage",
+    "severity": "high",
+    "file": "src/apm_cli/models/apm_package.py",
+    "line": 1489,
+    "line_end": 1505,
+    "message": "APMPackage.get_lsp_dependencies() and get_dev_lsp_dependencies() methods have no direct test coverage (only mocked in integration tests).",
+    "suggestion": "Add unit tests verifying LSP dependency extraction from apm.yml dependencies.lsp and dev_dependencies.lsp."
+  },
+  {
+    "lens": "test-coverage",
+    "severity": "medium",
+    "file": "src/apm_cli/deps/lockfile.py",
+    "line": 556,
+    "line_end": 577,
+    "message": "LockFile.lsp_servers and lsp_configs fields added (new config surface) but no dedicated lockfile unit tests for YAML serialization/deserialization.",
+    "suggestion": "Add tests for lsp_servers round-trip YAML, lsp_configs field handling, and is_semantically_equivalent comparisons."
+  },
+  {
+    "lens": "test-coverage",
+    "severity": "medium",
+    "file": "src/apm_cli/deps/plugin_parser.py",
+    "line": 671,
+    "line_end": 686,
+    "message": "_read_lsp_file() is not explicitly tested; only called indirectly via _extract_lsp_servers. No dedicated test for symlink detection or path traversal.",
+    "suggestion": "Add explicit test for _read_lsp_file handling symlinks, path escapes, and missing files in test_plugin_parser_lsp.py."
+  },
+  {
+    "lens": "test-coverage",
+    "severity": "medium",
+    "file": "src/apm_cli/install/lsp/integration.py",
+    "line": 825,
+    "line_end": 922,
+    "message": "run_lsp_integration() lacks tests for should_install=False branch (--only=apm), I/O error handling, and user_scope edge cases.",
+    "suggestion": "Add tests for restore-old-servers path, exception handling, and user_scope=True with corrupted ~/.claude.json."
+  },
+  {
+    "lens": "test-coverage",
+    "severity": "low",
+    "file": "src/apm_cli/install/context.py",
+    "line": 790,
+    "line_end": 790,
+    "message": "InstallContext.direct_lsp_deps field added (new config surface) but no test verifies field is correctly populated from apm.yml.",
+    "suggestion": "Add assertion in install pipeline tests that direct_lsp_deps is set when manifest contains LSP dependencies."
+  },
+  {
+    "lens": "test-coverage",
+    "severity": "low",
+    "file": "src/apm_cli/commands/install.py",
+    "line": 1900,
+    "line_end": 1909,
+    "message": "install command wired for LSP integration (ctx.direct_lsp_deps assignment) but no integration test for full install pipeline with LSP.",
+    "suggestion": "Add integration test for end-to-end install with LSP dependencies if not already covered."
+  }
+]

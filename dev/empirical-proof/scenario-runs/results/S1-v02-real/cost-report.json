@@ -1,0 +1,19 @@
+{
+  "cell": "S1-v02",
+  "methodology": "REAL TELEMETRY harvested from cloud session_store events table",
+  "chat_session_id": "e27b2f57-aced-4424-9a04-33ec5552b92f",
+  "total_cost_usd": 3.9355,
+  "total_calls": 17,
+  "per_model": [
+    {
+      "model": "claude-sonnet-4.6",
+      "input_tokens": 1111887,
+      "output_tokens": 8271,
+      "cache_read_tokens": 1060266,
+      "cache_write_tokens": 42062,
+      "calls": 17,
+      "cost_usd": 3.9355
+    }
+  ],
+  "pricing_source": "Anthropic published rates per dev/empirical-proof/scenario-runs/results/COSTING.md; gpt-5.4 priced at OpenAI public gpt-5 rates ($1.25 in / $10 out / $0.125 cache_read / $1.25 cache_write per Mtok)."
+}

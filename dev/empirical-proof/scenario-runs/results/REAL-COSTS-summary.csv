@@ -1,0 +1,13 @@
+cell,session_id,calls,total_cost_usd,dest
+S3-zero-opus,21482332-49d7-471c-a5f5-927c7a5c92db,30,41.0096,dev/empirical-proof/scenario-runs/results/S3-zero-opus
+S3-zero-sonnet,7b91ca14-66ff-4865-815e-4a75b4ee6383,20,4.8147,dev/empirical-proof/scenario-runs/results/S3-zero-sonnet
+S3-v02,79ee3ffe-88a4-4472-8c2b-7e999111b949,105,33.7855,dev/empirical-proof/scenario-runs/results/S3-v02
+S3-v036,7208403f-0602-4423-9d80-791991c2e63b,41,10.3990,dev/empirical-proof/scenario-runs/results/S3-v036
+S2N-zero-opus,6b0d88db-cfa2-4e27-a274-b9bbfb0432d8,17,33.0059,dev/empirical-proof/scenario-runs/results/S2N-zero-opus
+S2N-zero-sonnet,f5546460-e060-40e7-a5c7-9eac08792a32,20,6.1992,dev/empirical-proof/scenario-runs/results/S2N-zero-sonnet
+S2N-v02,b0c79812-ef68-4075-b403-615e6c84df6f,61,9.4189,dev/empirical-proof/scenario-runs/results/S2N-v02
+S2N-v036,c43ed1b1-9d89-4449-89da-f1d5f2a31a0e,38,9.7956,dev/empirical-proof/scenario-runs/results/S2N-v036-real
+S1-zero-opus,eb461ebf-95d4-42fa-8897-6bcc94868d7e,11,19.8231,dev/empirical-proof/scenario-runs/results/S1-zero-opus-real
+S1-zero-sonnet,df27531f-249b-4c83-b3b2-3a1fd995c5ea,34,8.8934,dev/empirical-proof/scenario-runs/results/S1-zero-sonnet-real
+S1-v02,e27b2f57-aced-4424-9a04-33ec5552b92f,17,3.9355,dev/empirical-proof/scenario-runs/results/S1-v02-real
+S1-v036,ff901d47-3a7f-4829-96f7-391f28b36885,232,24.5915,dev/empirical-proof/scenario-runs/results/S1-v036-real
